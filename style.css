@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+  --bg: #0e0e12;
+  --panel: #1a1a22;
+  --ink: #eaeaea;
+  --accent: #e8620c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Press Start 2P', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 #000;
+  letter-spacing: 2px;
+}
+
+.subtitle {
+  font-size: 8px;
+  line-height: 1.6;
+  max-width: 480px;
+  color: #b8b8c0;
+  margin: 0;
+}
+
+canvas#game {
+  background: #000;
+  border: 6px solid #3a3a44;
+  outline: 2px solid #000;
+  box-shadow: 0 0 0 2px #55555c, 0 12px 24px rgba(0,0,0,0.6);
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  width: 960px;
+  height: 540px;
+  max-width: 96vw;
+  max-height: 70vh;
+  aspect-ratio: 16 / 9;
+}
+
+.controls {
+  font-size: 8px;
+  color: #9a9aa4;
+  margin: 0;
+}
+
+kbd {
+  background: var(--panel);
+  border: 1px solid #444;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 8px;
+  color: var(--ink);
+}
