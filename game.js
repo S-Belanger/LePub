@@ -636,7 +636,7 @@ function update(dt) {
   // with level too, capped just under the player's own speed (62) so a
   // straight-line escape is always possible, if barely at high levels.
   const hunterLvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1;
-  hunter.speed = Math.min(60, 54 + hunterLvl * 1.5);
+  hunter.speed = Math.min(60, 40 + hunterLvl * 2.5);
 
   hunterChangeTimer -= dt;
   if (hunterChangeTimer <= 0) pickNewHunterDirection();
