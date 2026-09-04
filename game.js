@@ -125,10 +125,10 @@ function getTableSeats(table) {
     return out;
   }
   const out = [];
-  for (const px of along(seats.n, w)) out.push({ x: cx + px, y: cy - reachY });
-  for (const px of along(seats.s, w)) out.push({ x: cx + px, y: cy + reachY });
-  for (const py of along(seats.w, h)) out.push({ x: cx - reachX, y: cy + py });
-  for (const py of along(seats.e, h)) out.push({ x: cx + reachX, y: cy + py });
+  for (const px of along(seats.n, w)) out.push({ x: cx + px, y: cy - reachY, side: 'n' });
+  for (const px of along(seats.s, w)) out.push({ x: cx + px, y: cy + reachY, side: 's' });
+  for (const py of along(seats.w, h)) out.push({ x: cx - reachX, y: cy + py, side: 'w' });
+  for (const py of along(seats.e, h)) out.push({ x: cx + reachX, y: cy + py, side: 'e' });
   return out;
 }
 
@@ -144,8 +144,13 @@ const BAR_SEGMENTS = [
   sortY: r.y + r.h,
 }));
 
+// TABLES[0] is the regulars' booth. It was two chairs down each long edge,
+// which put the seats ~7px apart — fine for anonymous patrons, unreadable once
+// three 14x15 named characters sit there. One chair per side spreads them out
+// (Sam west, Gerald east, Nazim south facing the camera) and leaves the north
+// chair for ordinary customers. Slightly larger so the three don't touch.
 const TABLES = [
-  makeTable(40, 45, { w: 18, h: 20, seats: { n: 0, s: 0, w: 2, e: 2 } }),   // top-left
+  makeTable(40, 45, { w: 22, h: 22, seats: { n: 1, s: 1, w: 1, e: 1 } }),   // regulars' booth
   makeTable(150, 95, { w: 20, h: 140, seats: { n: 0, s: 0, w: 4, e: 4 } }), // top-right, long
   makeTable(175, 210, { w: 16, h: 16, seats: { n: 1, s: 1, e: 0, w: 0 } }),
   makeTable(175, 254, { w: 16, h: 16, seats: { n: 1, s: 1, e: 0, w: 0 } }),
@@ -156,222 +161,26 @@ const TABLES = [
 
 const FURNITURE = [...BAR_SEGMENTS, ...TABLES];
 
-const SEATS = TABLES.flatMap(t => getTableSeats(t).map(seat => ({ ...seat, table: t, occupied: false })));
+// `reserved` is set once at load for the regulars' chairs and never cleared —
+// generic customers must never be seated there, restart included.
+const SEATS = TABLES.flatMap(t => getTableSeats(t).map(seat => ({
+  ...seat, table: t, occupied: false, reserved: false, regularId: null,
+})));
+
+const REGULARS_TABLE = TABLES[0];
+for (const cfg of REGULARS) {
+  const seat = SEATS.find(s => s.table === REGULARS_TABLE && s.side === cfg.seatSide);
+  if (!seat) throw new Error('No ' + cfg.seatSide + ' chair at the regulars table for ' + cfg.name);
+  seat.reserved = true;
+  seat.regularId = cfg.id;
+}
 
 // Customers walk in from this point at the bottom wall.
 const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 };
 
-// ---- Small pixel-art sprite authoring helper --------------------------------
-// R(char, count, char, count, ...) builds a row string from repeated runs.
-// Row width is derived automatically (no need to hand-count characters).
-function R(...parts) {
-  let s = '';
-  for (let i = 0; i < parts.length; i += 2) s += parts[i].repeat(parts[i + 1]);
-  return s;
-}
-
-// ---- "Le Pub" cast: deer-onesie guy (antlers, glasses, beard) being
-// stalked by a flannel-and-fedora hunter (glasses, shotgun). --------------
-
-function buildSprite(rows) {
-  const w = Math.max(...rows.map(r => r.length));
-  const h = rows.length;
-  return { rows, w, h };
-}
-
-// --- Doe: antler headband, blonde hair, glasses, beard, brown deer onesie
-// with a cream chest patch. ------------------------------------------------
-const DOE_PALETTE = {
-  '.': null,
-  n: '#a9764f', // antler
-  f: '#f2e8da', // hood ear fluff
-  h: '#c9a86a', // hair
-  k: '#f0c090', // skin
-  g: '#141414', // glasses
-  e: '#5a4030', // beard
-  d: '#6b4a30', // onesie
-  c: '#e8ddc0', // chest patch
-  s: '#2a2018', // feet
-};
-
-const DOE_IDLE = buildSprite([
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler tips (taller rack)
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler base
-  R('.', 3, 'f', 2, '.', 6, 'f', 2, '.', 3),
-  R('.', 4, 'h', 8, '.', 4),
-  R('.', 3, 'h', 1, 'k', 8, 'h', 1, '.', 3),
-  R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'e', 8, '.', 4),
-  R('.', 5, 'e', 6, '.', 5),
-  R('.', 2, 'd', 4, 'c', 4, 'd', 4, '.', 2),
-  R('.', 1, 'd', 4, 'c', 6, 'd', 4, '.', 1),
-  R('.', 1, 'd', 5, 'c', 4, 'd', 5, '.', 1),
-  R('.', 2, 'd', 12, '.', 2),
-  R('.', 3, 'd', 10, '.', 3),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
-]);
-
-const DOE_WALK = buildSprite([
-  ...DOE_IDLE.rows.slice(0, 14),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 3, 'd', 3, '.', 4, 'd', 3, '.', 3),
-  R('.', 2, 'd', 3, '.', 6, 'd', 3, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
-]);
-
-// --- Hunter: fedora, glasses, red/black flannel, olive pants, and a
-// shotgun barrel jutting out at shoulder height. ---------------------------
-const HUNTER_PALETTE = {
-  '.': null,
-  o: '#5c5a3e', // fedora crown
-  r: '#454330', // fedora brim
-  k: '#f0c090', // skin
-  g: '#141414', // glasses
-  w: '#e8e4d8', // collar
-  f: '#8a2020', // flannel red
-  x: '#1c1c1c', // flannel black check
-  p: '#4a4630', // pants
-  s: '#1a1512', // shoes
-  u: '#3a2f22', // shotgun
-};
-
-const HUNTER_IDLE = buildSprite([
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 2, 'r', 12, '.', 2),
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'w', 8, '.', 4),
-  // Buffalo-check plaid runs the full torso (not just the shoulders), two
-  // alternating 2x2 blocks per row so it reads as a checked flannel.
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2),
-  R('.', 2, 'x', 10, '.', 2),
-  R('.', 3, 'x', 10, '.', 3),
-  R('.', 3, 'p', 10, '.', 3),
-  R('.', 4, 'p', 8, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
-]);
-
-const HUNTER_WALK = buildSprite([
-  ...HUNTER_IDLE.rows.slice(0, 14),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 'p', 2, '.', 4, 'p', 2, '.', 3),
-  R('.', 2, 'p', 2, '.', 6, 'p', 2, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
-]);
-
-// --- Customer: plain pub patron. Geometry is shared; each customer gets
-// its own palette instance so shirt color varies. ---------------------------
-const CUSTOMER_IDLE = buildSprite([
-  R('.', 5, 'h', 4, '.', 5),
-  R('.', 4, 'h', 6, '.', 4),
-  R('.', 3, 'h', 1, 'k', 6, 'h', 1, '.', 3),
-  R('.', 4, 'k', 6, '.', 4),
-  R('.', 4, 'm', 6, '.', 4),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 3, 'p', 8, '.', 3),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
-]);
-
-const CUSTOMER_WALK = buildSprite([
-  ...CUSTOMER_IDLE.rows.slice(0, 10),
-  R('.', 3, 'p', 2, '.', 4, 'p', 2, '.', 3),
-  R('.', 2, 'p', 2, '.', 6, 'p', 2, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
-]);
-
-const CUSTOMER_SHIRT_COLORS = ['#4a6fa5', '#8a4a9e', '#4a9e6a', '#c9a227', '#c9622f', '#5a7d8a'];
-
-function makeCustomerPalette() {
-  return {
-    '.': null,
-    h: '#3a2a1a',
-    k: '#f0c090',
-    m: CUSTOMER_SHIRT_COLORS[Math.floor(Math.random() * CUSTOMER_SHIRT_COLORS.length)],
-    p: '#2a2418',
-    s: '#1a1512',
-  };
-}
-
-// ---- Order icons: tiny (6x8) glyphs shown in a customer's speech bubble
-// and above the player's head while carrying an order. -----------------
-const MUG_ROWS = [
-  R('.', 1, 'f', 4, '.', 1),
-  R('f', 6),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 6),
-];
-const COCKTAIL_ROWS = [
-  R('o', 6),
-  R('.', 1, 'L', 4, '.', 1),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 6),
-  R('.', 6),
-];
-const WINE_ROWS = [
-  R('.', 1, 'o', 4, '.', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 6),
-];
-const FOOD_ROWS = [
-  R('.', 6),
-  R('.', 1, 'p', 4, '.', 1),
-  R('p', 1, 'M', 2, 'G', 1, 'M', 1, 'p', 1),
-  R('p', 1, 'M', 4, 'p', 1),
-  R('p', 6),
-  R('.', 6),
-  R('.', 6),
-  R('.', 6),
-];
-
-function beerPalette(liquid) {
-  return { '.': null, f: '#f5f0e0', o: '#2a1c10', L: liquid };
-}
-
-const ORDER_ICONS = {
-  'beer-dark': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#3a2414') },
-  'beer-red': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#8a2418') },
-  'beer-blond': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#e8b830') },
-  cocktail: { sprite: buildSprite(COCKTAIL_ROWS), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
-  wine: { sprite: buildSprite(WINE_ROWS), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
-  food: { sprite: buildSprite(FOOD_ROWS), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
-};
-const ORDER_TYPES = Object.keys(ORDER_ICONS);
-function randomOrderType() { return ORDER_TYPES[Math.floor(Math.random() * ORDER_TYPES.length)]; }
-
-const SPRITES = {
-  hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
-  doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
-  customer: { idle: CUSTOMER_IDLE, walk: CUSTOMER_WALK, palette: null },
-};
-
+// ---- Sprite rendering -------------------------------------------------------
+// Sprite geometry and palettes live in src/sprites.js; this is the single
+// generic renderer for that rows+palette format.
 function drawSprite(sprite, palette, screenX, screenY, flipX) {
   const { rows, w } = sprite;
   for (let ry = 0; ry < rows.length; ry++) {
@@ -455,6 +264,9 @@ let hunterChangeTimer = 0;
 
 let caught = false;
 let score = 0;
+// Seconds of un-paused play since the last restart. Used for order age and
+// for animation phases, so nothing has to reach for wall-clock time.
+let gameTime = 0;
 const POINTS_PER_DELIVERY = 10;
 const FORGOTTEN_PENALTY = 15;
 
@@ -487,7 +299,7 @@ const BASE_MAX_CUSTOMERS = 6;
 let customerSpawnTimer = 3;
 
 function spawnCustomer() {
-  const freeSeat = SEATS.filter(s => !s.occupied);
+  const freeSeat = SEATS.filter(s => !s.occupied && !s.reserved);
   if (!freeSeat.length) return;
   const seat = freeSeat[Math.floor(Math.random() * freeSeat.length)];
   seat.occupied = true;
@@ -498,6 +310,7 @@ function spawnCustomer() {
   c.sitTimer = 0;
   c.orderType = null;
   c.orderTimer = 0;
+  c.orderPlacedAt = 0;
   c.served = false;
   c.beingCarried = false;
   customers.push(c);
@@ -532,7 +345,10 @@ function updateCustomer(c, dt) {
     c.moving = false;
     if (c.orderType === null) {
       c.orderTimer -= dt;
-      if (c.orderTimer <= 0) c.orderType = randomOrderType();
+      if (c.orderTimer <= 0) {
+        c.orderType = randomOrderType();
+        c.orderPlacedAt = gameTime;
+      }
     }
     c.sitTimer -= dt;
     if (c.sitTimer <= 0) {
@@ -547,6 +363,195 @@ function updateCustomer(c, dt) {
   return null;
 }
 
+// ---- Named regulars ---------------------------------------------------------
+// Nazim, Sam and Gerald are permanent fixtures of the corner booth. They are
+// NOT generic customers: no entering/sitting/leaving lifecycle, no seat
+// competition, and they stay for the whole run. What they *do* share is the
+// order shape (`orderType`, `sitTimer`, `patienceDuration`, `served`,
+// `beingCarried`, `seat`), so pickup, carrying, target highlighting, delivery
+// range and scoring all reuse the existing serving code unchanged — the only
+// branch is what happens *after* a successful delivery.
+//
+// Config lives in src/regulars.js; this is the runtime instance.
+const regulars = [];
+const regularById = new Map();
+
+// Nazim's face changes with drink, so his five palettes are built once at load
+// rather than per frame. Everything else about the progression is in
+// NAZIM_STAGE_VISUALS.
+const NAZIM_STAGE_PALETTES = {};
+for (const stageId in NAZIM_STAGE_VISUALS) {
+  const vis = NAZIM_STAGE_VISUALS[stageId];
+  NAZIM_STAGE_PALETTES[stageId] = Object.assign({}, SPRITES.nazim.palette, {
+    r: vis.blush || SPRITES.nazim.palette.k,
+    w: vis.eye,
+  });
+}
+
+const prefersReducedMotion = window.matchMedia
+  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  : false;
+
+function makeRegular(cfg) {
+  const seat = SEATS.find(sx => sx.reserved && sx.regularId === cfg.id);
+  const r = makeEntity(cfg.spriteKey, seat.x, seat.y);
+  r.isRegular = true;
+  r.cfg = cfg;
+  r.id = cfg.id;
+  r.name = cfg.name;
+  r.seat = seat;
+  r.state = 'sitting';   // they are always seated; the field exists so the
+                         // shared delivery code doesn't need a special case
+  r.moving = false;
+  resetRegular(r);
+  return r;
+}
+
+// Everything mutable about a regular, in one place — called both when they are
+// created and on every restart, so a new run never inherits last run's orders,
+// mood, dialogue history or Nazim's bar tab.
+function resetRegular(r) {
+  r.x = r.seat.x;
+  r.y = r.seat.y;
+  r.orderType = null;
+  r.orderPlacedAt = 0;
+  r.sitTimer = 0;
+  r.patienceDuration = 1;
+  r.served = false;
+  r.beingCarried = false;
+  r.orderCooldown = randomInRange(r.cfg.firstOrderDelay);
+  r.drinks = 0;
+  r.stage = INTOX_STAGES[0];
+  r.mood = MOOD_BASELINE[r.id];
+  r.talkTimer = 0;
+  r.blinkTimer = randomInRange([1, 4]);
+  r.blinking = false;
+  r.swayPhase = Math.random() * Math.PI * 2;
+  r.swayOffset = 0;
+  r.pose = 'idle';
+  r.dialogueCooldown = 0;
+  r.recentLines = [];
+  r.palette = r.id === 'nazim' ? NAZIM_STAGE_PALETTES.sober : null;
+}
+
+function buildRegulars() {
+  regulars.length = 0;
+  regularById.clear();
+  for (const cfg of REGULARS) {
+    const r = makeRegular(cfg);
+    regulars.push(r);
+    regularById.set(cfg.id, r);
+  }
+}
+
+// Nazim only. Recomputed after a completed alcoholic delivery; returns true
+// when the stage actually changed so callers can react to the transition.
+function recalcIntoxication(r) {
+  const next = intoxStageForDrinks(r.drinks);
+  if (next.id === r.stage.id) return false;
+  r.stage = next;
+  r.palette = NAZIM_STAGE_PALETTES[next.id];
+  return true;
+}
+
+function regularPlaceOrder(r) {
+  r.orderType = pickWeightedOrderType(r.cfg.orderWeights);
+  r.orderPlacedAt = gameTime;
+  r.sitTimer = randomInRange(r.cfg.patience);
+  r.patienceDuration = r.sitTimer;
+  r.served = false;
+  r.beingCarried = false;
+  onRegularOrdered(r);
+}
+
+// Their order lapsed unserved. Same penalty a walk-in costs, plus a mood hit —
+// they don't leave, they just remember.
+function regularGiveUp(r) {
+  score = Math.max(0, score - FORGOTTEN_PENALTY);
+  addFloatingText(r.x, r.y - r.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
+  r.mood = clampMood(r.mood - 0.45);
+  const lapsed = r.orderType;
+  clearRegularOrder(r);
+  onRegularGaveUp(r, lapsed);
+}
+
+function clearRegularOrder(r) {
+  // If the player is mid-trip with this order it becomes stranded, and the
+  // per-frame retarget in update() hands it to a generic customer instead.
+  r.orderType = null;
+  r.beingCarried = false;
+  r.served = false;
+  r.sitTimer = 0;
+  r.orderCooldown = randomInRange(r.cfg.orderDelay);
+}
+
+function updateRegulars(dt) {
+  for (const r of regulars) {
+    // Ordering / patience.
+    if (r.orderType === null) {
+      r.orderCooldown -= dt;
+      if (r.orderCooldown <= 0) regularPlaceOrder(r);
+    } else if (!r.served) {
+      r.sitTimer -= dt;
+      if (r.sitTimer <= 0) regularGiveUp(r);
+    }
+
+    // Mood drifts back toward each character's own baseline, not toward zero:
+    // Gerald recovering means returning to grumpy.
+    const base = MOOD_BASELINE[r.id];
+    if (r.mood !== base) {
+      const step = MOOD_RECOVERY * dt;
+      r.mood = r.mood > base ? Math.max(base, r.mood - step) : Math.min(base, r.mood + step);
+    }
+
+    if (r.talkTimer > 0) r.talkTimer -= dt;
+    if (r.dialogueCooldown > 0) r.dialogueCooldown -= dt;
+
+    // Idle life: a blink, plus a seated sway once Nazim is far enough gone.
+    const vis = r.id === 'nazim' ? NAZIM_STAGE_VISUALS[r.stage.id] : null;
+    const blinkRange = vis ? vis.blink : [3, 6];
+    r.blinkTimer -= dt;
+    if (r.blinkTimer <= 0) {
+      r.blinking = !r.blinking;
+      r.blinkTimer = r.blinking ? 0.12 : randomInRange(blinkRange);
+    }
+
+    if (vis && vis.sway > 0 && !prefersReducedMotion) {
+      r.swayPhase += vis.swaySpeed * dt;
+      r.swayOffset = Math.round(Math.sin(r.swayPhase) * vis.sway);
+    } else {
+      r.swayOffset = 0;
+    }
+
+    r.pose = regularPose(r, vis);
+  }
+}
+
+// Pose priority: talking beats blinking beats the stage's resting pose.
+function regularPose(r, vis) {
+  const set = SPRITES[r.cfg.spriteKey];
+  const base = vis ? vis.pose : 'idle';
+  if (r.talkTimer > 0) {
+    const talkKey = base === 'idle' ? 'talk' : base + 'Talk';
+    if (set[talkKey]) return talkKey;
+    if (set.talk) return 'talk';
+  }
+  if (r.blinking && set.idleB && base === 'idle') return 'idleB';
+  return set[base] ? base : 'idle';
+}
+
+// Opens a regular's mouth for a moment. The dialogue layer drives this; a
+// delivery reaction uses it directly.
+function setRegularTalking(r, seconds) {
+  r.talkTimer = Math.max(r.talkTimer, seconds);
+}
+
+// Hooks the dialogue layer fills in. Defined as no-ops here so the regulars
+// system stands on its own.
+function onRegularOrdered(r) { setRegularTalking(r, 0.6); }
+function onRegularGaveUp(r, lapsedType) { setRegularTalking(r, 0.8); }
+function onRegularServed(r, type, stageChanged) { setRegularTalking(r, 1.0); }
+
 function pickClearSpawn(e) {
   for (let i = 0; i < 30; i++) {
     const x = clamp(WORLD_W / 2 + (Math.random() < 0.5 ? 1 : -1) * Math.random() * WORLD_W * 0.4, e.w / 2, WORLD_W - e.w / 2);
@@ -557,6 +562,7 @@ function pickClearSpawn(e) {
 }
 
 function resetGame() {
+  gameTime = 0;
   player.x = WORLD_W / 2;
   player.y = WORLD_H / 2;
   const spawn = pickClearSpawn(hunter);
@@ -571,6 +577,11 @@ function resetGame() {
   customerSpawnTimer = 3;
   player.carrying = null;
   floatingTexts.length = 0;
+  // The regulars persist across restarts as characters, but every scrap of
+  // their run state — orders, patience, mood, dialogue history and Nazim's
+  // drink count — is wiped.
+  if (!regulars.length) buildRegulars();
+  else for (const r of regulars) resetRegular(r);
   clearHeldInputs();
   syncCaughtDom();
 }
@@ -584,6 +595,49 @@ const INTERACT_RANGE = 14;
 function nearRect(x, y, rect, margin) {
   return x > rect.x - margin && x < rect.x + rect.w + margin &&
     y > rect.y - margin && y < rect.y + rect.h + margin;
+}
+
+// The oldest unclaimed order across both walk-ins and regulars. Ordering by
+// age rather than by array position keeps the queue fair now that two
+// populations feed it, and makes "who does this drink belong to" deterministic
+// even when several people want the same thing.
+function findOldestPendingOrder() {
+  let best = null;
+  for (const c of customers) {
+    if (c.state !== 'sitting' || !c.orderType || c.served || c.beingCarried) continue;
+    if (!best || c.orderPlacedAt < best.orderPlacedAt) best = c;
+  }
+  for (const r of regulars) {
+    if (!r.orderType || r.served || r.beingCarried) continue;
+    if (!best || r.orderPlacedAt < best.orderPlacedAt) best = r;
+  }
+  return best;
+}
+
+// A delivery that actually landed. Everything a completed order awards happens
+// here and nowhere else — notably Nazim's drink count, so mashing the interact
+// button can never advance his night without a trip to the bar.
+function completeDelivery(target) {
+  target.served = true;
+  target.beingCarried = false;
+  player.carrying = null;
+  score += POINTS_PER_DELIVERY;
+  addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
+
+  if (!target.isRegular) {
+    target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
+    return;
+  }
+
+  const type = target.orderType;
+  target.mood = clampMood(target.mood + 0.35);
+  let stageChanged = false;
+  if (target.id === 'nazim' && isAlcoholicOrder(type)) {
+    target.drinks += 1;
+    stageChanged = recalcIntoxication(target);
+  }
+  clearRegularOrder(target);   // they'll want the next one after a cooldown
+  onRegularServed(target, type, stageChanged);
 }
 
 function handleInteract() {
@@ -601,18 +655,13 @@ function handleInteract() {
     const nearTheirTable = target && target.seat && target.seat.table &&
       nearRect(player.x, player.y, target.seat.table.collider, INTERACT_RANGE);
     if (target && (nearCustomer || nearTheirTable) && target.state === 'sitting' && !target.served) {
-      target.served = true;
-      target.beingCarried = false;
-      target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
-      player.carrying = null;
-      score += POINTS_PER_DELIVERY;
-      addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
+      completeDelivery(target);
     }
     return;
   }
 
   if (BAR_SEGMENTS.some(seg => nearRect(player.x, player.y, seg.collider, INTERACT_RANGE))) {
-    const pending = customers.find(c => c.state === 'sitting' && c.orderType && !c.served && !c.beingCarried);
+    const pending = findOldestPendingOrder();
     if (pending) {
       pending.beingCarried = true;
       player.carrying = { type: pending.orderType, customer: pending };
@@ -875,6 +924,7 @@ function pickEscapeDirection() {
 // ---- Update -----------------------------------------------------------------
 function update(dt) {
   if (caught) return;
+  gameTime += dt;
 
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
@@ -925,6 +975,8 @@ function update(dt) {
     if (updateCustomer(c, dt) === 'remove') customers.splice(i, 1);
   }
 
+  updateRegulars(dt);
+
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
   // off to anyone else currently waiting on the same drink instead of
@@ -932,7 +984,15 @@ function update(dt) {
   // later (a new customer sits down wanting the same thing) still works.
   if (player.carrying) {
     const target = player.carrying.customer;
-    if (!target || target.state !== 'sitting' || target.served) {
+    // `orderType` is also checked because a regular's order can lapse while
+    // they stay in their seat — for a walk-in, leaving is the only way out.
+    const stillWanted = target && target.state === 'sitting' && !target.served &&
+      target.orderType === player.carrying.type;
+    if (!stillWanted) {
+      // Deliberately only walk-ins: silently re-pointing a drink at a
+      // different *named* regular would make "whose pint is this" ambiguous,
+      // and Gerald being handed Nazim's beer is a bug, not a feature. A
+      // regular's order always has to be picked up for them on purpose.
       const replacement = customers.find(c =>
         c.state === 'sitting' && !c.served && !c.beingCarried && c.orderType === player.carrying.type
       );
@@ -1061,14 +1121,18 @@ function patienceBarColor(frac) {
   return '#e84c3d';
 }
 
-function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction) {
+const BUBBLE_FRAME_DEFAULT = '#141414';
+const BUBBLE_FRAME_REGULAR = '#c98a2a';  // a named regular is waiting
+const BUBBLE_FRAME_CARRIED = '#2e8b45';  // this is the order you're carrying
+
+function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor) {
   const icon = ORDER_ICONS[orderType];
   const pad = 2;
   const bw = icon.sprite.w + pad * 2;
   const bh = icon.sprite.h + pad * 2;
   const sx = Math.round(worldX - camX - bw / 2);
   const sy = Math.round(headTopY - camY - bh - 4);
-  const border = highlighted ? '#2e8b45' : '#141414';
+  const border = highlighted ? BUBBLE_FRAME_CARRIED : (frameColor || BUBBLE_FRAME_DEFAULT);
 
   ctx.fillStyle = border;
   ctx.fillRect(sx, sy, bw, bh);
@@ -1128,12 +1192,15 @@ function render() {
   // "footprint" y so nearer (lower) things draw over farther (higher) ones.
   const drawables = [
     ...FURNITURE.map(f => ({ sortY: f.sortY, draw: () => drawFurnitureItem(f, camX, camY) })),
-    ...[player, hunter, ...customers].map(e => ({
+    ...[player, hunter, ...customers, ...regulars].map(e => ({
       sortY: e.y,
       draw: () => {
         const set = SPRITES[e.kind];
-        const sprite = set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
-        const sx = e.x - camX - sprite.w / 2;
+        // Seated regulars pick a named pose; movers use the walk cycle.
+        const sprite = e.pose
+          ? (set[e.pose] || set.idle)
+          : set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
+        const sx = e.x - camX - sprite.w / 2 + (e.swayOffset || 0);
         const sy = e.y - camY - sprite.h;
         drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
       },
@@ -1142,12 +1209,17 @@ function render() {
   drawables.sort((a, b) => a.sortY - b.sortY);
   for (const d of drawables) d.draw();
 
-  // Speech bubbles float above everything else in the scene.
+  // Order bubbles float above everything else in the scene.
   for (const c of customers) {
     if (c.state === 'sitting' && c.orderType && !c.served) {
       const patience = clamp(c.sitTimer / c.patienceDuration, 0, 1);
       drawOrderBubble(c.x, c.y - c.h, camX, camY, c.orderType, c.beingCarried, patience);
     }
+  }
+  for (const r of regulars) {
+    if (!r.orderType || r.served) continue;
+    const patience = clamp(r.sitTimer / r.patienceDuration, 0, 1);
+    drawOrderBubble(r.x, r.y - r.h, camX, camY, r.orderType, r.beingCarried, patience, BUBBLE_FRAME_REGULAR);
   }
   if (player.carrying) {
     const carriedFor = player.carrying.customer;
@@ -1227,10 +1299,38 @@ applyViewport();
 resetGame();
 requestAnimationFrame(loop);
 
+// ---- Development scaffolding ------------------------------------------------
+// Disposable: this is a console handle for manual validation, not an API.
+// Nothing in the game reads it, and it can be deleted wholesale.
 window.__debug = {
-  player, hunter, customers, SEATS, TABLES, BAR_SEGMENTS, handleInteract, spawnCustomer, DOOR, update, updateCustomer, keys,
+  player, hunter, customers, regulars, regularById, SEATS, TABLES, BAR_SEGMENTS,
+  handleInteract, spawnCustomer, DOOR, update, updateCustomer, keys, touchMove,
   SPRITES, DOE_PALETTE, HUNTER_PALETTE, drawSprite, ctx, floatingTexts,
   getScore: () => score,
   getLevel,
-  setScore: (v) => { score = v; },
+  setScore: (v) => { score = v; },              // level is derived from score
+  getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
+  getCamera,
+  reservedSeats: () => SEATS.filter(s => s.reserved).map(s => ({ who: s.regularId, side: s.side, x: s.x, y: s.y })),
+  freeGenericSeats: () => SEATS.filter(s => !s.reserved && !s.occupied).length,
+  forceRegularOrder: (id, type) => {
+    const r = regularById.get(id);
+    if (!r) return null;
+    clearRegularOrder(r);
+    regularPlaceOrder(r);
+    if (type) r.orderType = type;
+    return r.orderType;
+  },
+  setNazimDrinks: (n) => {
+    const r = regularById.get('nazim');
+    r.drinks = Math.max(0, n | 0);
+    const changed = recalcIntoxication(r);
+    return { drinks: r.drinks, stage: r.stage.id, changed };
+  },
+  regularState: () => regulars.map(r => ({
+    id: r.id, order: r.orderType, patience: +(r.sitTimer).toFixed(1),
+    mood: +r.mood.toFixed(2), drinks: r.drinks, stage: r.stage.id, pose: r.pose,
+  })),
+  forceCaught: () => { caught = true; },
+  resetGame,
 };
