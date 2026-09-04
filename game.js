@@ -356,6 +356,7 @@ function updateCustomer(c, dt) {
       if (!c.served && c.orderType) {
         score = Math.max(0, score - FORGOTTEN_PENALTY);
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
+        Dialogue.trigger('abandoned', null);
       }
       c.state = 'leaving';
     }
@@ -546,11 +547,134 @@ function setRegularTalking(r, seconds) {
   r.talkTimer = Math.max(r.talkTimer, seconds);
 }
 
-// Hooks the dialogue layer fills in. Defined as no-ops here so the regulars
-// system stands on its own.
-function onRegularOrdered(r) { setRegularTalking(r, 0.6); }
-function onRegularGaveUp(r, lapsedType) { setRegularTalking(r, 0.8); }
-function onRegularServed(r, type, stageChanged) { setRegularTalking(r, 1.0); }
+// ---- Dialogue wiring --------------------------------------------------------
+// The dialogue layer only ever reads state and schedules bubbles; it can't
+// pause the chase or block input. Triggers are fired from the moments they
+// describe rather than polled, except for the few genuinely time-based ones
+// (idle, carrying too long) tracked in update().
+Dialogue.bind({
+  getRegular: (id) => regularById.get(id) || null,
+  getNazimStageId: () => {
+    const n = regularById.get('nazim');
+    return n ? n.stage.id : 'sober';
+  },
+  // Nazim's answers arrive later the drunker he is; everyone else is prompt.
+  getReactionDelay: (id) => {
+    if (id !== 'nazim') return 0;
+    const n = regularById.get('nazim');
+    return n ? NAZIM_STAGE_VISUALS[n.stage.id].reactionDelay : 0;
+  },
+  // A speaking regular opens their mouth for as long as the bubble runs,
+  // capped so the talking pose doesn't outstay a long line.
+  onSpeak: (speaker, life) => setRegularTalking(speaker, Math.min(life, 1.6)),
+});
+
+function onRegularOrdered(r) {
+  setRegularTalking(r, 0.6);
+  if (r.id === 'nazim' && r.orderType === 'food') Dialogue.trigger('nazimFood', { who: 'nazim' });
+  else Dialogue.trigger('ordered', { who: r.id });
+}
+
+function onRegularGaveUp(r, lapsedType) {
+  setRegularTalking(r, 0.8);
+  Dialogue.trigger('lateOrder', { who: r.id });
+}
+
+function onRegularServed(r, type, stageChanged) {
+  setRegularTalking(r, 1.0);
+  // A stage change is the bigger news, and outranks the thank-you.
+  if (stageChanged) Dialogue.trigger('stageChanged', null);
+  else Dialogue.trigger('served', { who: r.id });
+}
+
+// Edge/timing state for the triggers that aren't a single moment. All of it is
+// cleared by resetGame().
+let lastLevelSeen = 1;
+let idleTimer = 0;
+let whiffCount = 0;
+let whiffDecay = 0;
+let carryTimer = 0;
+let hunterNearArmed = true;
+let nearMissCooldown = 0;
+let twoWaitingCooldown = 0;
+let hasPlayedBefore = false;
+
+function resetDialogueTriggers() {
+  lastLevelSeen = getLevel();
+  idleTimer = 0;
+  whiffCount = 0;
+  whiffDecay = 0;
+  carryTimer = 0;
+  hunterNearArmed = true;
+  nearMissCooldown = 0;
+  twoWaitingCooldown = 0;
+}
+
+// Everything in update() that watches for a dialogue-worthy situation, kept
+// together so the simulation above stays readable.
+function updateDialogueTriggers(dt, input) {
+  const lvl = getLevel();
+  if (lvl > lastLevelSeen) {
+    lastLevelSeen = lvl;
+    Dialogue.trigger('levelUp', null);
+  }
+
+  // The hunter sweeping past the booth. Re-arms only once he's well clear, so
+  // one pass is one remark.
+  const boothDist = Math.hypot(hunter.x - REGULARS_TABLE.x, hunter.y - REGULARS_TABLE.y);
+  if (boothDist < 46 && hunterNearArmed) {
+    hunterNearArmed = false;
+    Dialogue.trigger('hunterNear', null);
+  } else if (boothDist > 72) {
+    hunterNearArmed = true;
+  }
+
+  // A near miss: inside about twice the catch radius but not caught.
+  if (nearMissCooldown > 0) nearMissCooldown -= dt;
+  const catchDist = (player.w + hunter.w) / 2.4;
+  const hunterDist = Math.hypot(player.x - hunter.x, player.y - hunter.y);
+  if (hunterDist < catchDist * 2.3 && nearMissCooldown <= 0) {
+    nearMissCooldown = 14;
+    Dialogue.trigger('nearMiss', null);
+  }
+
+  // Standing still while somebody is waiting.
+  if (input.x !== 0 || input.y !== 0) {
+    idleTimer = 0;
+  } else if (findOldestPendingOrder()) {
+    idleTimer += dt;
+    if (idleTimer > 9) {
+      idleTimer = -12;
+      Dialogue.trigger('idle', null);
+    }
+  }
+
+  // Ferrying one drink around the entire pub.
+  if (player.carrying) {
+    carryTimer += dt;
+    if (carryTimer > 20) {
+      carryTimer = -18;
+      Dialogue.trigger('carryingLong', null);
+    }
+  } else {
+    carryTimer = 0;
+  }
+
+  // Two named regulars waiting at once.
+  if (twoWaitingCooldown > 0) twoWaitingCooldown -= dt;
+  let waiting = 0;
+  for (const r of regulars) if (r.orderType && !r.served) waiting++;
+  if (waiting >= 2 && twoWaitingCooldown <= 0) {
+    twoWaitingCooldown = 22;
+    Dialogue.trigger('twoWaiting', null);
+  }
+
+  // Interacting with nothing, repeatedly.
+  if (whiffCount > 0) {
+    whiffDecay -= dt;
+    if (whiffDecay <= 0) whiffCount = 0;
+  }
+}
 
 function pickClearSpawn(e) {
   for (let i = 0; i < 30; i++) {
@@ -582,6 +706,9 @@ function resetGame() {
   // drink count — is wiped.
   if (!regulars.length) buildRegulars();
   else for (const r of regulars) resetRegular(r);
+  Dialogue.reset();
+  resetDialogueTriggers();
+  if (hasPlayedBefore) Dialogue.trigger('restart', null);
   clearHeldInputs();
   syncCaughtDom();
 }
@@ -640,6 +767,17 @@ function completeDelivery(target) {
   onRegularServed(target, type, stageChanged);
 }
 
+// Counts an interact press that accomplished nothing, and lets the regulars
+// notice once it's clearly a pattern rather than one mistimed tap.
+function registerWhiff() {
+  whiffCount++;
+  whiffDecay = 6;
+  if (whiffCount >= 3) {
+    whiffCount = 0;
+    Dialogue.trigger('whiffed', null);
+  }
+}
+
 function handleInteract() {
   if (caught) return;
 
@@ -656,6 +794,8 @@ function handleInteract() {
       nearRect(player.x, player.y, target.seat.table.collider, INTERACT_RANGE);
     if (target && (nearCustomer || nearTheirTable) && target.state === 'sitting' && !target.served) {
       completeDelivery(target);
+    } else {
+      registerWhiff();
     }
     return;
   }
@@ -665,8 +805,10 @@ function handleInteract() {
     if (pending) {
       pending.beingCarried = true;
       player.carrying = { type: pending.orderType, customer: pending };
+      return;
     }
   }
+  registerWhiff();
 }
 
 // ---- Input ----------------------------------------------------------------
@@ -923,6 +1065,9 @@ function pickEscapeDirection() {
 
 // ---- Update -----------------------------------------------------------------
 function update(dt) {
+  // Bubbles keep resolving after a catch — nothing else simulates — so the
+  // caught screen can show the room's reaction.
+  Dialogue.update(dt);
   if (caught) return;
   gameTime += dt;
 
@@ -976,6 +1121,7 @@ function update(dt) {
   }
 
   updateRegulars(dt);
+  updateDialogueTriggers(dt, input);
 
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
@@ -1029,6 +1175,8 @@ function update(dt) {
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < (player.w + hunter.w) / 2.4) {
     caught = true;
+    hasPlayedBefore = true;
+    Dialogue.trigger('caught', null);
   }
 }
 
@@ -1154,6 +1302,101 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
   }
 }
 
+// ---- Dialogue bubbles -------------------------------------------------------
+// Drawn after the order bubbles, above the scene. Three rules shape the
+// layout: stay inside the camera, don't cover the speaker's own order bubble,
+// and don't cover another bubble already placed this frame.
+const DIALOGUE_MAX_W = 92;
+const DIALOGUE_PAD = 2;
+const DIALOGUE_LINE_GAP = 1;
+const DIALOGUE_BG = '#f3ead6';
+const DIALOGUE_INK = '#241c18';
+
+// Reused across frames so the bubble pass allocates nothing per frame.
+const placedBubbles = [];
+
+function rectsTouch(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function drawDialogueBubbles(camX, camY) {
+  const lines = Dialogue.getActive();
+  if (!lines.length) return;
+  placedBubbles.length = 0;
+
+  for (const item of lines) {
+    const r = regularById.get(item.who);
+    if (!r) continue;
+
+    const maxW = Math.min(DIALOGUE_MAX_W, viewW - 8);
+    const rows = fontWrapText(item.text, maxW - DIALOGUE_PAD * 2);
+    let textW = 0;
+    for (const row of rows) textW = Math.max(textW, fontTextWidth(row));
+    const bw = textW + DIALOGUE_PAD * 2;
+    const bh = rows.length * FONT_H + (rows.length - 1) * DIALOGUE_LINE_GAP + DIALOGUE_PAD * 2;
+
+    const headTop = r.y - r.h - camY;
+    // Three placements, in descending order of preference. The regulars' booth
+    // sits close to the top wall, so on a short viewport there genuinely isn't
+    // room for the ideal one and the fallbacks matter.
+    //   1. clear above their order bubble (icon box + patience bar, ~22px)
+    //   2. straight above their head, accepting that it covers that bubble
+    //   3. under them, if even that would leave the camera
+    const hasOrder = !!(r.orderType && !r.served);
+    let by = Math.round(headTop - (hasOrder ? 22 : 6) - bh);
+    if (by < 2) by = Math.round(headTop - 6 - bh);
+    let bx = Math.round(r.x - camX - bw / 2);
+    bx = clamp(bx, 2, Math.max(2, viewW - bw - 2));
+
+    let below = false;
+    if (by < 2) {
+      by = Math.round(r.y - camY + 5);
+      below = true;
+    }
+
+    // Nudge clear of any bubble already drawn this frame. Sideways first: the
+    // three regulars sit within about 30px of each other, so moving a bubble
+    // vertically tends to drop it straight onto one of them, while there is
+    // usually room to sit two bubbles side by side.
+    const rect = { x: bx, y: by, w: bw, h: bh };
+    for (const other of placedBubbles) {
+      if (!rectsTouch(rect, other)) continue;
+      const right = other.x + other.w + 2;
+      const left = other.x - bw - 2;
+      if (right + bw <= viewW - 2) { rect.x = right; continue; }
+      if (left >= 2) { rect.x = left; continue; }
+      const up = other.y - bh - 3;
+      const down = other.y + other.h + 3;
+      if (up >= 2) { rect.y = up; below = false; }
+      else if (down + bh <= viewH - 2) { rect.y = down; below = true; }
+    }
+    if (rect.y + bh > viewH - 2) rect.y = viewH - 2 - bh;
+    if (rect.y < 2) rect.y = 2;
+    placedBubbles.push(rect);
+
+    // Frame, fill, and a tail pointing back at whoever is talking.
+    const accent = r.cfg.accent || '#141414';
+    ctx.fillStyle = accent;
+    ctx.fillRect(rect.x, rect.y, bw, bh);
+    ctx.fillStyle = DIALOGUE_BG;
+    ctx.fillRect(rect.x + 1, rect.y + 1, bw - 2, bh - 2);
+
+    const tailX = clamp(Math.round(r.x - camX) - 1, rect.x + 2, rect.x + bw - 4);
+    ctx.fillStyle = accent;
+    if (below) {
+      ctx.fillRect(tailX, rect.y - 2, 3, 2);
+      ctx.fillRect(tailX + 1, rect.y - 3, 1, 1);
+    } else {
+      ctx.fillRect(tailX, rect.y + bh, 3, 2);
+      ctx.fillRect(tailX + 1, rect.y + bh + 2, 1, 1);
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      fontDrawText(ctx, rows[i], rect.x + DIALOGUE_PAD, rect.y + DIALOGUE_PAD + i * (FONT_H + DIALOGUE_LINE_GAP), DIALOGUE_INK);
+    }
+  }
+}
+
 function drawMapBounds(camX, camY) {
   ctx.strokeStyle = '#1f1f1f';
   ctx.lineWidth = 2;
@@ -1227,6 +1470,8 @@ function render() {
     drawOrderBubble(player.x, player.y - player.h, camX, camY, player.carrying.type, false, carriedPatience);
   }
 
+  drawDialogueBubbles(camX, camY);
+
   // Floating score/penalty feedback, fading out as it drifts up.
   ctx.textAlign = 'center';
   ctx.font = '8px monospace';
@@ -1266,10 +1511,23 @@ function render() {
     ctx.fillStyle = '#e8620c';
     ctx.font = '16px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('CAUGHT!', viewW / 2, viewH / 2 - 6);
-    ctx.fillStyle = '#f5f5f5';
-    ctx.font = '8px monospace';
-    ctx.fillText('press SPACE to restart', viewW / 2, viewH / 2 + 10);
+    ctx.fillText('CAUGHT!', viewW / 2, viewH / 2 - 14);
+
+    const summary = 'LEVEL ' + getLevel() + '   SCORE ' + score;
+    fontDrawTextShadow(ctx, summary, Math.round((viewW - fontTextWidth(summary)) / 2), Math.round(viewH / 2 - 4), '#f3ead6');
+    const prompt = 'PRESS SPACE TO RESTART';
+    fontDrawTextShadow(ctx, prompt, Math.round((viewW - fontTextWidth(prompt)) / 2), Math.round(viewH / 2 + 8), '#c9a86a');
+
+    // Whatever the regulars said about it, attributed, under the prompt.
+    const reaction = Dialogue.getActive()[0];
+    if (reaction) {
+      const r = regularById.get(reaction.who);
+      const quip = (r ? r.name + ': ' : '') + reaction.text.toUpperCase();
+      const rows = fontWrapText(quip, Math.min(180, viewW - 16));
+      for (let i = 0; i < rows.length; i++) {
+        fontDrawTextShadow(ctx, rows[i], Math.round((viewW - fontTextWidth(rows[i])) / 2), Math.round(viewH / 2 + 24 + i * 7), r ? r.cfg.accent : '#f3ead6');
+      }
+    }
   }
 }
 
@@ -1331,6 +1589,14 @@ window.__debug = {
     id: r.id, order: r.orderType, patience: +(r.sitTimer).toFixed(1),
     mood: +r.mood.toFixed(2), drinks: r.drinks, stage: r.stage.id, pose: r.pose,
   })),
-  forceCaught: () => { caught = true; },
+  forceCaught: () => { caught = true; hasPlayedBefore = true; Dialogue.trigger('caught', null); },
+  triggerDialogue: (category, who) => Dialogue.trigger(category, who ? { who } : null),
+  clearDialogueCooldowns: () => {
+    Dialogue.clearCooldowns();
+    for (const r of regulars) { r.dialogueCooldown = 0; r.recentLines.length = 0; }
+  },
+  dialogueStats: Dialogue.stats,
+  activeDialogue: () => Dialogue.getActive().map(a => a.who + ': ' + a.text),
+  DIALOGUE_LINES, DIALOGUE_EXCHANGES,
   resetGame,
 };

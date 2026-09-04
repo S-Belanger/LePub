@@ -31,8 +31,6 @@ function intoxStageForDrinks(drinks) {
   return stage;
 }
 
-function intoxStageIndex(id) { return INTOX_STAGES.findIndex(s => s.id === id); }
-
 // How each stage looks and behaves. Read by game.js when picking Nazim's pose,
 // palette and idle timings — kept out of the render code so the whole
 // progression is legible in one table.
@@ -60,6 +58,7 @@ const REGULARS = [
     id: 'nazim',
     name: 'NAZIM',
     spriteKey: 'nazim',
+    accent: '#7a9450',             // dialogue-bubble frame colour
     seatSide: 's',                 // front of the booth, closest to the camera
     // Genuinely chill: he waits a long time and orders steadily.
     patience: [40, 60],
@@ -74,6 +73,7 @@ const REGULARS = [
     id: 'sam',
     name: 'SAM',
     spriteKey: 'sam',
+    accent: '#5b7fae',
     seatSide: 'w',
     patience: [34, 52],
     orderDelay: [9, 18],
@@ -87,6 +87,7 @@ const REGULARS = [
     id: 'gerald',
     name: 'GERALD',
     spriteKey: 'gerald',
+    accent: '#a8434f',
     seatSide: 'e',                 // directly across the table from Nazim
     // Impatient by construction: the shortest fuse of the three.
     patience: [26, 40],
@@ -98,8 +99,6 @@ const REGULARS = [
     },
   },
 ];
-
-const REGULAR_IDS = REGULARS.map(r => r.id);
 
 // Weighted pick over an { orderType: weight } map.
 function pickWeightedOrderType(weights) {
@@ -116,9 +115,11 @@ function pickWeightedOrderType(weights) {
 function randomInRange(range) { return range[0] + Math.random() * (range[1] - range[0]); }
 
 // ---- Mood ------------------------------------------------------------------
-// A single number per regular in [-1, 1], nudged by service quality and read
-// by the dialogue layer to bias line selection. Gerald simply starts low and
-// decays back toward his own baseline rather than toward neutral.
+// A single number per regular in [-1, 1], pushed up by a delivery and down by
+// a forgotten order. The dialogue layer reads it to scale how often each of
+// them pipes up: someone who feels strongly either way talks more than someone
+// who is merely fine. Recovery goes back toward each character's own baseline
+// rather than toward neutral, so Gerald recovering means returning to grumpy.
 const MOOD_BASELINE = { nazim: 0.3, sam: 0.2, gerald: -0.5 };
 const MOOD_RECOVERY = 0.04; // per second, toward baseline
 
