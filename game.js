@@ -54,6 +54,7 @@ function applyViewport() {
   canvas.style.height = (viewH * pixelScale) + 'px';
   // Resizing the backing store resets 2D context state, so restore it.
   ctx.imageSmoothingEnabled = false;
+  dustReady = false;   // re-scatter the motes across the new canvas
 }
 
 // Resizes are coalesced into the next frame: mobile browsers fire a burst of
@@ -181,19 +182,45 @@ const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 };
 // ---- Sprite rendering -------------------------------------------------------
 // Sprite geometry and palettes live in src/sprites.js; this is the single
 // generic renderer for that rows+palette format.
-function drawSprite(sprite, palette, screenX, screenY, flipX) {
-  const { rows, w } = sprite;
+//
+// The rows are painted a pixel at a time exactly once per (sprite, palette,
+// facing) combination and cached as an offscreen canvas; every frame after
+// that is a single drawImage. With twenty-odd characters on screen the naive
+// version was issuing several thousand fillRect calls a frame for art that
+// never changes. The cache is keyed by object identity through WeakMaps, so a
+// customer's one-off palette is collected along with the customer.
+const spriteCache = new WeakMap();
+
+function bakeSprite(sprite, palette, flipX) {
+  const { rows, w, h } = sprite;
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext('2d');
   for (let ry = 0; ry < rows.length; ry++) {
     const row = rows[ry];
     for (let rx = 0; rx < row.length; rx++) {
-      const ch = row[rx];
-      const color = palette[ch];
+      const color = palette[row[rx]];
       if (!color) continue;
-      const col = flipX ? (w - 1 - rx) : rx;
-      ctx.fillStyle = color;
-      ctx.fillRect(Math.round(screenX + col), Math.round(screenY + ry), 1, 1);
+      g.fillStyle = color;
+      g.fillRect(flipX ? (w - 1 - rx) : rx, ry, 1, 1);
     }
   }
+  return cv;
+}
+
+function bakedSprite(sprite, palette, flipX) {
+  let byPalette = spriteCache.get(sprite);
+  if (!byPalette) { byPalette = new WeakMap(); spriteCache.set(sprite, byPalette); }
+  let pair = byPalette.get(palette);
+  if (!pair) { pair = { n: null, f: null }; byPalette.set(palette, pair); }
+  const key = flipX ? 'f' : 'n';
+  if (!pair[key]) pair[key] = bakeSprite(sprite, palette, flipX);
+  return pair[key];
+}
+
+function drawSprite(sprite, palette, screenX, screenY, flipX) {
+  ctx.drawImage(bakedSprite(sprite, palette, !!flipX), Math.round(screenX), Math.round(screenY));
 }
 
 // ---- Collision: furniture blocks movement for both characters. A small
@@ -1122,6 +1149,7 @@ function update(dt) {
 
   updateRegulars(dt);
   updateDialogueTriggers(dt, input);
+  updateAmbient(dt);
 
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
@@ -1181,82 +1209,575 @@ function update(dt) {
 }
 
 // ---- Render -----------------------------------------------------------------
-// Hardwood floor: planks PLANK_TILES wide, staggered brick-style every other
-// row, each plank getting one of a few warm wood shades (stable per-plank,
-// not per-tile, so a plank reads as a single board) plus a subtle seam line
-// at each plank edge and row line for grain definition.
+// Layered passes, farthest first:
+//   1. backdrop     — the dark outside, wherever the viewport exceeds the world
+//   2. ground       — plank floor, dithered grain, static stains
+//   3. architecture — walls, wainscot, windows, the door
+//   4. back decor   — posters and the dartboard on the rear wall
+//   5. floor light  — warm lamp pools and cool window/door spill
+//   6. y-sorted     — furniture and every character, nearest last
+//   7. foreground   — hanging lamp fixtures, dust
+//   8. grade        — night tint and vignette
+//   9. bubbles      — orders, then dialogue
+//  10. floating score feedback
+//  11. HUD
+//  12. caught overlay
+//
+// Everything static (clutter, bottles, stains, light textures) is built once at
+// load. The frame loop only blits and fills.
+
 const PLANK_TILES = 4;
-const WOOD_SHADES = ['#a9835a', '#a07a52', '#b0885f'];
+const WALL_TOP_H = 10;      // decorative wall band along the top of the world
+const WALL_BOTTOM_H = 10;
+const WALL_SIDE_W = 5;
 
-function drawGround(camX, camY) {
-  const startTileX = Math.floor(camX / TILE);
-  const startTileY = Math.floor(camY / TILE);
-  const tilesX = Math.ceil(viewW / TILE) + 1;
-  const tilesY = Math.ceil(viewH / TILE) + 1;
+// ---- Static scenery ---------------------------------------------------------
+// Seeded so the clutter is in the same place on every load: a bar whose
+// coasters move when you refresh reads as a bug, not as atmosphere.
+const DECOR = buildDecor();
 
-  for (let ty = 0; ty <= tilesY; ty++) {
-    for (let tx = 0; tx <= tilesX; tx++) {
-      const worldTileX = startTileX + tx;
-      const worldTileY = startTileY + ty;
-      // Skip tiles outside the map so the floor doesn't render past the walls
-      // (only matters once the world is small enough to see its edges).
-      if (worldTileX < 0 || worldTileY < 0 || worldTileX * TILE >= WORLD_W || worldTileY * TILE >= WORLD_H) continue;
+function buildDecor() {
+  const rnd = makeSeededRandom(0x5eed1e);
+
+  // Wear on the floor: small dark smudges, denser on the walking routes.
+  const stains = [];
+  for (let i = 0; i < 30; i++) {
+    stains.push({
+      x: Math.round(WALL_SIDE_W + 2 + rnd() * (WORLD_W - WALL_SIDE_W * 2 - 8)),
+      y: Math.round(WALL_TOP_H + 4 + rnd() * (WORLD_H - WALL_TOP_H - WALL_BOTTOM_H - 10)),
+      w: 2 + Math.floor(rnd() * 5),
+      h: 1 + Math.floor(rnd() * 3),
+    });
+  }
+
+  // Table clutter, stored as offsets from the table centre so it can never
+  // drift away from the table it belongs to.
+  const clutter = new Map();
+  for (const t of TABLES) {
+    const items = [];
+    const count = 1 + Math.floor(rnd() * 3);
+    for (let i = 0; i < count; i++) {
+      const roll = rnd();
+      items.push({
+        ox: Math.round((rnd() - 0.5) * Math.max(2, t.w - 7)),
+        oy: Math.round((rnd() - 0.5) * Math.max(2, t.h - 7)),
+        kind: roll < 0.4 ? 'coaster' : roll < 0.78 ? 'glass' : 'menu',
+      });
+    }
+    clutter.set(t, items);
+  }
+
+  // Glassware and bottles along the counters, spaced out down each segment's
+  // long axis and set back from the customer edge.
+  const barProps = [];
+  for (const seg of BAR_SEGMENTS) {
+    const c = seg.collider;
+    const horizontal = c.w >= c.h;
+    const length = horizontal ? c.w : c.h;
+    let p = 5;
+    while (p < length - 5) {
+      const roll = rnd();
+      const kind = roll < 0.42 ? 'bottle' : roll < 0.72 ? 'glass' : 'tap';
+      barProps.push({
+        x: horizontal ? c.x + p : c.x + 3,
+        y: horizontal ? c.y + 4 : c.y + p,
+        kind,
+        seg,
+      });
+      p += 6 + Math.floor(rnd() * 7);
+    }
+  }
+
+  // Hand-placed so they sit over the room rather than over the furniture.
+  const lamps = [
+    { x: 40, y: 40, r: 34, phase: 0.0 },
+    { x: 150, y: 92, r: 38, phase: 1.7 },
+    { x: 40, y: 150, r: 32, phase: 3.1 },
+    { x: 150, y: 232, r: 32, phase: 4.4 },
+    { x: 85, y: 296, r: 40, phase: 5.6 },
+  ];
+
+  // Cool light sources: two windows in the rear wall, and the door.
+  const windows = [
+    { x: 26, w: 26 },
+    { x: 132, w: 30 },
+  ];
+
+  const posters = [
+    { x: 68, w: 14, h: 6, ink: PUB.cream, paper: PUB.burgundy },
+    { x: 96, w: 10, h: 7, ink: PUB.amber, paper: PUB.wallDark },
+    { x: 172, w: 12, h: 6, ink: PUB.coolPale, paper: PUB.green },
+  ];
+
+  return { stains, clutter, barProps, lamps, windows, posters };
+}
+
+// Prebaked lighting. One canvas per lamp radius, plus the cool spills.
+const GLOW_CACHE = new Map();
+function glowFor(radius, rgb, alpha) {
+  const key = radius + ':' + rgb.join(',');
+  let g = GLOW_CACHE.get(key);
+  if (!g) {
+    g = makeGlowCanvas(radius, rgb, alpha, 5);
+    GLOW_CACHE.set(key, g);
+  }
+  return g;
+}
+
+const WARM_RGB = [255, 186, 96];
+const COOL_RGB = [120, 168, 226];
+
+// Rebuilt only when the viewport changes size.
+let vignetteCanvas = null;
+function ensureVignette() {
+  if (vignetteCanvas && vignetteCanvas.width === viewW && vignetteCanvas.height === viewH) return;
+  vignetteCanvas = makeVignetteCanvas(viewW, viewH, 0.42);
+}
+
+function drawGlow(glow, worldX, worldY, alpha, camX, camY) {
+  const r = glow.width / 2;
+  const sx = Math.round(worldX - camX - r);
+  const sy = Math.round(worldY - camY - r);
+  if (sx >= viewW || sy >= viewH || sx + glow.width <= 0 || sy + glow.height <= 0) return;
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.drawImage(glow, sx, sy);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+// ---- Ambient animation ------------------------------------------------------
+// A fixed pool of motes drifting in screen space, and per-lamp flicker phases.
+// Both are skipped entirely under prefers-reduced-motion.
+const DUST = [];
+for (let i = 0; i < 14; i++) {
+  DUST.push({ x: Math.random(), y: Math.random(), vx: 0, vy: 0, a: 0 });
+}
+let dustReady = false;
+
+function updateAmbient(dt) {
+  if (prefersReducedMotion) return;
+  if (!dustReady) {
+    for (const d of DUST) {
+      d.x = Math.random() * viewW;
+      d.y = Math.random() * viewH;
+      d.vx = (Math.random() - 0.5) * 3;
+      d.vy = -2 - Math.random() * 4;
+      d.a = 0.10 + Math.random() * 0.16;
+    }
+    dustReady = true;
+  }
+  for (const d of DUST) {
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    if (d.y < -2) { d.y = viewH + 2; d.x = Math.random() * viewW; }
+    if (d.x < -2) d.x = viewW + 2;
+    if (d.x > viewW + 2) d.x = -2;
+  }
+}
+
+// How bright each lamp is this frame. Irregular by design: two sine terms of
+// unrelated periods so it never settles into a visible loop.
+function lampIntensity(lamp) {
+  if (prefersReducedMotion) return 1;
+  const t = gameTime;
+  const wobble = Math.sin(t * 2.3 + lamp.phase) * 0.035 + Math.sin(t * 7.1 + lamp.phase * 2.7) * 0.02;
+  return 1 + wobble;
+}
+
+// ---- Pass 1: backdrop -------------------------------------------------------
+function drawBackdrop() {
+  ctx.fillStyle = '#100a14';
+  ctx.fillRect(0, 0, viewW, viewH);
+}
+
+// ---- Pass 2: ground ---------------------------------------------------------
+// Staggered planks as before, but on a four-step tobacco ramp with a dithered
+// grain pass and the static wear marks on top.
+// Painted once into the room canvas in world coordinates, so it walks the
+// whole map rather than the camera's slice. The `ctx` parameter deliberately
+// shadows the screen context: these two functions are only ever called against
+// the offscreen room canvas.
+function drawGround(ctx) {
+  const tilesX = Math.ceil(WORLD_W / TILE);
+  const tilesY = Math.ceil(WORLD_H / TILE);
+
+  for (let worldTileY = 0; worldTileY <= tilesY; worldTileY++) {
+    for (let worldTileX = 0; worldTileX <= tilesX; worldTileX++) {
+      if (worldTileX * TILE >= WORLD_W || worldTileY * TILE >= WORLD_H) continue;
 
       const rowShift = worldTileY % 2 === 0 ? 0 : Math.floor(PLANK_TILES / 2);
       const plankCol = worldTileX + rowShift;
       const plankIndex = Math.floor(plankCol / PLANK_TILES);
-      const shadeIdx = Math.abs((plankIndex * 928371 + worldTileY * 6151)) % WOOD_SHADES.length;
+      const shadeIdx = Math.abs((plankIndex * 928371 + worldTileY * 6151)) % PUB.floor.length;
 
-      const sx = worldTileX * TILE - camX;
-      const sy = worldTileY * TILE - camY;
-      ctx.fillStyle = WOOD_SHADES[shadeIdx];
-      ctx.fillRect(Math.round(sx), Math.round(sy), TILE, TILE);
+      const sx = worldTileX * TILE;
+      const sy = worldTileY * TILE;
+      ctx.fillStyle = PUB.floor[shadeIdx];
+      ctx.fillRect(sx, sy, TILE, TILE);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.15)';
-      ctx.fillRect(Math.round(sx), Math.round(sy), TILE, 1); // row grain line
-      if (plankCol % PLANK_TILES === 0) ctx.fillRect(Math.round(sx), Math.round(sy), 1, TILE); // plank seam
+      // Grain: one sparse dithered line inside the board. Enough to read as
+      // wood, far short of a texture that competes with the characters.
+      ctx.fillStyle = PUB.floorGrain;
+      const grainRow = 5 + ((worldTileX * 7 + worldTileY * 13) & 5);
+      for (let gx = 1; gx < TILE - 1; gx += 3) {
+        if (((worldTileX * 5 + worldTileY * 11 + gx) & 3) === 0) continue;
+        ctx.fillRect(sx + gx, sy + grainRow, 1, 1);
+      }
+
+      ctx.fillStyle = PUB.floorSeam;
+      ctx.fillRect(sx, sy, TILE, 1);
+      if (plankCol % PLANK_TILES === 0) ctx.fillRect(sx, sy, 1, TILE);
     }
   }
+
+  ctx.fillStyle = PUB.floorStain;
+  for (const s of DECOR.stains) {
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+    ctx.fillRect(s.x + 1, s.y - 1, Math.max(1, s.w - 2), 1);
+  }
 }
 
-// A bar segment is just a wood counter rect with a lighter top edge and a
-// darker front trim — no fixed "behind" side, since segments can run in any
-// direction to form an L, so every segment gets the same simple treatment.
-function drawBar(bar, camX, camY) {
-  const c = bar.collider;
-  ctx.fillStyle = '#7a4a2a';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY), c.w, c.h);
-  ctx.fillStyle = '#9a6a3a';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY), c.w, 2);
-  ctx.fillStyle = '#4a2c14';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY + c.h - 3), c.w, 3);
-}
+// ---- Pass 3: architecture ---------------------------------------------------
+// Wall bands at the world edges. They are decoration, not collision — the
+// existing world clamp already keeps everyone inside — so characters can
+// overlap the lowest pixels of the rear wall exactly as they would in life.
+// Also drawn into the room canvas; see the note on drawGround.
+function drawArchitecture(ctx) {
+  const left = 0;
+  const top = 0;
 
-function drawTable(table, camX, camY) {
-  const sx = table.x - camX;
-  const sy = table.y - camY;
-  const halfW = table.w / 2;
-  const halfH = table.h / 2;
+  // Rear wall.
+  ctx.fillStyle = PUB.wall;
+  ctx.fillRect(left, top, WORLD_W, WALL_TOP_H);
+  ctx.fillStyle = PUB.wallLit;
+  ctx.fillRect(left, top, WORLD_W, 2);
+  // Dithered falloff down the wall face.
+  ctx.fillStyle = PUB.wallDark;
+  for (let x = 0; x < WORLD_W; x++) {
+    if ((x & 1) === 0) ctx.fillRect(left + x, top + WALL_TOP_H - 4, 1, 1);
+    ctx.fillRect(left + x, top + WALL_TOP_H - 3, 1, 1);
+  }
+  ctx.fillStyle = PUB.wainscot;
+  ctx.fillRect(left, top + WALL_TOP_H - 3, WORLD_W, 2);
+  ctx.fillStyle = PUB.baseboard;
+  ctx.fillRect(left, top + WALL_TOP_H - 1, WORLD_W, 1);
 
-  ctx.fillStyle = '#4a3222';
-  for (const seat of getTableSeats(table)) {
-    ctx.fillRect(
-      Math.round(seat.x - camX - CHAIR_SIZE / 2),
-      Math.round(seat.y - camY - CHAIR_SIZE / 2),
-      CHAIR_SIZE, CHAIR_SIZE
-    );
+  // Windows: cooler light than anything else in the room.
+  for (const w of DECOR.windows) {
+    const wx = left + w.x;
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(wx - 1, top, w.w + 2, 7);
+    ctx.fillStyle = PUB.midnight;
+    ctx.fillRect(wx, top, w.w, 6);
+    ctx.fillStyle = PUB.cool;
+    for (let x = 0; x < w.w; x++) {
+      for (let y = 0; y < 6; y++) {
+        if (((x + y) & 1) === 0) ctx.fillRect(wx + x, top + y, 1, 1);
+      }
+    }
+    ctx.fillStyle = PUB.coolPale;
+    ctx.fillRect(wx + Math.floor(w.w / 2), top, 1, 6);
+    ctx.fillRect(wx, top + 3, w.w, 1);
   }
 
-  ctx.fillStyle = '#5a3418';
-  ctx.fillRect(Math.round(sx - halfW), Math.round(sy - halfH), table.w, table.h);
-  ctx.fillStyle = '#8a5a34';
-  ctx.fillRect(Math.round(sx - halfW + 2), Math.round(sy - halfH + 2), table.w - 4, table.h - 4);
+  for (const p of DECOR.posters) {
+    const px = left + p.x;
+    const py = top + 2;
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px - 1, py - 1, p.w + 2, p.h + 2);
+    ctx.fillStyle = p.paper;
+    ctx.fillRect(px, py, p.w, p.h);
+    ctx.fillStyle = p.ink;
+    ctx.fillRect(px + 2, py + 2, p.w - 4, 1);
+    ctx.fillRect(px + 2, py + 4, Math.max(1, p.w - 6), 1);
+  }
+
+  // Side walls.
+  ctx.fillStyle = PUB.wainscot;
+  ctx.fillRect(left, top, WALL_SIDE_W, WORLD_H);
+  ctx.fillRect(left + WORLD_W - WALL_SIDE_W, top, WALL_SIDE_W, WORLD_H);
+  ctx.fillStyle = PUB.wainscotLit;
+  ctx.fillRect(left, top, 1, WORLD_H);
+  ctx.fillRect(left + WORLD_W - 1, top, 1, WORLD_H);
+  ctx.fillStyle = PUB.baseboard;
+  ctx.fillRect(left + WALL_SIDE_W - 1, top, 1, WORLD_H);
+  ctx.fillRect(left + WORLD_W - WALL_SIDE_W, top, 1, WORLD_H);
+
+  // Front wall and the door everyone arrives through.
+  const bottom = top + WORLD_H - WALL_BOTTOM_H;
+  ctx.fillStyle = PUB.wall;
+  ctx.fillRect(left, bottom, WORLD_W, WALL_BOTTOM_H);
+  ctx.fillStyle = PUB.baseboard;
+  ctx.fillRect(left, bottom, WORLD_W, 1);
+
+  const doorW = 22;
+  const dx = Math.round(left + DOOR.x - doorW / 2);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(dx - 1, bottom + 1, doorW + 2, WALL_BOTTOM_H - 1);
+  ctx.fillStyle = PUB.midnight;
+  ctx.fillRect(dx, bottom + 2, doorW, WALL_BOTTOM_H - 2);
+  ctx.fillStyle = PUB.wainscotLit;
+  ctx.fillRect(dx, bottom + 2, 1, WALL_BOTTOM_H - 2);
+  ctx.fillRect(dx + doorW - 1, bottom + 2, 1, WALL_BOTTOM_H - 2);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(dx + doorW - 4, bottom + 5, 1, 2);
+}
+
+// One world-sized canvas holding passes 2-4. Built at load; the frame loop
+// only copies the camera's rectangle out of it.
+const roomCanvas = buildRoomCanvas();
+
+function buildRoomCanvas() {
+  const cv = document.createElement('canvas');
+  cv.width = WORLD_W;
+  cv.height = WORLD_H;
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  drawGround(g);
+  drawArchitecture(g);
+  return cv;
+}
+
+function drawRoom(camX, camY) {
+  // Source rect clipped to the world, destination offset by whatever the
+  // camera is showing outside it.
+  const sx = Math.max(0, camX);
+  const sy = Math.max(0, camY);
+  const dx = Math.round(sx - camX);
+  const dy = Math.round(sy - camY);
+  const w = Math.min(WORLD_W - sx, viewW - dx);
+  const h = Math.min(WORLD_H - sy, viewH - dy);
+  if (w <= 0 || h <= 0) return;
+  ctx.drawImage(roomCanvas, sx, sy, w, h, dx, dy, w, h);
+}
+
+// ---- Pass 5: floor lighting -------------------------------------------------
+// Warm pools under the lamps, cool spill under the windows and the door. Drawn
+// before the characters so people are lit by the room, not tinted through it.
+function drawFloorLight(camX, camY) {
+  for (const lamp of DECOR.lamps) {
+    drawGlow(glowFor(lamp.r, WARM_RGB, 0.30), lamp.x, lamp.y, lampIntensity(lamp), camX, camY);
+  }
+  for (const w of DECOR.windows) {
+    drawGlow(glowFor(22, COOL_RGB, 0.16), w.x + w.w / 2, 8, 1, camX, camY);
+  }
+  // The door brightens while someone is coming in or going out.
+  let doorBusy = 0;
+  for (const c of customers) {
+    if (c.state === 'sitting') continue;
+    const d = Math.hypot(c.x - DOOR.x, c.y - DOOR.y);
+    if (d < 40) doorBusy = Math.max(doorBusy, 1 - d / 40);
+  }
+  drawGlow(glowFor(24, COOL_RGB, 0.18), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+}
+
+// ---- Furniture --------------------------------------------------------------
+// A counter: dark front panel with vertical slats, a lit top surface with a
+// highlight along its back edge, and the glassware standing on it.
+function drawBar(bar, camX, camY) {
+  const c = bar.collider;
+  const x = Math.round(c.x - camX);
+  const y = Math.round(c.y - camY);
+
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(x + 1, y + c.h, c.w, 2);
+
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(x, y, c.w, c.h);
+  ctx.fillStyle = PUB.barTop;
+  ctx.fillRect(x, y, c.w, Math.min(c.h, Math.max(4, Math.round(c.h * 0.42))));
+  ctx.fillStyle = PUB.barTopLit;
+  ctx.fillRect(x + 1, y + 1, c.w - 2, 2);
+  ctx.fillStyle = PUB.barTopHi;
+  ctx.fillRect(x + 2, y + 1, c.w - 4, 1);
+
+  // Slats down the customer-facing panel.
+  ctx.fillStyle = PUB.barFrontDark;
+  for (let sx = 3; sx < c.w - 2; sx += 5) ctx.fillRect(x + sx, y + c.h - 5, 1, 4);
+  ctx.fillRect(x, y + c.h - 1, c.w, 1);
+  ctx.fillStyle = PUB.barFrontLit;
+  ctx.fillRect(x, y + c.h - 6, c.w, 1);
+  ctx.fillStyle = PUB.amberDim;
+  for (let rx = 1; rx < c.w - 1; rx += 2) ctx.fillRect(x + rx, y + c.h - 3, 1, 1);
+
+  for (const prop of DECOR.barProps) {
+    if (prop.seg !== bar) continue;
+    drawBarProp(prop, camX, camY);
+  }
+}
+
+function drawBarProp(prop, camX, camY) {
+  const x = Math.round(prop.x - camX);
+  const y = Math.round(prop.y - camY);
+  if (prop.kind === 'bottle') {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 6, 3, 6);
+    ctx.fillStyle = (prop.x & 1) ? PUB.bottleGreen : PUB.bottleAmber;
+    ctx.fillRect(x, y - 5, 3, 5);
+    ctx.fillStyle = PUB.glass;
+    ctx.fillRect(x, y - 4, 1, 3);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x + 1, y - 7, 1, 2);
+  } else if (prop.kind === 'glass') {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 4, 3, 4);
+    ctx.fillStyle = PUB.bottleClear;
+    ctx.fillRect(x, y - 3, 3, 3);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x, y - 3, 1, 2);
+  } else {
+    ctx.fillStyle = PUB.brass;
+    ctx.fillRect(x, y - 5, 2, 5);
+    ctx.fillRect(x + 2, y - 5, 2, 1);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 1, 2, 1);
+  }
+}
+
+// A table: contact shadow, dark edge, lit top, a highlight along the back
+// edge, and whatever was left on it.
+function drawTable(table, camX, camY) {
+  const sx = Math.round(table.x - camX);
+  const sy = Math.round(table.y - camY);
+  const halfW = Math.round(table.w / 2);
+  const halfH = Math.round(table.h / 2);
+
+  for (const seat of getTableSeats(table)) {
+    const cx = Math.round(seat.x - camX - CHAIR_SIZE / 2);
+    const cy = Math.round(seat.y - camY - CHAIR_SIZE / 2);
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(cx + 1, cy + CHAIR_SIZE - 1, CHAIR_SIZE, 2);
+    ctx.fillStyle = PUB.chair;
+    ctx.fillRect(cx, cy, CHAIR_SIZE, CHAIR_SIZE);
+    ctx.fillStyle = PUB.chairLit;
+    ctx.fillRect(cx + 1, cy + 1, CHAIR_SIZE - 2, 1);
+  }
+
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(sx - halfW + 1, sy + halfH, table.w, 2);
+
+  ctx.fillStyle = PUB.tableEdge;
+  ctx.fillRect(sx - halfW, sy - halfH, table.w, table.h);
+  ctx.fillStyle = PUB.tableTop;
+  ctx.fillRect(sx - halfW + 1, sy - halfH + 1, table.w - 2, table.h - 2);
+  ctx.fillStyle = PUB.tableTopLit;
+  ctx.fillRect(sx - halfW + 2, sy - halfH + 2, table.w - 4, table.h - 4);
+  ctx.fillStyle = PUB.tableTopHi;
+  ctx.fillRect(sx - halfW + 3, sy - halfH + 2, table.w - 6, 1);
+
+  const items = DECOR.clutter.get(table);
+  if (items) for (const it of items) drawTableProp(it, sx, sy, camX, camY);
+}
+
+function drawTableProp(item, tableSX, tableSY, camX, camY) {
+  const x = tableSX + item.ox;
+  const y = tableSY + item.oy;
+  if (item.kind === 'coaster') {
+    ctx.fillStyle = PUB.creamDim;
+    ctx.fillRect(x - 1, y, 3, 2);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x, y, 1, 1);
+  } else if (item.kind === 'glass') {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 1, y - 3, 3, 4);
+    ctx.fillStyle = PUB.bottleClear;
+    ctx.fillRect(x - 1, y - 3, 3, 3);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 1, y - 3, 1, 2);
+  } else {
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 2, y - 1, 5, 3);
+    ctx.fillStyle = PUB.burgundy;
+    ctx.fillRect(x - 1, y, 3, 1);
+  }
 }
 
 function drawFurnitureItem(item, camX, camY) {
   if (item.type === 'bar') drawBar(item, camX, camY);
   else drawTable(item, camX, camY);
 }
+
+// ---- Pass 7: foreground -----------------------------------------------------
+// The lamp fixtures themselves hang above the room, so they draw over
+// everything in the scene; dust drifts in front of all of it.
+function drawForeground(camX, camY) {
+  for (const lamp of DECOR.lamps) {
+    const x = Math.round(lamp.x - camX);
+    const y = Math.round(lamp.y - camY);
+    if (x < -8 || y < -8 || x > viewW + 8 || y > viewH + 8) continue;
+    const glow = lampIntensity(lamp);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 6, 1, 3);          // cord
+    ctx.fillStyle = '#3b2a12';
+    ctx.fillRect(x - 2, y - 4, 5, 1);      // shade, top of the cone
+    ctx.fillStyle = '#5c421c';
+    ctx.fillRect(x - 3, y - 3, 7, 1);
+    ctx.fillStyle = PUB.brass;
+    ctx.fillRect(x - 4, y - 2, 9, 1);      // rim
+    ctx.fillStyle = glow > 1 ? '#fff3d2' : PUB.amber;
+    ctx.fillRect(x - 2, y - 1, 5, 1);      // bulb under the rim
+    ctx.fillStyle = PUB.amberDim;
+    ctx.fillRect(x - 1, y, 3, 1);
+  }
+
+  if (prefersReducedMotion) return;
+  for (const d of DUST) {
+    ctx.globalAlpha = d.a;
+    ctx.fillStyle = '#ffe6bd';
+    ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Pass 8: grade ----------------------------------------------------------
+// The room gets colder and heavier as the night wears on. Level-derived, so it
+// resets for free along with the score.
+function drawGrade() {
+  const lvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP);
+  const nightAlpha = Math.min(0.30, 0.08 + (lvl - 1) * 0.026);
+  ctx.globalAlpha = nightAlpha;
+  ctx.fillStyle = PUB.midnight;
+  ctx.fillRect(0, 0, viewW, viewH);
+  ctx.globalAlpha = 1;
+
+  ensureVignette();
+  ctx.drawImage(vignetteCanvas, 0, 0);
+}
+
+// ---- Y-sorted pass ----------------------------------------------------------
+// Entries are pooled and reused, so a frame with 14 customers on screen still
+// allocates nothing.
+const drawList = [];
+const drawPool = [];
+let drawPoolIdx = 0;
+
+function pushDrawable(sortY, type, ref) {
+  let e = drawPool[drawPoolIdx];
+  if (!e) { e = { sortY: 0, type: '', ref: null }; drawPool.push(e); }
+  drawPoolIdx++;
+  e.sortY = sortY;
+  e.type = type;
+  e.ref = ref;
+  drawList.push(e);
+}
+
+function drawEntity(e, camX, camY) {
+  const set = SPRITES[e.kind];
+  // Seated regulars pick a named pose; movers use the walk cycle.
+  const sprite = e.pose
+    ? (set[e.pose] || set.idle)
+    : set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
+  const sx = e.x - camX - sprite.w / 2 + (e.swayOffset || 0);
+  const sy = e.y - camY - sprite.h;
+  // A small contact shadow so nobody looks pasted onto the floor.
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(Math.round(e.x - camX - 4), Math.round(e.y - camY - 1), 8, 2);
+  drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
+}
+
+function sortByY(a, b) { return a.sortY - b.sortY; }
+
 
 // Cartoon-style speech bubble with an order icon inside, floating above a
 // head. `highlighted` marks the order currently being carried to them.
@@ -1319,10 +1840,19 @@ function rectsTouch(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+// Reused; the HUD's footprint is fed to the bubble layout as an obstacle.
+const hudRect = { x: 2, y: 2, w: 0, h: 0 };
+function measureHud() {
+  hudRect.w = fontTextWidth('LEVEL ' + getLevel() + '  SCORE ' + score) + 6;
+  hudRect.h = FONT_H + 6;
+  return hudRect;
+}
+
 function drawDialogueBubbles(camX, camY) {
   const lines = Dialogue.getActive();
   if (!lines.length) return;
   placedBubbles.length = 0;
+  placedBubbles.push(measureHud());
 
   for (const item of lines) {
     const r = regularById.get(item.who);
@@ -1343,15 +1873,28 @@ function drawDialogueBubbles(camX, camY) {
     //   2. straight above their head, accepting that it covers that bubble
     //   3. under them, if even that would leave the camera
     const hasOrder = !!(r.orderType && !r.served);
-    let by = Math.round(headTop - (hasOrder ? 22 : 6) - bh);
-    if (by < 2) by = Math.round(headTop - 6 - bh);
     let bx = Math.round(r.x - camX - bw / 2);
     bx = clamp(bx, 2, Math.max(2, viewW - bw - 2));
 
+    let by = Math.round(headTop - (hasOrder ? 22 : 6) - bh);
     let below = false;
+    if (by < 2) by = Math.round(headTop - 6 - bh);
     if (by < 2) {
-      by = Math.round(r.y - camY + 5);
-      below = true;
+      // Pin it to the top of the camera instead. The rear wall behind it is
+      // decoration, so this costs nothing; dropping the bubble below them
+      // would cover the speaker and whoever is sitting in front of them.
+      by = 2;
+      if (by + bh > headTop + 2) {
+        // Genuinely no room over their head. Hang it off the shoulder facing
+        // away from the booth, so it lands on open floor instead of on top of
+        // whoever they're sitting with.
+        by = Math.round(r.y - camY + 5);
+        below = true;
+        bx = r.x >= REGULARS_TABLE.x
+          ? Math.round(r.x - camX + 5)
+          : Math.round(r.x - camX - bw - 5);
+        bx = clamp(bx, 2, Math.max(2, viewW - bw - 2));
+      }
     }
 
     // Nudge clear of any bubble already drawn this frame. Sideways first: the
@@ -1397,17 +1940,6 @@ function drawDialogueBubbles(camX, camY) {
   }
 }
 
-function drawMapBounds(camX, camY) {
-  ctx.strokeStyle = '#1f1f1f';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(
-    Math.round(0 - camX) + 1,
-    Math.round(0 - camY) + 1,
-    WORLD_W - 2,
-    WORLD_H - 2
-  );
-}
-
 // Camera: centered on the player and clamped to the world. When the viewport
 // is *wider* (or taller) than the world, clamping would pin the world to the
 // top-left corner, so the axis is centered instead and the leftover margin is
@@ -1422,37 +1954,103 @@ function getCamera() {
   return { x: Math.round(camX), y: Math.round(camY) };
 }
 
+// The HUD stays a compact pixel plate rather than a card: strong contrast,
+// small footprint, and no information the player doesn't need mid-chase.
+// Nazim's state deliberately isn't here — it's readable from how he looks and
+// what he says, which is the point of him.
+function drawHud() {
+  const text = 'LEVEL ' + getLevel() + '  SCORE ' + score;
+  const w = fontTextWidth(text);
+  ctx.fillStyle = 'rgba(12,8,16,0.74)';
+  ctx.fillRect(2, 2, w + 6, FONT_H + 6);
+  ctx.fillStyle = PUB.amberDim;
+  ctx.fillRect(2, 2, w + 6, 1);
+  fontDrawText(ctx, text, 5, 5, PUB.cream);
+}
+
+function drawCaughtOverlay() {
+  if (caughtImage.complete && caughtImage.naturalWidth > 0) {
+    // Cover-fit the image into the internal resolution, cropping overflow.
+    const scale = Math.max(viewW / caughtImage.naturalWidth, viewH / caughtImage.naturalHeight);
+    const dw = caughtImage.naturalWidth * scale;
+    const dh = caughtImage.naturalHeight * scale;
+    ctx.drawImage(caughtImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.fillRect(0, 0, viewW, viewH);
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+
+  // The text sits on its own plate: the splash is a busy, high-contrast
+  // painting and small type disappears into it otherwise.
+  // The newest line, not the oldest: the reaction to being caught is the one
+  // worth showing, even if an earlier bubble is still on its way out.
+  const active = Dialogue.getActive();
+  const reaction = active.length ? active[active.length - 1] : null;
+  const speaker = reaction ? regularById.get(reaction.who) : null;
+  const quipRows = reaction
+    ? fontWrapText((speaker ? speaker.name + ': ' : '') + reaction.text.toUpperCase(), Math.min(200, viewW - 20))
+    : null;
+
+  const plateH = 40 + (quipRows ? quipRows.length * 7 + 3 : 0);
+  const plateY = Math.round(viewH / 2 - 24);
+  ctx.fillStyle = 'rgba(10,6,14,0.72)';
+  ctx.fillRect(0, plateY, viewW, plateH);
+  ctx.fillStyle = 'rgba(232,161,58,0.55)';
+  ctx.fillRect(0, plateY, viewW, 1);
+  ctx.fillRect(0, plateY + plateH - 1, viewW, 1);
+
+  ctx.fillStyle = '#e8620c';
+  ctx.font = '16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('CAUGHT!', viewW / 2, plateY + 15);
+  ctx.textAlign = 'left';
+
+  const summary = 'LEVEL ' + getLevel() + '   SCORE ' + score;
+  fontDrawTextShadow(ctx, summary, Math.round((viewW - fontTextWidth(summary)) / 2), plateY + 20, PUB.cream);
+  const prompt = 'PRESS SPACE TO RESTART';
+  fontDrawTextShadow(ctx, prompt, Math.round((viewW - fontTextWidth(prompt)) / 2), plateY + 30, PUB.amber);
+
+  if (quipRows) {
+    for (let k = 0; k < quipRows.length; k++) {
+      fontDrawTextShadow(ctx, quipRows[k], Math.round((viewW - fontTextWidth(quipRows[k])) / 2), plateY + 43 + k * 7,
+        speaker ? speaker.cfg.accent : PUB.cream);
+    }
+  }
+}
+
 function render() {
   const cam = getCamera();
   const camX = cam.x;
   const camY = cam.y;
 
-  ctx.clearRect(0, 0, viewW, viewH);
-  drawGround(camX, camY);
-  drawMapBounds(camX, camY);
+  drawBackdrop();
+  drawRoom(camX, camY);
+  drawFloorLight(camX, camY);
 
-  // Draw order: furniture and characters are merged and sorted by their
-  // "footprint" y so nearer (lower) things draw over farther (higher) ones.
-  const drawables = [
-    ...FURNITURE.map(f => ({ sortY: f.sortY, draw: () => drawFurnitureItem(f, camX, camY) })),
-    ...[player, hunter, ...customers, ...regulars].map(e => ({
-      sortY: e.y,
-      draw: () => {
-        const set = SPRITES[e.kind];
-        // Seated regulars pick a named pose; movers use the walk cycle.
-        const sprite = e.pose
-          ? (set[e.pose] || set.idle)
-          : set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
-        const sx = e.x - camX - sprite.w / 2 + (e.swayOffset || 0);
-        const sy = e.y - camY - sprite.h;
-        drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
-      },
-    })),
-  ];
-  drawables.sort((a, b) => a.sortY - b.sortY);
-  for (const d of drawables) d.draw();
+  // Furniture and characters share one y-sorted pass so nearer (lower) things
+  // draw over farther ones. Table sortY is still the table top's own front
+  // edge, not the chair-inclusive footprint, so a customer on the south chair
+  // draws in front of their table (see makeTable).
+  drawList.length = 0;
+  drawPoolIdx = 0;
+  for (const f of FURNITURE) pushDrawable(f.sortY, 'furniture', f);
+  pushDrawable(player.y, 'entity', player);
+  pushDrawable(hunter.y, 'entity', hunter);
+  for (const c of customers) pushDrawable(c.y, 'entity', c);
+  for (const r of regulars) pushDrawable(r.y, 'entity', r);
+  drawList.sort(sortByY);
+  for (const d of drawList) {
+    if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
+    else drawEntity(d.ref, camX, camY);
+  }
 
-  // Order bubbles float above everything else in the scene.
+  drawForeground(camX, camY);
+  drawGrade();
+
+  // Order bubbles float above the scene and above the grade, so a patience bar
+  // is never dimmed by the lighting.
   for (const c of customers) {
     if (c.state === 'sitting' && c.orderType && !c.served) {
       const patience = clamp(c.sitTimer / c.patienceDuration, 0, 1);
@@ -1473,62 +2071,16 @@ function render() {
   drawDialogueBubbles(camX, camY);
 
   // Floating score/penalty feedback, fading out as it drifts up.
-  ctx.textAlign = 'center';
-  ctx.font = '8px monospace';
   for (const t of floatingTexts) {
-    const sx = Math.round(t.x - camX);
-    const sy = Math.round(t.y - camY);
-    ctx.globalAlpha = Math.max(0, Math.min(1, t.ttl));
-    ctx.fillStyle = '#000';
-    ctx.fillText(t.text, sx + 1, sy + 1);
-    ctx.fillStyle = t.color;
-    ctx.fillText(t.text, sx, sy);
+    const tw = fontTextWidth(t.text);
+    ctx.globalAlpha = clamp(t.ttl, 0, 1);
+    fontDrawTextShadow(ctx, t.text, Math.round(t.x - camX - tw / 2), Math.round(t.y - camY), t.color);
   }
   ctx.globalAlpha = 1;
 
-  // Score/level HUD, always visible in the top-left corner.
-  ctx.textAlign = 'left';
-  ctx.font = '8px monospace';
-  const hudText = 'LEVEL ' + getLevel() + '   SCORE: ' + score;
-  ctx.fillStyle = '#000';
-  ctx.fillText(hudText, 5, 11);
-  ctx.fillStyle = '#f5f5f5';
-  ctx.fillText(hudText, 4, 10);
+  drawHud();
 
-  if (caught) {
-    if (caughtImage.complete && caughtImage.naturalWidth > 0) {
-      // Cover-fit the image into the internal resolution, cropping overflow.
-      const scale = Math.max(viewW / caughtImage.naturalWidth, viewH / caughtImage.naturalHeight);
-      const dw = caughtImage.naturalWidth * scale;
-      const dh = caughtImage.naturalHeight * scale;
-      ctx.drawImage(caughtImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(0, 0, viewW, viewH);
-    } else {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(0, 0, viewW, viewH);
-    }
-    ctx.fillStyle = '#e8620c';
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('CAUGHT!', viewW / 2, viewH / 2 - 14);
-
-    const summary = 'LEVEL ' + getLevel() + '   SCORE ' + score;
-    fontDrawTextShadow(ctx, summary, Math.round((viewW - fontTextWidth(summary)) / 2), Math.round(viewH / 2 - 4), '#f3ead6');
-    const prompt = 'PRESS SPACE TO RESTART';
-    fontDrawTextShadow(ctx, prompt, Math.round((viewW - fontTextWidth(prompt)) / 2), Math.round(viewH / 2 + 8), '#c9a86a');
-
-    // Whatever the regulars said about it, attributed, under the prompt.
-    const reaction = Dialogue.getActive()[0];
-    if (reaction) {
-      const r = regularById.get(reaction.who);
-      const quip = (r ? r.name + ': ' : '') + reaction.text.toUpperCase();
-      const rows = fontWrapText(quip, Math.min(180, viewW - 16));
-      for (let i = 0; i < rows.length; i++) {
-        fontDrawTextShadow(ctx, rows[i], Math.round((viewW - fontTextWidth(rows[i])) / 2), Math.round(viewH / 2 + 24 + i * 7), r ? r.cfg.accent : '#f3ead6');
-      }
-    }
-  }
+  if (caught) drawCaughtOverlay();
 }
 
 // ---- Main loop ----------------------------------------------------------------
@@ -1595,6 +2147,7 @@ window.__debug = {
     Dialogue.clearCooldowns();
     for (const r of regulars) { r.dialogueCooldown = 0; r.recentLines.length = 0; }
   },
+  render,                                       // for frame-cost measurement
   dialogueStats: Dialogue.stats,
   activeDialogue: () => Dialogue.getActive().map(a => a.who + ': ' + a.text),
   DIALOGUE_LINES, DIALOGUE_EXCHANGES,
