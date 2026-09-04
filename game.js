@@ -1,6 +1,6 @@
 // ============================================================================
-// Waiter Chase — prototype
-// Top-down 2D chase game. Pixelated 8-bit style rendering via a low internal
+// Le Pub: The Chase
+// Top-down 2D serving/chase game. Pixelated rendering via a low internal
 // resolution canvas scaled up with `image-rendering: pixelated` (see CSS).
 // No build step / dependencies — plain canvas + JS.
 // ============================================================================
@@ -10,8 +10,59 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-const INTERNAL_W = canvas.width;   // 320
-const INTERNAL_H = canvas.height;  // 180
+// ---- Adaptive viewport ------------------------------------------------------
+// The canvas fills the browser viewport instead of sitting at a fixed 960x540.
+// Two numbers are recomputed on every resize/orientation change:
+//   * `pixelScale` — an INTEGER css-pixels-per-game-pixel factor, so art is
+//     never resampled onto fractional pixels and stays crisp;
+//   * `viewW`/`viewH` — the internal (game-pixel) resolution, sized so that
+//     viewW*scale x viewH*scale covers as much of the viewport as it can.
+// Because the world is portrait (200x360), a portrait viewport gets a portrait
+// internal resolution rather than a squashed 16:9 letterbox. Both are clamped
+// so an ultrawide monitor can't reveal empty space outside the pub.
+// Everything downstream (camera, ground, HUD, overlays) reads `viewW`/`viewH`
+// rather than baking the numbers in, so a resize mid-run just works.
+const VIEW_BASE_LANDSCAPE = { w: 320, h: 180 };
+const VIEW_BASE_PORTRAIT = { w: 180, h: 320 };
+const VIEW_MIN = { w: 160, h: 144 };
+const VIEW_MAX = { w: 320, h: 360 };
+
+let viewW = VIEW_BASE_LANDSCAPE.w;
+let viewH = VIEW_BASE_LANDSCAPE.h;
+let pixelScale = 1;
+let viewIsPortrait = false;
+
+function applyViewport() {
+  // Read layout once per resize, never per frame.
+  const availW = Math.max(1, Math.floor(window.innerWidth));
+  const availH = Math.max(1, Math.floor(window.innerHeight));
+  const portrait = availH > availW;
+  const base = portrait ? VIEW_BASE_PORTRAIT : VIEW_BASE_LANDSCAPE;
+  const scale = Math.max(1, Math.floor(Math.min(availW / base.w, availH / base.h)));
+  const w = clamp(Math.floor(availW / scale), VIEW_MIN.w, VIEW_MAX.w);
+  const h = clamp(Math.floor(availH / scale), VIEW_MIN.h, VIEW_MAX.h);
+  if (w === viewW && h === viewH && scale === pixelScale && portrait === viewIsPortrait) return;
+
+  viewW = w;
+  viewH = h;
+  pixelScale = scale;
+  viewIsPortrait = portrait;
+
+  canvas.width = viewW;
+  canvas.height = viewH;
+  canvas.style.width = (viewW * pixelScale) + 'px';
+  canvas.style.height = (viewH * pixelScale) + 'px';
+  // Resizing the backing store resets 2D context state, so restore it.
+  ctx.imageSmoothingEnabled = false;
+}
+
+// Resizes are coalesced into the next frame: mobile browsers fire a burst of
+// them while the URL bar collapses or the device rotates.
+let viewportDirty = true;
+function invalidateViewport() { viewportDirty = true; }
+window.addEventListener('resize', invalidateViewport);
+window.addEventListener('orientationchange', invalidateViewport);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', invalidateViewport);
 
 // Splash image shown full-screen when the player is caught.
 const caughtImage = new Image();
@@ -520,6 +571,8 @@ function resetGame() {
   customerSpawnTimer = 3;
   player.carrying = null;
   floatingTexts.length = 0;
+  clearHeldInputs();
+  syncCaughtDom();
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -569,12 +622,31 @@ function handleInteract() {
 
 // ---- Input ----------------------------------------------------------------
 const keys = new Set();
+
+// Anything that can strand a held key/pointer (restart, tab switch, losing
+// focus, entering fullscreen) funnels through here, so the player never walks
+// off on their own after an interrupted input.
+function clearHeldInputs() {
+  keys.clear();
+}
+
 window.addEventListener('keydown', (e) => {
-  keys.add(e.key.toLowerCase());
-  if (caught && e.key === ' ') resetGame();
-  if (!e.repeat && e.key.toLowerCase() === 'e') handleInteract();
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k === 'escape') { toggleOverlay(); return; }
+  if (caught && e.key === ' ') { resetGame(); return; }
+  if (paused) return;
+  // E is the primary interact key; Space is the same action (and stays the
+  // restart key on the caught screen) so a one-handed grip works too.
+  if (!e.repeat && (k === 'e' || e.key === ' ')) handleInteract();
+  if (e.key === ' ') e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', clearHeldInputs);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clearHeldInputs();
+  else lastTime = performance.now(); // don't bank a huge dt while hidden
+});
 
 function getInputVector() {
   let dx = 0, dy = 0;
@@ -587,6 +659,70 @@ function getInputVector() {
     dx *= inv; dy *= inv;
   }
   return { x: dx, y: dy };
+}
+
+// ---- Page shell: overlay, fullscreen, caught-screen buttons -----------------
+// The DOM around the canvas is a thin control layer. It is only written on
+// state transitions (never per frame), so it costs no layout work in the loop.
+const el = {
+  overlay: document.getElementById('overlay'),
+  start: document.getElementById('btn-start'),
+  help: document.getElementById('btn-help'),
+  fullscreen: document.getElementById('btn-fullscreen'),
+  caughtActions: document.getElementById('caught-actions'),
+  restart: document.getElementById('btn-restart'),
+};
+
+let paused = true; // the start overlay is up until the player begins
+
+function setOverlay(open) {
+  paused = open;
+  el.overlay.classList.toggle('hidden', !open);
+  el.start.textContent = overlaySeen ? 'RESUME' : 'START SHIFT';
+  if (!open) {
+    clearHeldInputs();
+    overlaySeen = true;
+    lastTime = performance.now();
+  }
+}
+let overlaySeen = false;
+function toggleOverlay() { setOverlay(!paused); }
+
+el.start.addEventListener('click', () => { el.start.blur(); setOverlay(false); });
+el.help.addEventListener('click', () => { el.help.blur(); toggleOverlay(); });
+
+// Fullscreen is a nicety, not a requirement: if the API is missing the button
+// simply isn't offered and everything else still works.
+const fullscreenSupported = !!(document.fullscreenEnabled || document.documentElement.webkitRequestFullscreen);
+function fullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function toggleFullscreen() {
+  const root = document.documentElement;
+  try {
+    if (fullscreenElement()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+    }
+  } catch (err) {
+    /* Rejected (user gesture rules, iOS Safari) — stay windowed. */
+  }
+}
+if (!fullscreenSupported) el.fullscreen.classList.add('hidden');
+el.fullscreen.addEventListener('click', () => { el.fullscreen.blur(); toggleFullscreen(); });
+document.addEventListener('fullscreenchange', () => {
+  el.fullscreen.classList.toggle('active', !!fullscreenElement());
+  invalidateViewport();
+  clearHeldInputs();
+});
+
+el.restart.addEventListener('click', () => { el.restart.blur(); resetGame(); });
+
+// Mirrors `caught` into the DOM exactly once per transition.
+let caughtShown = false;
+function syncCaughtDom() {
+  if (caught === caughtShown) return;
+  caughtShown = caught;
+  el.caughtActions.classList.toggle('hidden', !caught);
 }
 
 // ---- Hunter AI: mostly pursues the player -----------------------------------
@@ -731,8 +867,8 @@ const WOOD_SHADES = ['#a9835a', '#a07a52', '#b0885f'];
 function drawGround(camX, camY) {
   const startTileX = Math.floor(camX / TILE);
   const startTileY = Math.floor(camY / TILE);
-  const tilesX = Math.ceil(INTERNAL_W / TILE) + 1;
-  const tilesY = Math.ceil(INTERNAL_H / TILE) + 1;
+  const tilesX = Math.ceil(viewW / TILE) + 1;
+  const tilesY = Math.ceil(viewH / TILE) + 1;
 
   for (let ty = 0; ty <= tilesY; ty++) {
     for (let tx = 0; tx <= tilesX; tx++) {
@@ -849,14 +985,26 @@ function drawMapBounds(camX, camY) {
   );
 }
 
-function render() {
-  // Camera centered on player, clamped to world bounds.
-  let camX = player.x - INTERNAL_W / 2;
-  let camY = player.y - INTERNAL_H / 2;
-  camX = clamp(camX, 0, Math.max(0, WORLD_W - INTERNAL_W));
-  camY = clamp(camY, 0, Math.max(0, WORLD_H - INTERNAL_H));
+// Camera: centered on the player and clamped to the world. When the viewport
+// is *wider* (or taller) than the world, clamping would pin the world to the
+// top-left corner, so the axis is centered instead and the leftover margin is
+// painted as the room's surroundings.
+function getCamera() {
+  const camX = viewW >= WORLD_W
+    ? (WORLD_W - viewW) / 2
+    : clamp(player.x - viewW / 2, 0, WORLD_W - viewW);
+  const camY = viewH >= WORLD_H
+    ? (WORLD_H - viewH) / 2
+    : clamp(player.y - viewH / 2, 0, WORLD_H - viewH);
+  return { x: Math.round(camX), y: Math.round(camY) };
+}
 
-  ctx.clearRect(0, 0, INTERNAL_W, INTERNAL_H);
+function render() {
+  const cam = getCamera();
+  const camX = cam.x;
+  const camY = cam.y;
+
+  ctx.clearRect(0, 0, viewW, viewH);
   drawGround(camX, camY);
   drawMapBounds(camX, camY);
 
@@ -917,36 +1065,49 @@ function render() {
   if (caught) {
     if (caughtImage.complete && caughtImage.naturalWidth > 0) {
       // Cover-fit the image into the internal resolution, cropping overflow.
-      const scale = Math.max(INTERNAL_W / caughtImage.naturalWidth, INTERNAL_H / caughtImage.naturalHeight);
+      const scale = Math.max(viewW / caughtImage.naturalWidth, viewH / caughtImage.naturalHeight);
       const dw = caughtImage.naturalWidth * scale;
       const dh = caughtImage.naturalHeight * scale;
-      ctx.drawImage(caughtImage, (INTERNAL_W - dw) / 2, (INTERNAL_H - dh) / 2, dw, dh);
+      ctx.drawImage(caughtImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+      ctx.fillRect(0, 0, viewW, viewH);
     } else {
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+      ctx.fillRect(0, 0, viewW, viewH);
     }
     ctx.fillStyle = '#e8620c';
     ctx.font = '16px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('CAUGHT!', INTERNAL_W / 2, INTERNAL_H / 2 - 6);
+    ctx.fillText('CAUGHT!', viewW / 2, viewH / 2 - 6);
     ctx.fillStyle = '#f5f5f5';
     ctx.font = '8px monospace';
-    ctx.fillText('press SPACE to restart', INTERNAL_W / 2, INTERNAL_H / 2 + 10);
+    ctx.fillText('press SPACE to restart', viewW / 2, viewH / 2 + 10);
   }
 }
 
 // ---- Main loop ----------------------------------------------------------------
+// dt is clamped so coming back to a backgrounded tab never teleports anyone.
 let lastTime = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
-  update(dt);
-  render();
+
+  if (viewportDirty) {
+    viewportDirty = false;
+    applyViewport();
+  }
+
+  // A hidden document still gets the occasional frame in some browsers; skip
+  // both simulation and painting rather than burning work nobody can see.
+  if (!document.hidden) {
+    if (!paused) update(dt);
+    syncCaughtDom();
+    render();
+  }
   requestAnimationFrame(loop);
 }
 
+applyViewport();
 resetGame();
 requestAnimationFrame(loop);
 
