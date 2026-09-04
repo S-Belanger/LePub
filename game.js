@@ -11,7 +11,7 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 // ---- Adaptive viewport ------------------------------------------------------
-// The canvas fills the browser viewport instead of sitting at a fixed 960x540.
+// The canvas fills the browser viewport rather than sitting at a fixed size.
 // Two numbers are recomputed on every resize/orientation change:
 //   * `pixelScale` — an INTEGER css-pixels-per-game-pixel factor, so art is
 //     never resampled onto fractional pixels and stays crisp;
@@ -306,6 +306,30 @@ const LEVEL_UP_SCORE = 100;
 const EFFECTIVE_LEVEL_CAP = 10;
 function getLevel() { return Math.floor(score / LEVEL_UP_SCORE) + 1; }
 
+// ---- Order-bubble lifecycle -------------------------------------------------
+// An order bubble grows in when it appears and shrinks out when it's dealt
+// with, in a few discrete pixel steps rather than a smooth ease. Both
+// populations share these three helpers so the two never drift apart.
+const BUBBLE_APPEAR_TIME = 0.18;
+const BUBBLE_EXIT_TIME = 0.14;
+
+function noteOrderPlaced(e) {
+  e.orderAppearAt = gameTime;
+  e.orderExit = null;
+}
+
+// Called before the order itself is cleared, so the outgoing bubble still
+// knows which icon to shrink.
+function noteOrderCleared(e) {
+  if (e.orderType) e.orderExit = { type: e.orderType, ttl: BUBBLE_EXIT_TIME };
+}
+
+function tickOrderExit(e, dt) {
+  if (!e.orderExit) return;
+  e.orderExit.ttl -= dt;
+  if (e.orderExit.ttl <= 0) e.orderExit = null;
+}
+
 // Small floating "+10"/"-15" texts that pop up at a point and drift/fade —
 // gives the score/penalty feedback a place to happen visually.
 const floatingTexts = [];
@@ -338,6 +362,8 @@ function spawnCustomer() {
   c.orderType = null;
   c.orderTimer = 0;
   c.orderPlacedAt = 0;
+  c.orderAppearAt = 0;
+  c.orderExit = null;
   c.served = false;
   c.beingCarried = false;
   customers.push(c);
@@ -375,6 +401,7 @@ function updateCustomer(c, dt) {
       if (c.orderTimer <= 0) {
         c.orderType = randomOrderType();
         c.orderPlacedAt = gameTime;
+        noteOrderPlaced(c);
       }
     }
     c.sitTimer -= dt;
@@ -383,6 +410,7 @@ function updateCustomer(c, dt) {
       if (!c.served && c.orderType) {
         score = Math.max(0, score - FORGOTTEN_PENALTY);
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
+        noteOrderCleared(c);
         Dialogue.trigger('abandoned', null);
       }
       c.state = 'leaving';
@@ -443,6 +471,8 @@ function resetRegular(r) {
   r.y = r.seat.y;
   r.orderType = null;
   r.orderPlacedAt = 0;
+  r.orderAppearAt = 0;
+  r.orderExit = null;
   r.sitTimer = 0;
   r.patienceDuration = 1;
   r.served = false;
@@ -489,6 +519,7 @@ function regularPlaceOrder(r) {
   r.patienceDuration = r.sitTimer;
   r.served = false;
   r.beingCarried = false;
+  noteOrderPlaced(r);
   onRegularOrdered(r);
 }
 
@@ -506,6 +537,7 @@ function regularGiveUp(r) {
 function clearRegularOrder(r) {
   // If the player is mid-trip with this order it becomes stranded, and the
   // per-frame retarget in update() hands it to a generic customer instead.
+  noteOrderCleared(r);
   r.orderType = null;
   r.beingCarried = false;
   r.served = false;
@@ -532,6 +564,7 @@ function updateRegulars(dt) {
       r.mood = r.mood > base ? Math.max(base, r.mood - step) : Math.min(base, r.mood + step);
     }
 
+    tickOrderExit(r, dt);
     if (r.talkTimer > 0) r.talkTimer -= dt;
     if (r.dialogueCooldown > 0) r.dialogueCooldown -= dt;
 
@@ -779,6 +812,7 @@ function completeDelivery(target) {
   addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
 
   if (!target.isRegular) {
+    noteOrderCleared(target);
     target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
     return;
   }
@@ -1144,6 +1178,7 @@ function update(dt) {
   }
   for (let i = customers.length - 1; i >= 0; i--) {
     const c = customers[i];
+    tickOrderExit(c, dt);
     if (updateCustomer(c, dt) === 'remove') customers.splice(i, 1);
   }
 
@@ -1794,11 +1829,16 @@ const BUBBLE_FRAME_DEFAULT = '#141414';
 const BUBBLE_FRAME_REGULAR = '#c98a2a';  // a named regular is waiting
 const BUBBLE_FRAME_CARRIED = '#2e8b45';  // this is the order you're carrying
 
-function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor) {
+// `grow` (0-1) drives a three-step pop: a stub, a short frame, then the full
+// bubble with its icon and patience bar. Stepping it keeps the animation on
+// whole pixels instead of easing through fractional sizes.
+function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor, grow) {
   const icon = ORDER_ICONS[orderType];
   const pad = 2;
   const bw = icon.sprite.w + pad * 2;
-  const bh = icon.sprite.h + pad * 2;
+  const full = icon.sprite.h + pad * 2;
+  const step = grow == null || grow >= 1 ? 3 : Math.max(1, Math.ceil(grow * 3));
+  const bh = step === 3 ? full : (step === 2 ? full - 4 : 3);
   const sx = Math.round(worldX - camX - bw / 2);
   const sy = Math.round(headTopY - camY - bh - 4);
   const border = highlighted ? BUBBLE_FRAME_CARRIED : (frameColor || BUBBLE_FRAME_DEFAULT);
@@ -1812,6 +1852,7 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
   ctx.fillStyle = '#f5f5f5';
   ctx.fillRect(sx + bw / 2 - 1, sy + bh, 2, 1);
 
+  if (step < 3) return;   // mid-pop: frame only, no icon and no patience bar
   drawSprite(icon.sprite, icon.palette, sx + pad, sy + pad, false);
 
   if (patienceFraction != null) {
@@ -1820,6 +1861,21 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
     ctx.fillRect(sx, barY, bw, 2);
     ctx.fillStyle = patienceBarColor(patienceFraction);
     ctx.fillRect(sx, barY, Math.round(bw * clamp(patienceFraction, 0, 1)), 2);
+  }
+}
+
+// Draws whichever bubble a person currently warrants: the live order growing
+// in, or the one just dealt with shrinking out. Walk-ins and regulars differ
+// only in which frame colour they get, and in that a walk-in has to be seated
+// to show one at all.
+function drawOrderBubbleFor(e, camX, camY, frameColor) {
+  if (e.orderType && !e.served && (e.isRegular || e.state === 'sitting')) {
+    const patience = clamp(e.sitTimer / e.patienceDuration, 0, 1);
+    const grow = (gameTime - e.orderAppearAt) / BUBBLE_APPEAR_TIME;
+    drawOrderBubble(e.x, e.y - e.h, camX, camY, e.orderType, e.beingCarried, patience, frameColor, grow);
+  } else if (e.orderExit) {
+    drawOrderBubble(e.x, e.y - e.h, camX, camY, e.orderExit.type, false, null, frameColor,
+      e.orderExit.ttl / BUBBLE_EXIT_TIME);
   }
 }
 
@@ -2051,17 +2107,8 @@ function render() {
 
   // Order bubbles float above the scene and above the grade, so a patience bar
   // is never dimmed by the lighting.
-  for (const c of customers) {
-    if (c.state === 'sitting' && c.orderType && !c.served) {
-      const patience = clamp(c.sitTimer / c.patienceDuration, 0, 1);
-      drawOrderBubble(c.x, c.y - c.h, camX, camY, c.orderType, c.beingCarried, patience);
-    }
-  }
-  for (const r of regulars) {
-    if (!r.orderType || r.served) continue;
-    const patience = clamp(r.sitTimer / r.patienceDuration, 0, 1);
-    drawOrderBubble(r.x, r.y - r.h, camX, camY, r.orderType, r.beingCarried, patience, BUBBLE_FRAME_REGULAR);
-  }
+  for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
+  for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
   if (player.carrying) {
     const carriedFor = player.carrying.customer;
     const carriedPatience = carriedFor ? clamp(carriedFor.sitTimer / carriedFor.patienceDuration, 0, 1) : null;

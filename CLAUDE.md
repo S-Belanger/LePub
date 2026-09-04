@@ -135,7 +135,7 @@ Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`,
 4. **y-sorted scene** — furniture and every character in one pass sorted by `sortY`. The table's `sortY` intentionally uses the table top's own front edge, not the chair-inclusive footprint, so a customer on the south chair draws *in front of* their table (see the comment in `makeTable`). Entries come from a reused pool, so a busy frame allocates nothing.
 5. **foreground** — the lamp fixtures themselves, then dust motes.
 6. **grade** — a level-scaled midnight tint plus a dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes).
-7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed.
+7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
 8. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
 9. **HUD** — a compact pixel-font plate with level and score.
 10. **caught overlay** — `assets/caught.jpg` cover-fit into the internal resolution, a dark plate for legibility, "CAUGHT!", the final level and score, the restart prompt, and the newest thing a regular said, attributed in their colour.
