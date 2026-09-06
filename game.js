@@ -17,20 +17,31 @@ const INTERNAL_H = canvas.height;  // 180
 const caughtImage = new Image();
 caughtImage.src = 'assets/caught.jpg';
 
+// Splash image shown full-screen when a level is completed.
+const levelDoneImage = new Image();
+levelDoneImage.src = 'assets/LevelDone.png';
+
 // ---- World ------------------------------------------------------------------
 // Portrait map (narrower than tall) to match the intended floor plan: a small
 // table up-left, a long many-seat table up-right, an L-shaped bar down the
 // middle-left, a column of small 2-seat tables, and two wide tables below.
-const WORLD_W = 200;
-const WORLD_H = 360;
-const TILE = 16;
+//
+// SCALE doubles every spatial/motion constant below (world size, furniture
+// layout, speeds, collision reach) in lockstep with the sprite pixel grid —
+// since a sprite's pixel dimensions ARE its world-space hitbox (see
+// makeEntity), redrawing sprites with more real detail means the whole world
+// grid has to grow with them, not just the on-screen display size.
+const SCALE = 2;
+const WORLD_W = 200 * SCALE;
+const WORLD_H = 360 * SCALE;
+const TILE = 10 * SCALE;
 
 // ---- Furniture: an L-shaped bar plus tables of varying size and seat count.
 // Colliders block movement for both characters; visuals are z-sorted
 // together with the characters below. ----------------------------------------
-const TABLE_SIZE = 14; // default table size when a table doesn't specify w/h
-const CHAIR_SIZE = 6;
-const CHAIR_GAP = 2;
+const TABLE_SIZE = 14 * SCALE; // default table size when a table doesn't specify w/h
+const CHAIR_SIZE = 6 * SCALE;
+const CHAIR_GAP = 2 * SCALE;
 
 // A table can be any size and can put any number of chairs evenly spaced
 // along each side (n/s/e/w), not just one — e.g. a long table with 4 seats
@@ -89,18 +100,18 @@ const BAR_SEGMENTS = [
   { x: 10, y: 212, w: 80, h: 18 },  // foot, meets the stem, touches the wall
 ].map(r => ({
   type: 'bar',
-  collider: r,
-  sortY: r.y + r.h,
+  collider: { x: r.x * SCALE, y: r.y * SCALE, w: r.w * SCALE, h: r.h * SCALE },
+  sortY: (r.y + r.h) * SCALE,
 }));
 
 const TABLES = [
-  makeTable(40, 45, { w: 18, h: 20, seats: { n: 0, s: 0, w: 2, e: 2 } }),   // top-left
-  makeTable(150, 95, { w: 20, h: 140, seats: { n: 0, s: 0, w: 4, e: 4 } }), // top-right, long
-  makeTable(175, 210, { w: 16, h: 16, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(175, 254, { w: 16, h: 16, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(175, 298, { w: 16, h: 16, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(85, 270, { w: 110, h: 24, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
-  makeTable(85, 320, { w: 110, h: 24, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
+  makeTable(40 * SCALE, 45 * SCALE, { w: 18 * SCALE, h: 20 * SCALE, seats: { n: 0, s: 0, w: 2, e: 2 } }),   // top-left
+  makeTable(150 * SCALE, 95 * SCALE, { w: 20 * SCALE, h: 140 * SCALE, seats: { n: 0, s: 0, w: 4, e: 4 } }), // top-right, long
+  makeTable(175 * SCALE, 210 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
+  makeTable(175 * SCALE, 254 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
+  makeTable(175 * SCALE, 298 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
+  makeTable(85 * SCALE, 270 * SCALE, { w: 110 * SCALE, h: 24 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
+  makeTable(85 * SCALE, 320 * SCALE, { w: 110 * SCALE, h: 24 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
 ];
 
 const FURNITURE = [...BAR_SEGMENTS, ...TABLES];
@@ -108,7 +119,7 @@ const FURNITURE = [...BAR_SEGMENTS, ...TABLES];
 const SEATS = TABLES.flatMap(t => getTableSeats(t).map(seat => ({ ...seat, table: t, occupied: false })));
 
 // Customers walk in from this point at the bottom wall.
-const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 };
+const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 * SCALE };
 
 // ---- Small pixel-art sprite authoring helper --------------------------------
 // R(char, count, char, count, ...) builds a row string from repeated runs.
@@ -135,41 +146,68 @@ const DOE_PALETTE = {
   n: '#a9764f', // antler
   f: '#f2e8da', // hood ear fluff
   h: '#c9a86a', // hair
+  j: '#a88a52', // hair part shadow
   k: '#f0c090', // skin
-  g: '#141414', // glasses
+  g: '#141414', // glasses / brow
   e: '#5a4030', // beard
   d: '#6b4a30', // onesie
   c: '#e8ddc0', // chest patch
-  s: '#2a2018', // feet
+  s: '#2a2018', // feet / chest zipper seam
+  o: '#4a3a2a', // sole highlight
 };
 
+// Redrawn at double resolution with real added detail (not a naive pixel
+// upscale): a branching antler tine, a brow line above the glasses, a hair
+// part, a zippered seam down the chest patch, and a two-tone shoe sole.
 const DOE_IDLE = buildSprite([
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler tips (taller rack)
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler base
-  R('.', 3, 'f', 2, '.', 6, 'f', 2, '.', 3),
-  R('.', 4, 'h', 8, '.', 4),
-  R('.', 3, 'h', 1, 'k', 8, 'h', 1, '.', 3),
-  R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'e', 8, '.', 4),
-  R('.', 5, 'e', 6, '.', 5),
-  R('.', 2, 'd', 4, 'c', 4, 'd', 4, '.', 2),
-  R('.', 1, 'd', 4, 'c', 6, 'd', 4, '.', 1),
-  R('.', 1, 'd', 5, 'c', 4, 'd', 5, '.', 1),
-  R('.', 2, 'd', 12, '.', 2),
-  R('.', 3, 'd', 10, '.', 3),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
+  R('.', 11, 'n', 1, '.', 8, 'n', 1, '.', 11),                                    // antler tips, tapered
+  R('.', 9, 'n', 1, '.', 1, 'n', 1, '.', 8, 'n', 1, '.', 1, 'n', 1, '.', 9),       // antler branch/tine
+  R('.', 10, 'n', 2, '.', 8, 'n', 2, '.', 10),                                    // antler base, thicker
+  R('.', 10, 'n', 2, '.', 8, 'n', 2, '.', 10),
+  R('.', 6, 'f', 4, '.', 12, 'f', 4, '.', 6),                                     // ear fluff
+  R('.', 7, 'f', 2, '.', 14, 'f', 2, '.', 7),                                     // fluff taper
+  R('.', 8, 'h', 7, 'j', 2, 'h', 7, '.', 8),                                      // hairline part
+  R('.', 8, 'h', 16, '.', 8),
+  R('.', 6, 'h', 2, 'k', 16, 'h', 2, '.', 6),
+  R('.', 6, 'h', 2, 'k', 2, 'g', 4, 'k', 4, 'g', 4, 'k', 2, 'h', 2, '.', 6),       // brow dashes
+  R('.', 8, 'g', 6, 'k', 4, 'g', 6, '.', 8),                                      // round lenses + skin bridge
+  R('.', 8, 'g', 6, 'k', 4, 'g', 6, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 8, 'e', 16, '.', 8),
+  R('.', 8, 'e', 16, '.', 8),
+  R('.', 10, 'e', 12, '.', 10),
+  R('.', 10, 'e', 12, '.', 10),
+  R('.', 4, 'd', 8, 'c', 4, 's', 1, 'c', 3, 'd', 8, '.', 4),                      // chest patch, zipper seam
+  R('.', 4, 'd', 8, 'c', 4, 's', 1, 'c', 3, 'd', 8, '.', 4),
+  R('.', 2, 'd', 8, 'c', 6, 's', 1, 'c', 5, 'd', 8, '.', 2),
+  R('.', 2, 'd', 8, 'c', 6, 's', 1, 'c', 5, 'd', 8, '.', 2),
+  R('.', 2, 'd', 10, 'c', 4, 's', 1, 'c', 3, 'd', 10, '.', 2),
+  R('.', 2, 'd', 10, 'c', 4, 's', 1, 'c', 3, 'd', 10, '.', 2),
+  R('.', 4, 'd', 24, '.', 4),
+  R('.', 4, 'd', 24, '.', 4),
+  R('.', 6, 'd', 20, '.', 6),
+  R('.', 6, 'd', 20, '.', 6),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 6, 's', 6, '.', 4, 's', 6, '.', 6),
+  R('.', 6, 's', 2, 'o', 2, 's', 2, '.', 4, 's', 2, 'o', 2, 's', 2, '.', 6),       // sole highlight
 ]);
 
 const DOE_WALK = buildSprite([
-  ...DOE_IDLE.rows.slice(0, 14),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 3, 'd', 3, '.', 4, 'd', 3, '.', 3),
-  R('.', 2, 'd', 3, '.', 6, 'd', 3, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
+  ...DOE_IDLE.rows.slice(0, 28),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 8, 'd', 6, '.', 4, 'd', 6, '.', 8),
+  R('.', 6, 'd', 6, '.', 8, 'd', 6, '.', 6),
+  R('.', 6, 'd', 6, '.', 8, 'd', 6, '.', 6),
+  R('.', 4, 'd', 6, '.', 12, 'd', 6, '.', 4),
+  R('.', 4, 'd', 6, '.', 12, 'd', 6, '.', 4),
+  R('.', 2, 's', 4, 'o', 2, '.', 16, 's', 4, 'o', 2, '.', 2),
+  R('.', 2, 's', 4, 'o', 2, '.', 16, 's', 4, 'o', 2, '.', 2),
 ]);
 
 // --- Hunter: fedora, glasses, red/black flannel, olive pants, and a
@@ -179,69 +217,102 @@ const HUNTER_PALETTE = {
   o: '#5c5a3e', // fedora crown
   r: '#454330', // fedora brim
   k: '#f0c090', // skin
-  g: '#141414', // glasses
+  g: '#141414', // glasses / brow
   w: '#e8e4d8', // collar
   f: '#8a2020', // flannel red
-  x: '#1c1c1c', // flannel black check
+  x: '#1c1c1c', // flannel black check / brim shadow / hat band
   p: '#4a4630', // pants
   s: '#1a1512', // shoes
-  u: '#3a2f22', // shotgun
+  u: '#3a2f22', // shotgun barrel
+  v: '#241a10', // shotgun stock (darker, two-tone gun)
+  b: '#3a2f22', // boot sole highlight
 };
 
+// Redrawn at double resolution with real added detail: a brim shadow and a
+// hat band on the fedora, a brow line, a finer woven checker plaid (small
+// squares instead of big 2x2 blocks) with a two-tone shotgun, and a boot
+// sole highlight.
 const HUNTER_IDLE = buildSprite([
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 2, 'r', 12, '.', 2),
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'w', 8, '.', 4),
-  // Buffalo-check plaid runs the full torso (not just the shoulders), two
-  // alternating 2x2 blocks per row so it reads as a checked flannel.
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2),
-  R('.', 2, 'x', 10, '.', 2),
-  R('.', 3, 'x', 10, '.', 3),
-  R('.', 3, 'p', 10, '.', 3),
-  R('.', 4, 'p', 8, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
+  R('.', 8, 'o', 16, '.', 8),
+  R('.', 4, 'r', 24, '.', 4),
+  R('.', 4, 'x', 24, '.', 4),                                                     // brim underside shadow
+  R('.', 8, 'o', 5, 'x', 6, 'o', 5, '.', 8),                                      // hat band
+  R('.', 8, 'o', 16, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 6, 'k', 2, 'x', 4, 'k', 4, 'x', 4, 'k', 2, '.', 6),                       // brow dashes
+  R('.', 8, 'g', 6, 'k', 4, 'g', 6, '.', 8),                                      // round lenses + skin bridge
+  R('.', 8, 'g', 6, 'k', 4, 'g', 6, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 8, 'k', 16, '.', 8),
+  R('.', 8, 'w', 16, '.', 8),
+  R('.', 8, 'w', 16, '.', 8),
+  // Finer woven checker plaid (2px squares) instead of the old 4px blocks,
+  // plus a two-tone shotgun (lighter barrel over a darker stock).
+  R('.', 4, 'w', 4, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 4, '.', 4, 'u', 10),
+  R('.', 4, 'w', 4, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 4, '.', 4, 'v', 10),
+  R('.', 4, 'w', 4, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 4, '.', 4),
+  R('.', 4, 'w', 4, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 4, '.', 4),
+  R('.', 4, 'w', 4, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 4, '.', 4),
+  R('.', 4, 'w', 4, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 4, '.', 4),
+  R('.', 4, 'x', 20, '.', 4),
+  R('.', 4, 'x', 20, '.', 4),
+  R('.', 6, 'x', 20, '.', 6),
+  R('.', 6, 'x', 20, '.', 6),
+  R('.', 6, 'p', 20, '.', 6),
+  R('.', 6, 'p', 20, '.', 6),
+  R('.', 8, 'p', 16, '.', 8),
+  R('.', 8, 'p', 16, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 6, 's', 6, '.', 4, 's', 6, '.', 6),
+  R('.', 6, 's', 4, 'b', 2, '.', 4, 's', 4, 'b', 2, '.', 6),                       // boot sole highlight
 ]);
 
 const HUNTER_WALK = buildSprite([
-  ...HUNTER_IDLE.rows.slice(0, 14),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 'p', 2, '.', 4, 'p', 2, '.', 3),
-  R('.', 2, 'p', 2, '.', 6, 'p', 2, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
+  ...HUNTER_IDLE.rows.slice(0, 28),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 6, 'p', 4, '.', 8, 'p', 4, '.', 6),
+  R('.', 6, 'p', 4, '.', 8, 'p', 4, '.', 6),
+  R('.', 4, 'p', 4, '.', 12, 'p', 4, '.', 4),
+  R('.', 4, 'p', 4, '.', 12, 'p', 4, '.', 4),
+  R('.', 2, 's', 4, 'b', 2, '.', 16, 's', 4, 'b', 2, '.', 2),
+  R('.', 2, 's', 4, 'b', 2, '.', 16, 's', 4, 'b', 2, '.', 2),
 ]);
 
 // --- Customer: plain pub patron. Geometry is shared; each customer gets
-// its own palette instance so shirt color varies. ---------------------------
+// its own palette instance so shirt color varies. Redrawn at double
+// resolution with a hair part, a collar line, and a two-tone shoe — kept
+// simpler than the doe/hunter leads per the "plain patron" intent above.
 const CUSTOMER_IDLE = buildSprite([
-  R('.', 5, 'h', 4, '.', 5),
-  R('.', 4, 'h', 6, '.', 4),
-  R('.', 3, 'h', 1, 'k', 6, 'h', 1, '.', 3),
-  R('.', 4, 'k', 6, '.', 4),
-  R('.', 4, 'm', 6, '.', 4),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 3, 'p', 8, '.', 3),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
+  R('.', 10, 'h', 8, '.', 10),
+  R('.', 8, 'h', 5, 'q', 2, 'h', 5, '.', 8),                                      // hair part
+  R('.', 6, 'h', 2, 'k', 12, 'h', 2, '.', 6),
+  R('.', 8, 'k', 12, '.', 8),
+  R('.', 8, 'm', 4, 'l', 4, 'm', 4, '.', 8),                                      // collar line
+  R('.', 6, 'm', 16, '.', 6),
+  R('.', 4, 'm', 20, '.', 4),
+  R('.', 4, 'm', 20, '.', 4),
+  R('.', 6, 'm', 16, '.', 6),
+  R('.', 6, 'p', 16, '.', 6),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 8, 'p', 4, '.', 4, 'p', 4, '.', 8),
+  R('.', 6, 's', 4, 'h', 2, '.', 4, 's', 4, 'h', 2, '.', 6),                      // two-tone shoe
 ]);
 
 const CUSTOMER_WALK = buildSprite([
-  ...CUSTOMER_IDLE.rows.slice(0, 10),
-  R('.', 3, 'p', 2, '.', 4, 'p', 2, '.', 3),
-  R('.', 2, 'p', 2, '.', 6, 'p', 2, '.', 2),
-  R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
+  ...CUSTOMER_IDLE.rows.slice(0, 20),
+  R('.', 6, 'p', 4, '.', 8, 'p', 4, '.', 6),
+  R('.', 6, 'p', 4, '.', 8, 'p', 4, '.', 6),
+  R('.', 4, 'p', 4, '.', 12, 'p', 4, '.', 4),
+  R('.', 4, 'p', 4, '.', 12, 'p', 4, '.', 4),
+  R('.', 2, 's', 4, 'h', 2, '.', 16, 's', 4, 'h', 2, '.', 2),
+  R('.', 2, 's', 4, 'h', 2, '.', 16, 's', 4, 'h', 2, '.', 2),
 ]);
 
 const CUSTOMER_SHIRT_COLORS = ['#4a6fa5', '#8a4a9e', '#4a9e6a', '#c9a227', '#c9622f', '#5a7d8a'];
@@ -250,54 +321,91 @@ function makeCustomerPalette() {
   return {
     '.': null,
     h: '#3a2a1a',
+    q: '#241a10', // hair part shadow
     k: '#f0c090',
     m: CUSTOMER_SHIRT_COLORS[Math.floor(Math.random() * CUSTOMER_SHIRT_COLORS.length)],
+    l: '#2a2a2a', // collar trim
     p: '#2a2418',
     s: '#1a1512',
   };
 }
 
-// ---- Order icons: tiny (6x8) glyphs shown in a customer's speech bubble
-// and above the player's head while carrying an order. -----------------
+// ---- Order icons: glyphs shown in a customer's speech bubble and above
+// the player's head while carrying an order. Redrawn at roughly double
+// resolution with real added detail: a mug handle, a proper wine glass
+// bowl/stem/foot, a cocktail with a rim garnish, and a plate with distinct
+// food + garnish. --------------------------------------------------------
 const MUG_ROWS = [
-  R('.', 1, 'f', 4, '.', 1),
-  R('f', 6),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 6),
+  R('.', 2, 'f', 8, '.', 5),
+  R('.', 2, 'f', 8, '.', 5),
+  R('f', 12, '.', 3),
+  R('f', 12, '.', 3),
+  R('o', 2, 'L', 8, 'o', 5),
+  R('o', 2, 'L', 8, 'o', 5),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 2, '.', 2, 'o', 1),
+  R('o', 2, 'L', 8, 'o', 5),
+  R('o', 2, 'L', 8, 'o', 5),
+  R('o', 12, '.', 3),
+  R('o', 12, '.', 3),
 ];
 const COCKTAIL_ROWS = [
-  R('o', 6),
-  R('.', 1, 'L', 4, '.', 1),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 6),
-  R('.', 6),
+  R('o', 5, 'G', 2, 'o', 5),
+  R('.', 1, 'L', 10, '.', 1),
+  R('.', 2, 'L', 8, '.', 2),
+  R('.', 3, 'L', 6, '.', 3),
+  R('.', 4, 'L', 4, '.', 4),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 4, 'o', 4, '.', 4),
+  R('.', 3, 'o', 6, '.', 3),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
 ];
 const WINE_ROWS = [
-  R('.', 1, 'o', 4, '.', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('o', 1, 'L', 4, 'o', 1),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 2, 'o', 2, '.', 2),
-  R('.', 1, 'o', 4, '.', 1),
-  R('.', 6),
+  R('.', 3, 'o', 6, '.', 3),
+  R('.', 1, 'o', 2, 'L', 6, 'o', 2, '.', 1),
+  R('o', 1, 'L', 10, 'o', 1),
+  R('o', 1, 'L', 10, 'o', 1),
+  R('.', 1, 'o', 2, 'L', 6, 'o', 2, '.', 1),
+  R('.', 3, 'o', 6, '.', 3),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 5, 'o', 2, '.', 5),
+  R('.', 4, 'o', 4, '.', 4),
+  R('.', 2, 'o', 8, '.', 2),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
 ];
 const FOOD_ROWS = [
-  R('.', 6),
-  R('.', 1, 'p', 4, '.', 1),
-  R('p', 1, 'M', 2, 'G', 1, 'M', 1, 'p', 1),
-  R('p', 1, 'M', 4, 'p', 1),
-  R('p', 6),
-  R('.', 6),
-  R('.', 6),
-  R('.', 6),
+  R('.', 12),
+  R('.', 2, 'p', 8, '.', 2),
+  R('p', 12),
+  R('p', 12),
+  R('p', 1, 'M', 4, 'G', 2, 'M', 4, 'p', 1),
+  R('p', 1, 'M', 10, 'p', 1),
+  R('p', 1, 'M', 10, 'p', 1),
+  R('p', 2, 'M', 8, 'p', 2),
+  R('p', 12),
+  R('.', 2, 'p', 8, '.', 2),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
+  R('.', 12),
 ];
 
 function beerPalette(liquid) {
@@ -308,7 +416,7 @@ const ORDER_ICONS = {
   'beer-dark': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#3a2414') },
   'beer-red': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#8a2418') },
   'beer-blond': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#e8b830') },
-  cocktail: { sprite: buildSprite(COCKTAIL_ROWS), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
+  cocktail: { sprite: buildSprite(COCKTAIL_ROWS), palette: { '.': null, o: '#2a1c10', L: '#d94f8c', G: '#5a8a3a' } },
   wine: { sprite: buildSprite(WINE_ROWS), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
   food: { sprite: buildSprite(FOOD_ROWS), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
 };
@@ -346,7 +454,7 @@ function rectsOverlap(a, b) {
 
 function getFootBox(e, x, y) {
   const w = e.w * 0.55;
-  const h = 7;
+  const h = 7 * SCALE;
   return { x: x - w / 2, y: y - h, w, h };
 }
 
@@ -387,7 +495,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: s.idle.w,
     h: s.idle.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : 54,
+    speed: (kind === 'doe' ? 62 : kind === 'customer' ? 38 : 54) * SCALE,
     flip: false,
     legTimer: 0,
     legFrame: 0,
@@ -407,6 +515,20 @@ let score = 0;
 const POINTS_PER_DELIVERY = 10;
 const FORGOTTEN_PENALTY = 15;
 
+// ---- Life: instead of an instant game-over, getting caught costs a third of
+// a continuous life bar (1 = full). A brief invulnerability window after a hit
+// stops the same touch from draining multiple thirds in one frame, and life
+// slowly regenerates once a few seconds pass without being caught again.
+// `caught` still means "game over" — it only flips true once life hits 0.
+let life = 1;
+const LIFE_MAX = 1;
+const LIFE_HIT_FRACTION = 1 / 3;
+const LIFE_HIT_INVULN = 1.5;
+const LIFE_REGEN_DELAY = 3;
+const LIFE_REGEN_DURATION = 20; // seconds for a fully-drained bar to refill
+let hitInvulnTimer = 0;
+let regenDelayTimer = 0;
+
 // ---- Levels: every LEVEL_UP_SCORE points ramps up difficulty (more
 // customers, a hungrier hunter). Level is derived from score rather than
 // tracked separately, so a restart resets it for free. Scaling is capped at
@@ -415,6 +537,16 @@ const FORGOTTEN_PENALTY = 15;
 const LEVEL_UP_SCORE = 100;
 const EFFECTIVE_LEVEL_CAP = 10;
 function getLevel() { return Math.floor(score / LEVEL_UP_SCORE) + 1; }
+
+// Level-done splash: shown briefly (gameplay frozen) whenever getLevel()
+// ticks up. `lastLevel` tracks the previous frame's level so the crossing
+// can be detected regardless of which score change (delivery, penalty)
+// caused it. `splashLevel` is the level that was just completed, not the
+// new one, so the text reads "Level 1 done" right as level 2 begins.
+const LEVEL_SPLASH_DURATION = 2.5;
+let lastLevel = 1;
+let levelSplashTimer = 0;
+let splashLevel = null;
 
 // Small floating "+10"/"-15" texts that pop up at a point and drift/fade —
 // gives the score/penalty feedback a place to happen visually.
@@ -458,7 +590,7 @@ function updateCustomer(c, dt) {
     const dx = target.x - c.x;
     const dy = target.y - c.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 1.5) {
+    if (dist < 1.5 * SCALE) {
       c.x = target.x;
       c.y = target.y;
       c.moving = false;
@@ -502,7 +634,7 @@ function pickClearSpawn(e) {
     const y = clamp(WORLD_H / 2 + (Math.random() < 0.5 ? 1 : -1) * Math.random() * WORLD_H * 0.4, e.h / 2, WORLD_H - e.h / 2);
     if (!collidesAt(e, x, y)) return { x, y };
   }
-  return { x: WORLD_W / 2, y: 200 }; // fallback: open floor between bar and tables
+  return { x: WORLD_W / 2, y: 200 * SCALE }; // fallback: open floor between bar and tables
 }
 
 function resetGame() {
@@ -514,6 +646,12 @@ function resetGame() {
   hunterDir = { x: 0, y: 0 };
   hunterChangeTimer = 0;
   caught = false;
+  life = LIFE_MAX;
+  hitInvulnTimer = 0;
+  regenDelayTimer = 0;
+  lastLevel = 1;
+  levelSplashTimer = 0;
+  splashLevel = null;
   score = 0;
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
@@ -526,7 +664,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // ---- Serving: 'E' grabs the oldest waiting order from the bar, or (while
 // already carrying one) delivers it if standing next to its customer. ------
-const INTERACT_RANGE = 14;
+const INTERACT_RANGE = 14 * SCALE;
 
 function nearRect(x, y, rect, margin) {
   return x > rect.x - margin && x < rect.x + rect.w + margin &&
@@ -538,8 +676,9 @@ function handleInteract() {
 
   if (player.carrying) {
     // player.carrying.customer is kept valid (or reassigned to someone else
-    // waiting on the same drink) by the per-frame check in update(); it can
-    // still be null here if nobody currently wants this order.
+    // waiting on the same drink) by the per-frame check in update(), which
+    // drops the order entirely once nobody wants it — so target should
+    // always be set here, but this is kept defensive just in case.
     const target = player.carrying.customer;
     // Delivery works either right next to the customer, or anywhere near the
     // table they're seated at — with several seats per side on the bigger
@@ -624,6 +763,13 @@ function pickEscapeDirection() {
 function update(dt) {
   if (caught) return;
 
+  // Freeze gameplay for the level-done splash's duration; it counts itself
+  // down and clears on its own, no key press needed.
+  if (levelSplashTimer > 0) {
+    levelSplashTimer -= dt;
+    return;
+  }
+
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
   player.moving = input.x !== 0 || input.y !== 0;
@@ -636,7 +782,7 @@ function update(dt) {
   // with level too, capped just under the player's own speed (62) so a
   // straight-line escape is always possible, if barely at high levels.
   const hunterLvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1;
-  hunter.speed = Math.min(60, 40 + hunterLvl * 2.5);
+  hunter.speed = Math.min(60 * SCALE, (40 + hunterLvl * 2.5) * SCALE);
 
   hunterChangeTimer -= dt;
   if (hunterChangeTimer <= 0) pickNewHunterDirection();
@@ -676,16 +822,21 @@ function update(dt) {
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
   // off to anyone else currently waiting on the same drink instead of
-  // wasting the trip. Re-checked every frame, so a match found moments
-  // later (a new customer sits down wanting the same thing) still works.
+  // wasting the trip. If nobody else wants it either, drop the order
+  // entirely rather than leaving the player stuck "carrying" a drink with
+  // no possible delivery target, which would block grabbing a new one.
   if (player.carrying) {
     const target = player.carrying.customer;
     if (!target || target.state !== 'sitting' || target.served) {
       const replacement = customers.find(c =>
         c.state === 'sitting' && !c.served && !c.beingCarried && c.orderType === player.carrying.type
       );
-      player.carrying.customer = replacement || null;
-      if (replacement) replacement.beingCarried = true;
+      if (replacement) {
+        player.carrying.customer = replacement;
+        replacement.beingCarried = true;
+      } else {
+        player.carrying = null;
+      }
     }
   }
 
@@ -711,21 +862,56 @@ function update(dt) {
     }
   }
 
-  // Catch detection.
+  // Life regen: only once a few hit-free seconds have passed, and never
+  // while already fully caught (game over).
+  if (hitInvulnTimer > 0) hitInvulnTimer -= dt;
+  if (!caught) {
+    if (regenDelayTimer > 0) {
+      regenDelayTimer -= dt;
+    } else if (life < LIFE_MAX) {
+      life = Math.min(LIFE_MAX, life + dt / LIFE_REGEN_DURATION);
+    }
+  }
+
+  // Catch detection: each touch costs a third of the life bar rather than
+  // ending the game outright. A short invulnerability window (and a shove
+  // away from the hunter) gives the player room to escape after a hit.
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < (player.w + hunter.w) / 2.4) {
-    caught = true;
+  if (!caught && hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
+    life = Math.max(0, life - LIFE_HIT_FRACTION);
+    hitInvulnTimer = LIFE_HIT_INVULN;
+    regenDelayTimer = LIFE_REGEN_DELAY;
+    if (life <= 1e-9) {
+      caught = true;
+    } else {
+      const angle = dist > 0.001 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
+      const shove = tryMove(player, Math.cos(angle) * 24 * SCALE, Math.sin(angle) * 24 * SCALE);
+      player.x = shove.x;
+      player.y = shove.y;
+      addFloatingText(player.x, player.y - player.h - 4, '-LIFE', '#e8620c');
+    }
   }
+
+  // Level-done splash: fires once per level-up, checked last so it catches
+  // every way score could have changed this frame (delivery, forgotten
+  // penalty). Freezes gameplay on the next frame via the guard above.
+  const level = getLevel();
+  if (level > lastLevel) {
+    splashLevel = lastLevel;
+    levelSplashTimer = LEVEL_SPLASH_DURATION;
+  }
+  lastLevel = level;
 }
 
 // ---- Render -----------------------------------------------------------------
-// Hardwood floor: planks PLANK_TILES wide, staggered brick-style every other
-// row, each plank getting one of a few warm wood shades (stable per-plank,
-// not per-tile, so a plank reads as a single board) plus a subtle seam line
-// at each plank edge and row line for grain definition.
-const PLANK_TILES = 4;
+// Hardwood floor: narrow vertical planks PLANK_TILES tall, staggered
+// brick-style every other column, each plank getting one of a few warm wood
+// shades (stable per-plank, not per-tile, so a plank reads as a single
+// board) plus a subtle seam line at each plank edge and a grain line running
+// along its length for texture.
+const PLANK_TILES = 3;
 const WOOD_SHADES = ['#a9835a', '#a07a52', '#b0885f'];
 
 function drawGround(camX, camY) {
@@ -742,10 +928,10 @@ function drawGround(camX, camY) {
       // (only matters once the world is small enough to see its edges).
       if (worldTileX < 0 || worldTileY < 0 || worldTileX * TILE >= WORLD_W || worldTileY * TILE >= WORLD_H) continue;
 
-      const rowShift = worldTileY % 2 === 0 ? 0 : Math.floor(PLANK_TILES / 2);
-      const plankCol = worldTileX + rowShift;
-      const plankIndex = Math.floor(plankCol / PLANK_TILES);
-      const shadeIdx = Math.abs((plankIndex * 928371 + worldTileY * 6151)) % WOOD_SHADES.length;
+      const colShift = worldTileX % 2 === 0 ? 0 : Math.floor(PLANK_TILES / 2);
+      const plankRow = worldTileY + colShift;
+      const plankIndex = Math.floor(plankRow / PLANK_TILES);
+      const shadeIdx = Math.abs((plankIndex * 928371 + worldTileX * 6151)) % WOOD_SHADES.length;
 
       const sx = worldTileX * TILE - camX;
       const sy = worldTileY * TILE - camY;
@@ -753,8 +939,8 @@ function drawGround(camX, camY) {
       ctx.fillRect(Math.round(sx), Math.round(sy), TILE, TILE);
 
       ctx.fillStyle = 'rgba(0,0,0,0.15)';
-      ctx.fillRect(Math.round(sx), Math.round(sy), TILE, 1); // row grain line
-      if (plankCol % PLANK_TILES === 0) ctx.fillRect(Math.round(sx), Math.round(sy), 1, TILE); // plank seam
+      ctx.fillRect(Math.round(sx), Math.round(sy), 1, TILE); // grain line along the plank's length
+      if (plankRow % PLANK_TILES === 0) ctx.fillRect(Math.round(sx), Math.round(sy), TILE, 1); // plank seam
     }
   }
 }
@@ -762,14 +948,32 @@ function drawGround(camX, camY) {
 // A bar segment is just a wood counter rect with a lighter top edge and a
 // darker front trim — no fixed "behind" side, since segments can run in any
 // direction to form an L, so every segment gets the same simple treatment.
+// Vertical seam lines (echoing the floor's plank seams) break up what would
+// otherwise be a flat color fill.
 function drawBar(bar, camX, camY) {
   const c = bar.collider;
+  const x = Math.round(c.x - camX);
+  const y = Math.round(c.y - camY);
   ctx.fillStyle = '#7a4a2a';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY), c.w, c.h);
+  ctx.fillRect(x, y, c.w, c.h);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let sx = TILE; sx < c.w; sx += TILE) ctx.fillRect(x + sx, y, 1, c.h);
   ctx.fillStyle = '#9a6a3a';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY), c.w, 2);
+  ctx.fillRect(x, y, c.w, 2);
   ctx.fillStyle = '#4a2c14';
-  ctx.fillRect(Math.round(c.x - camX), Math.round(c.y - camY + c.h - 3), c.w, 3);
+  ctx.fillRect(x, y + c.h - 3, c.w, 3);
+}
+
+// A beveled highlight/shadow pair on both the tabletop and the chairs (same
+// treatment on each, just smaller) so furniture reads with some depth
+// instead of flat color fills, matching the level of finish the sprites got.
+function drawChair(sx, sy) {
+  ctx.fillStyle = '#4a3222';
+  ctx.fillRect(Math.round(sx - CHAIR_SIZE / 2), Math.round(sy - CHAIR_SIZE / 2), CHAIR_SIZE, CHAIR_SIZE);
+  ctx.fillStyle = '#6a4a30';
+  ctx.fillRect(Math.round(sx - CHAIR_SIZE / 2 + 1), Math.round(sy - CHAIR_SIZE / 2 + 1), CHAIR_SIZE - 2, 1);
+  ctx.fillStyle = '#2e1e12';
+  ctx.fillRect(Math.round(sx - CHAIR_SIZE / 2 + 1), Math.round(sy + CHAIR_SIZE / 2 - 2), CHAIR_SIZE - 2, 1);
 }
 
 function drawTable(table, camX, camY) {
@@ -778,19 +982,24 @@ function drawTable(table, camX, camY) {
   const halfW = table.w / 2;
   const halfH = table.h / 2;
 
-  ctx.fillStyle = '#4a3222';
   for (const seat of getTableSeats(table)) {
-    ctx.fillRect(
-      Math.round(seat.x - camX - CHAIR_SIZE / 2),
-      Math.round(seat.y - camY - CHAIR_SIZE / 2),
-      CHAIR_SIZE, CHAIR_SIZE
-    );
+    drawChair(seat.x - camX, seat.y - camY);
   }
 
+  const tx = Math.round(sx - halfW);
+  const ty = Math.round(sy - halfH);
   ctx.fillStyle = '#5a3418';
-  ctx.fillRect(Math.round(sx - halfW), Math.round(sy - halfH), table.w, table.h);
+  ctx.fillRect(tx, ty, table.w, table.h);
   ctx.fillStyle = '#8a5a34';
-  ctx.fillRect(Math.round(sx - halfW + 2), Math.round(sy - halfH + 2), table.w - 4, table.h - 4);
+  ctx.fillRect(tx + 2, ty + 2, table.w - 4, table.h - 4);
+  // Wood grain: a couple of subtle horizontal streaks plus a highlight along
+  // the top edge and a shadow along the bottom, like the floor's plank seams.
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(tx + 2, ty + 2, table.w - 4, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(tx + 2, ty + table.h - 3, table.w - 4, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let gy = ty + 6; gy < ty + table.h - 4; gy += 6) ctx.fillRect(tx + 2, gy, table.w - 4, 1);
 }
 
 function drawFurnitureItem(item, camX, camY) {
@@ -871,7 +1080,18 @@ function render() {
         const sprite = set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
         const sx = e.x - camX - sprite.w / 2;
         const sy = e.y - camY - sprite.h;
+        // A soft ground shadow at the feet grounds the character on the
+        // floor instead of it looking like it's floating over it.
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(e.x - camX, e.y - camY, e.w * 0.32, e.w * 0.13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Flicker the player while invulnerable right after being caught, so
+        // the brief safety window after a hit is visible, not just felt.
+        const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
+        ctx.globalAlpha = flicker ? 0.4 : 1;
         drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
+        ctx.globalAlpha = 1;
       },
     })),
   ];
@@ -914,6 +1134,26 @@ function render() {
   ctx.fillStyle = '#f5f5f5';
   ctx.fillText(hudText, 4, 10);
 
+  // Life bar: three segments (thirds), each partially filling as life
+  // regenerates rather than only ever being fully on/off.
+  const LIFE_BAR_X = 5;
+  const LIFE_BAR_Y = 15;
+  const LIFE_SEG_W = 16;
+  const LIFE_SEG_H = 4;
+  const LIFE_SEG_GAP = 2;
+  for (let i = 0; i < 3; i++) {
+    const segX = LIFE_BAR_X + i * (LIFE_SEG_W + LIFE_SEG_GAP);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(segX - 1, LIFE_BAR_Y - 1, LIFE_SEG_W + 2, LIFE_SEG_H + 2);
+    ctx.fillStyle = '#3a2a20';
+    ctx.fillRect(segX, LIFE_BAR_Y, LIFE_SEG_W, LIFE_SEG_H);
+    const segFill = clamp(life * 3 - i, 0, 1);
+    if (segFill > 0) {
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(segX, LIFE_BAR_Y, LIFE_SEG_W * segFill, LIFE_SEG_H);
+    }
+  }
+
   if (caught) {
     if (caughtImage.complete && caughtImage.naturalWidth > 0) {
       // Cover-fit the image into the internal resolution, cropping overflow.
@@ -934,6 +1174,23 @@ function render() {
     ctx.fillStyle = '#f5f5f5';
     ctx.font = '8px monospace';
     ctx.fillText('press SPACE to restart', INTERNAL_W / 2, INTERNAL_H / 2 + 10);
+  } else if (levelSplashTimer > 0) {
+    if (levelDoneImage.complete && levelDoneImage.naturalWidth > 0) {
+      // Cover-fit the image into the internal resolution, cropping overflow.
+      const scale = Math.max(INTERNAL_W / levelDoneImage.naturalWidth, INTERNAL_H / levelDoneImage.naturalHeight);
+      const dw = levelDoneImage.naturalWidth * scale;
+      const dh = levelDoneImage.naturalHeight * scale;
+      ctx.drawImage(levelDoneImage, (INTERNAL_W - dw) / 2, (INTERNAL_H - dh) / 2, dw, dh);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+    }
+    ctx.fillStyle = '#f5f5f5';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('LEVEL ' + splashLevel + ' DONE', INTERNAL_W / 2, INTERNAL_H / 2 - 6);
   }
 }
 
@@ -956,4 +1213,7 @@ window.__debug = {
   getScore: () => score,
   getLevel,
   setScore: (v) => { score = v; },
+  getLife: () => life,
+  setLife: (v) => { life = v; },
+  getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
 };
