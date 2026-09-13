@@ -402,6 +402,7 @@ function updateCustomer(c, dt) {
         c.orderType = randomOrderType();
         c.orderPlacedAt = gameTime;
         noteOrderPlaced(c);
+        Sound.play('order');
       }
     }
     c.sitTimer -= dt;
@@ -411,6 +412,7 @@ function updateCustomer(c, dt) {
         score = Math.max(0, score - FORGOTTEN_PENALTY);
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
         noteOrderCleared(c);
+        Sound.play('penalty');
         Dialogue.trigger('abandoned', null);
       }
       c.state = 'leaving';
@@ -520,6 +522,7 @@ function regularPlaceOrder(r) {
   r.served = false;
   r.beingCarried = false;
   noteOrderPlaced(r);
+  Sound.play('regularOrder');
   onRegularOrdered(r);
 }
 
@@ -531,6 +534,7 @@ function regularGiveUp(r) {
   r.mood = clampMood(r.mood - 0.45);
   const lapsed = r.orderType;
   clearRegularOrder(r);
+  Sound.play('penalty');
   onRegularGaveUp(r, lapsed);
 }
 
@@ -676,6 +680,7 @@ function updateDialogueTriggers(dt, input) {
   const lvl = getLevel();
   if (lvl > lastLevelSeen) {
     lastLevelSeen = lvl;
+    Sound.play('levelUp');
     Dialogue.trigger('levelUp', null);
   }
 
@@ -768,7 +773,10 @@ function resetGame() {
   else for (const r of regulars) resetRegular(r);
   Dialogue.reset();
   resetDialogueTriggers();
-  if (hasPlayedBefore) Dialogue.trigger('restart', null);
+  if (hasPlayedBefore) {
+    Sound.play('start');
+    Dialogue.trigger('restart', null);
+  }
   clearHeldInputs();
   syncCaughtDom();
 }
@@ -809,6 +817,7 @@ function completeDelivery(target) {
   target.beingCarried = false;
   player.carrying = null;
   score += POINTS_PER_DELIVERY;
+  Sound.play('deliver');
   addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
 
   if (!target.isRegular) {
@@ -831,6 +840,7 @@ function completeDelivery(target) {
 // Counts an interact press that accomplished nothing, and lets the regulars
 // notice once it's clearly a pattern rather than one mistimed tap.
 function registerWhiff() {
+  Sound.play('whiff');
   whiffCount++;
   whiffDecay = 6;
   if (whiffCount >= 3) {
@@ -866,6 +876,7 @@ function handleInteract() {
     if (pending) {
       pending.beingCarried = true;
       player.carrying = { type: pending.orderType, customer: pending };
+      Sound.play('pickup');
       return;
     }
   }
@@ -874,6 +885,12 @@ function handleInteract() {
 
 // ---- Input ----------------------------------------------------------------
 const keys = new Set();
+
+// Any real gesture may be the browser's one opportunity to start Web Audio.
+// The explicit start/action sounds also call through this path, but these two
+// listeners cover keyboard movement and closing the help panel with Escape.
+window.addEventListener('pointerdown', Sound.unlock, { once: true, passive: true, capture: true });
+window.addEventListener('keydown', Sound.unlock, { once: true, capture: true });
 
 // Anything that can strand a held key/pointer (restart, tab switch, losing
 // focus, entering fullscreen) funnels through here, so the player never walks
@@ -887,6 +904,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   keys.add(k);
   if (k === 'escape') { toggleOverlay(); return; }
+  if (!e.repeat && k === 'm') { toggleSound(); return; }
   if (caught && e.key === ' ') { resetGame(); return; }
   if (paused) return;
   // E is the primary interact key; Space is the same action (and stays the
@@ -927,6 +945,7 @@ const el = {
   overlay: document.getElementById('overlay'),
   start: document.getElementById('btn-start'),
   help: document.getElementById('btn-help'),
+  sound: document.getElementById('btn-sound'),
   fullscreen: document.getElementById('btn-fullscreen'),
   caughtActions: document.getElementById('caught-actions'),
   restart: document.getElementById('btn-restart'),
@@ -947,8 +966,31 @@ function setOverlay(open) {
 let overlaySeen = false;
 function toggleOverlay() { setOverlay(!paused); }
 
-el.start.addEventListener('click', () => { el.start.blur(); setOverlay(false); });
+function syncSoundButton() {
+  const muted = Sound.isMuted();
+  el.sound.classList.toggle('muted', muted);
+  el.sound.setAttribute('aria-pressed', muted ? 'true' : 'false');
+  el.sound.setAttribute('aria-label', muted ? 'Enable sound effects' : 'Mute sound effects');
+}
+
+function toggleSound() {
+  const wasMuted = Sound.isMuted();
+  Sound.setMuted(!wasMuted);
+  syncSoundButton();
+  if (wasMuted) Sound.play('start');
+}
+
+syncSoundButton();
+if (!Sound.supported) el.sound.classList.add('hidden');
+
+el.start.addEventListener('click', () => {
+  el.start.blur();
+  Sound.unlock();
+  Sound.play('start');
+  setOverlay(false);
+});
 el.help.addEventListener('click', () => { el.help.blur(); toggleOverlay(); });
+el.sound.addEventListener('click', () => { el.sound.blur(); toggleSound(); });
 
 // Fullscreen is a nicety, not a requirement: if the API is missing the button
 // simply isn't offered and everything else still works.
@@ -1239,6 +1281,7 @@ function update(dt) {
   if (dist < (player.w + hunter.w) / 2.4) {
     caught = true;
     hasPlayedBefore = true;
+    Sound.play('caught');
     Dialogue.trigger('caught', null);
   }
 }
@@ -2188,7 +2231,12 @@ window.__debug = {
     id: r.id, order: r.orderType, patience: +(r.sitTimer).toFixed(1),
     mood: +r.mood.toFixed(2), drinks: r.drinks, stage: r.stage.id, pose: r.pose,
   })),
-  forceCaught: () => { caught = true; hasPlayedBefore = true; Dialogue.trigger('caught', null); },
+  forceCaught: () => {
+    caught = true;
+    hasPlayedBefore = true;
+    Sound.play('caught');
+    Dialogue.trigger('caught', null);
+  },
   triggerDialogue: (category, who) => Dialogue.trigger(category, who ? { who } : null),
   clearDialogueCooldowns: () => {
     Dialogue.clearCooldowns();

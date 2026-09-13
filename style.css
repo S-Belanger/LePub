@@ -91,6 +91,7 @@ canvas#game {
 }
 
 .chip {
+  position: relative;
   width: 44px;
   height: 44px;
   min-width: 44px;
@@ -111,6 +112,20 @@ canvas#game {
 .chip:hover,
 .chip:focus-visible,
 .chip.active { opacity: 1; color: var(--ink); border-color: var(--amber); outline: none; }
+
+.chip.sound {
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+.chip.sound.muted { color: #b96363; border-color: #734348; }
+.chip.sound.muted::after {
+  content: '';
+  position: absolute;
+  width: 29px;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(-36deg);
+}
 
 /* ---- Start / help overlay ------------------------------------------- */
 .overlay {

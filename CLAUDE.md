@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Le Pub: The Chase" — a small top-down 2D serving/chase game rendered in pixel art. You play a guy in a deer onesie waiting tables in a pub while a hunter stalks you: fetch orders from the bar, deliver them before customers give up, and don't get caught. Three named regulars — **Nazim, Sam and Gerald** — hold the corner booth for the whole run, order drinks like anybody else, and comment on what you're doing.
 
-It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and six plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
+It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and eight plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
 
 There is no `package.json`, no test suite, and no linter configured. The only image asset is `assets/caught.jpg`, the splash shown when the hunter catches you.
 
@@ -32,6 +32,7 @@ Script order in `index.html` matters: each file only uses things defined in the 
 | `src/dialogue-content.js` | `DIALOGUE_LINES` and `DIALOGUE_EXCHANGES` — authored text only. |
 | `src/dialogue.js` | The `Dialogue` module: selection, weighting, cooldowns, queueing, repetition control. |
 | `src/regulars.js` | `REGULARS` config, `INTOX_STAGES`, `NAZIM_STAGE_VISUALS`, order weighting, mood constants. Data and pure functions. |
+| `src/sound.js` | The lazy Web Audio sound system and its synthesized cue definitions. No audio assets. |
 | `game.js` | Everything that needs the canvas or mutable game state: viewport, world, collision, entities, customers, regulars runtime, input, page shell, touch, hunter AI, update, render. |
 
 `game.js` is by far the largest (~2150 lines) and is still flat top-level `const`/`function` declarations, no classes. Execution order inside it matters the same way it always did.
@@ -152,7 +153,11 @@ Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and swa
 - **Fullscreen** is a nicety: the button is hidden entirely when the API is absent, and everything else still works.
 - The loop skips both simulation and painting while `document.hidden`, and `dt` is still clamped to 0.05 so returning to a background tab never teleports anyone.
 
-### 13. `resetGame()`
+### 13. Sound
+
+`src/sound.js` synthesizes short Web Audio cues for orders, pickup, delivery, penalties, level-ups and being caught. It creates its `AudioContext` lazily from the first start/action gesture so browser autoplay rules are respected, and degrades to silence when Web Audio is unavailable. The SFX chip and `M` key toggle sound; the choice persists in `localStorage` when storage is available. Automatic cues have tiny per-event rate limits so simultaneous customer events do not stack into an abrasive burst.
+
+### 14. `resetGame()`
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, `score`, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and now also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 

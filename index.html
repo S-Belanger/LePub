@@ -19,6 +19,7 @@
     <!-- Corner controls. Kept quiet until touched/hovered. -->
     <div id="top-bar">
       <button id="btn-help" type="button" class="chip" aria-label="Help">?</button>
+      <button id="btn-sound" type="button" class="chip sound" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
       <button id="btn-fullscreen" type="button" class="chip" aria-label="Toggle fullscreen">&#9974;</button>
     </div>
 
@@ -30,6 +31,7 @@
         <ul class="keys">
           <li><span>Move</span><kbd>WASD</kbd><kbd>Arrows</kbd><em class="touch-only">left stick</em></li>
           <li><span>Grab / Deliver</span><kbd>E</kbd><kbd>Space</kbd><em class="touch-only">right button</em></li>
+          <li><span>Sound</span><kbd>M</kbd><em class="touch-only">SFX button</em></li>
           <li><span>Restart</span><kbd>Space</kbd><em class="touch-only">on-screen button</em></li>
         </ul>
         <button id="btn-start" type="button" class="primary">START SHIFT</button>
@@ -55,6 +57,7 @@
   <script src="src/dialogue-content.js"></script>
   <script src="src/dialogue.js"></script>
   <script src="src/regulars.js"></script>
+  <script src="src/sound.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
