@@ -2,6 +2,8 @@
 
 A compact pixel-art serving game where a waiter in a deer onesie works a crowded pub while a hunter stalks the room. Pick up the oldest waiting order at the bar, deliver it before the customer loses patience, and keep moving long enough to finish the next level.
 
+**Live demo:** [lepub.vercel.app](https://lepub.vercel.app)
+
 ![Le Pub gameplay showing active orders, the regulars, dialogue, and the life bar](assets/gameplay.png)
 
 ## Play the game
