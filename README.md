@@ -6,6 +6,12 @@ A compact pixel-art serving game where a waiter in a deer onesie works a crowded
 
 ![Le Pub gameplay showing active orders, the regulars, dialogue, and the life bar](assets/gameplay.png)
 
+## Art direction gallery
+
+Four visual redesign concepts live in [`concepts/`](concepts/). They use the same cast and gameplay scenario to compare cinematic, neon-noir, character-led, and arcade-first approaches without changing the playable build.
+
+With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
+
 ## Play the game
 
 Le Pub is a static browser game. It has no build step, package manager, runtime dependencies, or backend.
