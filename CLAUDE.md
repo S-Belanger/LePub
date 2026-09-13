@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and eight plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
 
-There is no `package.json`, no test suite, and no linter configured. The only image asset is `assets/caught.jpg`, the splash shown when the hunter catches you.
+There is no `package.json`, no test suite, and no linter configured. Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for the game-over and completed-level splashes; `assets/planFloor.png` is the retained floor-plan reference.
 
 ## Running it
 
@@ -35,7 +35,7 @@ Script order in `index.html` matters: each file only uses things defined in the 
 | `src/sound.js` | The lazy Web Audio sound system and its synthesized cue definitions. No audio assets. |
 | `game.js` | Everything that needs the canvas or mutable game state: viewport, world, collision, entities, customers, regulars runtime, input, page shell, touch, hunter AI, update, render. |
 
-`game.js` is by far the largest (~2150 lines) and is still flat top-level `const`/`function` declarations, no classes. Execution order inside it matters the same way it always did.
+`game.js` is by far the largest (~2350 lines) and is still flat top-level `const`/`function` declarations, no classes. Execution order inside it matters the same way it always did.
 
 ## Architecture
 
@@ -106,7 +106,7 @@ Gerald's escalation is content-side: his lines about Nazim declare a `nazim: [..
 
 `findOldestPendingOrder()` picks by `orderPlacedAt` across **both** populations, so the queue stays fair now that two feed it.
 
-Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`). If the target stops wanting the order, `update()` retargets each frame — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose; `player.carrying.customer` can legitimately be `null`. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
+Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`). If the target stops wanting the order, `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
 
 ### 8. Dialogue
 
@@ -120,13 +120,17 @@ A reactive layer on top of gameplay. It never pauses the chase, blocks input, or
 
 ### 9. Hunter AI: pursuit, not wandering
 
-`pickNewHunterDirection()` re-aims at the player's *current* position on a short timer with random angle jitter and a small chance to pause. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst; if only one axis is blocked, `tryMove` has already slid it along the open axis and the code just re-aims sooner. Catch detection is a distance check at the end of `update()`.
+`pickNewHunterDirection()` re-aims at the player's *current* position on a short timer with random angle jitter and a small chance to pause. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst; if only one axis is blocked, `tryMove` has already slid it along the open axis and the code just re-aims sooner.
 
-### 10. Levels and difficulty
+### 10. Life and capture
 
-Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`, `LEVEL_UP_SCORE` 100), so it never needs its own reset. Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the displayed level keeps climbing. Per level: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — sharper aim, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint.
+Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
 
-### 11. Render passes
+### 11. Levels and difficulty
+
+Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`, `LEVEL_UP_SCORE` 100). Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the displayed level keeps climbing. Per level: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — sharper aim, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint. Crossing a new high-water level freezes the simulation for a 2.5-second `LevelDone.png` splash; losing points and re-crossing the same threshold does not replay it.
+
+### 12. Render passes
 
 `render()` runs explicit layers, farthest first:
 
@@ -138,12 +142,12 @@ Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`,
 6. **grade** — a level-scaled midnight tint plus a dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes).
 7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
 8. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
-9. **HUD** — a compact pixel-font plate with level and score.
-10. **caught overlay** — `assets/caught.jpg` cover-fit into the internal resolution, a dark plate for legibility, "CAUGHT!", the final level and score, the restart prompt, and the newest thing a regular said, attributed in their colour.
+9. **HUD** — a compact pixel-font plate with level, score and the three-segment regenerating life bar.
+10. **state overlay** — either `assets/caught.jpg` with the final score/reaction, or `assets/LevelDone.png` with the completed and incoming levels, cover-fit to the live internal resolution.
 
 Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and sway) is skipped entirely when `prefersReducedMotion` is set. `imageSmoothingEnabled = false` and pixelated CSS rendering are preserved throughout.
 
-### 12. Page shell, input and touch
+### 13. Page shell, input and touch
 
 `index.html` is a fullscreen shell: the canvas is the page, and the title, subtitle and key list live in a start/help overlay (`#overlay`, toggled by the `?` chip and `Escape`) rather than permanently consuming layout. `style.css` uses `100dvh` with a `100vh` fallback, blocks document scrolling and overscroll, honours safe-area insets, and paints the letterbox area as a deliberate dark surround.
 
@@ -153,13 +157,13 @@ Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and swa
 - **Fullscreen** is a nicety: the button is hidden entirely when the API is absent, and everything else still works.
 - The loop skips both simulation and painting while `document.hidden`, and `dt` is still clamped to 0.05 so returning to a background tab never teleports anyone.
 
-### 13. Sound
+### 14. Sound
 
 `src/sound.js` synthesizes short Web Audio cues for orders, pickup, delivery, penalties, level-ups and being caught. It creates its `AudioContext` lazily from the first start/action gesture so browser autoplay rules are respected, and degrades to silence when Web Audio is unavailable. The SFX chip and `M` key toggle sound; the choice persists in `localStorage` when storage is available. Automatic cues have tiny per-event rate limits so simultaneous customer events do not stack into an abrasive burst.
 
-### 14. `resetGame()`
+### 15. `resetGame()`
 
-Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, `score`, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and now also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
+Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/level-splash state, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
 **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
@@ -170,6 +174,7 @@ Still the single source of truth for "new game" state. It resets `gameTime`, the
 | Helper | Use |
 | --- | --- |
 | `setScore(n)` / `getScore()` / `getLevel()` | Level is derived from score, so `setScore` is how you reach a level. |
+| `setLife(n)` / `getLife()` / `getLevelSplash()` | Inspect the damage/regen bar and current completed-level transition. |
 | `getViewport()` / `getCamera()` | Current internal resolution, integer scale, orientation, camera origin. |
 | `reservedSeats()` / `freeGenericSeats()` | Inspect seat reservation. |
 | `forceRegularOrder(id, type?)` | Make a regular order now, optionally of a given type. |

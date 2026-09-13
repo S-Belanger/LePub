@@ -69,6 +69,10 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', inva
 const caughtImage = new Image();
 caughtImage.src = 'assets/caught.jpg';
 
+// Splash image shown full-screen when a level is completed.
+const levelDoneImage = new Image();
+levelDoneImage.src = 'assets/LevelDone.png';
+
 // ---- World ------------------------------------------------------------------
 // Portrait map (narrower than tall) to match the intended floor plan: a small
 // table up-left, a long many-seat table up-right, an L-shaped bar down the
@@ -297,6 +301,20 @@ let gameTime = 0;
 const POINTS_PER_DELIVERY = 10;
 const FORGOTTEN_PENALTY = 15;
 
+// ---- Life: instead of an instant game-over, getting caught costs a third of
+// a continuous life bar (1 = full). A brief invulnerability window after a hit
+// stops the same touch from draining multiple thirds in one frame, and life
+// slowly regenerates once a few seconds pass without being caught again.
+// `caught` still means "game over" — it only flips true once life hits 0.
+let life = 1;
+const LIFE_MAX = 1;
+const LIFE_HIT_FRACTION = 1 / 3;
+const LIFE_HIT_INVULN = 1.5;
+const LIFE_REGEN_DELAY = 3;
+const LIFE_REGEN_DURATION = 20; // seconds for a fully-drained bar to refill
+let hitInvulnTimer = 0;
+let regenDelayTimer = 0;
+
 // ---- Levels: every LEVEL_UP_SCORE points ramps up difficulty (more
 // customers, a hungrier hunter). Level is derived from score rather than
 // tracked separately, so a restart resets it for free. Scaling is capped at
@@ -305,6 +323,14 @@ const FORGOTTEN_PENALTY = 15;
 const LEVEL_UP_SCORE = 100;
 const EFFECTIVE_LEVEL_CAP = 10;
 function getLevel() { return Math.floor(score / LEVEL_UP_SCORE) + 1; }
+
+// Completing a level earns a short full-screen breather. The simulation is
+// frozen while the splash counts down, but the frame loop keeps rendering so
+// the transition remains responsive through a resize or orientation change.
+const LEVEL_SPLASH_DURATION = 2.5;
+let highestLevelReached = 1;
+let levelSplashTimer = 0;
+let splashLevel = null;
 
 // ---- Order-bubble lifecycle -------------------------------------------------
 // An order bubble grows in when it appears and shrinks out when it's dealt
@@ -760,6 +786,12 @@ function resetGame() {
   hunterDir = { x: 0, y: 0 };
   hunterChangeTimer = 0;
   caught = false;
+  life = LIFE_MAX;
+  hitInvulnTimer = 0;
+  regenDelayTimer = 0;
+  highestLevelReached = 1;
+  levelSplashTimer = 0;
+  splashLevel = null;
   score = 0;
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
@@ -854,8 +886,9 @@ function handleInteract() {
 
   if (player.carrying) {
     // player.carrying.customer is kept valid (or reassigned to someone else
-    // waiting on the same drink) by the per-frame check in update(); it can
-    // still be null here if nobody currently wants this order.
+    // waiting on the same drink) by the per-frame check in update(), which
+    // drops the order entirely once nobody wants it — so target should
+    // always be set here, but this is kept defensive just in case.
     const target = player.carrying.customer;
     // Delivery works either right next to the customer, or anywhere near the
     // table they're seated at — with several seats per side on the bigger
@@ -1174,6 +1207,13 @@ function update(dt) {
   if (caught) return;
   gameTime += dt;
 
+  // Freeze gameplay for the level-done splash's duration; it counts itself
+  // down and clears on its own, no key press needed.
+  if (levelSplashTimer > 0) {
+    levelSplashTimer -= dt;
+    return;
+  }
+
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
   player.moving = input.x !== 0 || input.y !== 0;
@@ -1231,8 +1271,9 @@ function update(dt) {
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
   // off to anyone else currently waiting on the same drink instead of
-  // wasting the trip. Re-checked every frame, so a match found moments
-  // later (a new customer sits down wanting the same thing) still works.
+  // wasting the trip. If nobody else wants it either, drop the order
+  // entirely rather than leaving the player stuck "carrying" a drink with
+  // no possible delivery target, which would block grabbing a new one.
   if (player.carrying) {
     const target = player.carrying.customer;
     // `orderType` is also checked because a regular's order can lapse while
@@ -1247,8 +1288,12 @@ function update(dt) {
       const replacement = customers.find(c =>
         c.state === 'sitting' && !c.served && !c.beingCarried && c.orderType === player.carrying.type
       );
-      player.carrying.customer = replacement || null;
-      if (replacement) replacement.beingCarried = true;
+      if (replacement) {
+        player.carrying.customer = replacement;
+        replacement.beingCarried = true;
+      } else {
+        player.carrying = null;
+      }
     }
   }
 
@@ -1274,15 +1319,53 @@ function update(dt) {
     }
   }
 
-  // Catch detection.
+  // Life regen: only once a few hit-free seconds have passed, and never
+  // while already fully caught (game over).
+  if (hitInvulnTimer > 0) hitInvulnTimer -= dt;
+  if (!caught) {
+    if (regenDelayTimer > 0) {
+      regenDelayTimer -= dt;
+    } else if (life < LIFE_MAX) {
+      life = Math.min(LIFE_MAX, life + dt / LIFE_REGEN_DURATION);
+    }
+  }
+
+  // Catch detection: each touch costs a third of the life bar rather than
+  // ending the game outright. A short invulnerability window (and a shove
+  // away from the hunter) gives the player room to escape after a hit.
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < (player.w + hunter.w) / 2.4) {
-    caught = true;
-    hasPlayedBefore = true;
-    Sound.play('caught');
-    Dialogue.trigger('caught', null);
+  if (hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
+    life = Math.max(0, life - LIFE_HIT_FRACTION);
+    hitInvulnTimer = LIFE_HIT_INVULN;
+    regenDelayTimer = LIFE_REGEN_DELAY;
+
+    if (life <= 1e-9) {
+      caught = true;
+      hasPlayedBefore = true;
+      Sound.play('caught');
+      Dialogue.trigger('caught', null);
+    } else {
+      // Push the player clear so one collision reads as one hit and there is
+      // room to use the invulnerability window to escape.
+      const angle = dist > 0.001 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
+      const shove = tryMove(player, Math.cos(angle) * 24, Math.sin(angle) * 24);
+      player.x = shove.x;
+      player.y = shove.y;
+      addFloatingText(player.x, player.y - player.h - 4, '-LIFE', '#e8620c');
+      Sound.play('penalty');
+    }
+  }
+
+  // Level-done splash: fires once per level-up, checked last so it catches
+  // every way score could have changed this frame (delivery, forgotten
+  // penalty). Freezes gameplay on the next frame via the guard above.
+  const level = getLevel();
+  if (level > highestLevelReached) {
+    splashLevel = level - 1;
+    levelSplashTimer = LEVEL_SPLASH_DURATION;
+    highestLevelReached = level;
   }
 }
 
@@ -1299,7 +1382,7 @@ function update(dt) {
 //   9. bubbles      — orders, then dialogue
 //  10. floating score feedback
 //  11. HUD
-//  12. caught overlay
+//  12. caught / completed-level overlay
 //
 // Everything static (clutter, bottles, stains, light textures) is built once at
 // load. The frame loop only blits and fills.
@@ -1851,7 +1934,12 @@ function drawEntity(e, camX, camY) {
   // A small contact shadow so nobody looks pasted onto the floor.
   ctx.fillStyle = PUB.tableShadow;
   ctx.fillRect(Math.round(e.x - camX - 4), Math.round(e.y - camY - 1), 8, 2);
+  // Flicker the player after a hit so the temporary invulnerability is visible
+  // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
+  const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
+  ctx.globalAlpha = flicker ? 0.4 : 1;
   drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
+  ctx.globalAlpha = 1;
 }
 
 function sortByY(a, b) { return a.sortY - b.sortY; }
@@ -1941,9 +2029,18 @@ function rectsTouch(a, b) {
 
 // Reused; the HUD's footprint is fed to the bubble layout as an obstacle.
 const hudRect = { x: 2, y: 2, w: 0, h: 0 };
+const LIFE_SEGMENT_COUNT = 3;
+const LIFE_SEG_W = 16;
+const LIFE_SEG_H = 3;
+const LIFE_SEG_GAP = 2;
+
+function lifeBarWidth() {
+  return LIFE_SEGMENT_COUNT * LIFE_SEG_W + (LIFE_SEGMENT_COUNT - 1) * LIFE_SEG_GAP;
+}
+
 function measureHud() {
-  hudRect.w = fontTextWidth('LEVEL ' + getLevel() + '  SCORE ' + score) + 6;
-  hudRect.h = FONT_H + 6;
+  hudRect.w = Math.max(fontTextWidth('LEVEL ' + getLevel() + '  SCORE ' + score) + 6, lifeBarWidth() + 6);
+  hudRect.h = FONT_H + LIFE_SEG_H + 10;
   return hudRect;
 }
 
@@ -2059,12 +2156,26 @@ function getCamera() {
 // what he says, which is the point of him.
 function drawHud() {
   const text = 'LEVEL ' + getLevel() + '  SCORE ' + score;
-  const w = fontTextWidth(text);
+  const hud = measureHud();
   ctx.fillStyle = 'rgba(12,8,16,0.74)';
-  ctx.fillRect(2, 2, w + 6, FONT_H + 6);
+  ctx.fillRect(hud.x, hud.y, hud.w, hud.h);
   ctx.fillStyle = PUB.amberDim;
-  ctx.fillRect(2, 2, w + 6, 1);
+  ctx.fillRect(hud.x, hud.y, hud.w, 1);
   fontDrawText(ctx, text, 5, 5, PUB.cream);
+
+  const barY = hud.y + FONT_H + 6;
+  for (let i = 0; i < LIFE_SEGMENT_COUNT; i++) {
+    const x = hud.x + 3 + i * (LIFE_SEG_W + LIFE_SEG_GAP);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 1, barY - 1, LIFE_SEG_W + 2, LIFE_SEG_H + 2);
+    ctx.fillStyle = PUB.burgundy;
+    ctx.fillRect(x, barY, LIFE_SEG_W, LIFE_SEG_H);
+    const fill = clamp(life * LIFE_SEGMENT_COUNT - i, 0, 1);
+    if (fill > 0) {
+      ctx.fillStyle = fill > 0.5 ? '#c74b3c' : '#e8620c';
+      ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), LIFE_SEG_H);
+    }
+  }
 }
 
 function drawCaughtOverlay() {
@@ -2119,6 +2230,31 @@ function drawCaughtOverlay() {
   }
 }
 
+function drawLevelSplashOverlay() {
+  if (levelDoneImage.complete && levelDoneImage.naturalWidth > 0) {
+    const scale = Math.max(viewW / levelDoneImage.naturalWidth, viewH / levelDoneImage.naturalHeight);
+    const dw = levelDoneImage.naturalWidth * scale;
+    const dh = levelDoneImage.naturalHeight * scale;
+    ctx.drawImage(levelDoneImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(7,15,22,0.28)';
+    ctx.fillRect(0, 0, viewW, viewH);
+  } else {
+    ctx.fillStyle = 'rgba(7,15,22,0.82)';
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+
+  const title = 'LEVEL ' + splashLevel + ' DONE';
+  const next = 'LEVEL ' + (splashLevel + 1) + ' STARTS NOW';
+  const plateY = Math.round(viewH / 2 - 20);
+  ctx.fillStyle = 'rgba(8,12,18,0.78)';
+  ctx.fillRect(0, plateY, viewW, 38);
+  ctx.fillStyle = 'rgba(232,161,58,0.7)';
+  ctx.fillRect(0, plateY, viewW, 1);
+  ctx.fillRect(0, plateY + 37, viewW, 1);
+  fontDrawTextShadow(ctx, title, Math.round((viewW - fontTextWidth(title)) / 2), plateY + 10, PUB.cream);
+  fontDrawTextShadow(ctx, next, Math.round((viewW - fontTextWidth(next)) / 2), plateY + 24, PUB.amber);
+}
+
 function render() {
   const cam = getCamera();
   const camX = cam.x;
@@ -2171,13 +2307,17 @@ function render() {
   drawHud();
 
   if (caught) drawCaughtOverlay();
+  else if (levelSplashTimer > 0) drawLevelSplashOverlay();
 }
 
 // ---- Main loop ----------------------------------------------------------------
 // dt is clamped so coming back to a backgrounded tab never teleports anyone.
 let lastTime = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  // Resetting `lastTime` from a click can race an already-queued animation
+  // frame whose timestamp is a few milliseconds older. Clamp both ends so
+  // that frame cannot run the simulation backwards or extend a splash timer.
+  const dt = clamp((now - lastTime) / 1000, 0, 0.05);
   lastTime = now;
 
   if (viewportDirty) {
@@ -2209,6 +2349,9 @@ window.__debug = {
   getScore: () => score,
   getLevel,
   setScore: (v) => { score = v; },              // level is derived from score
+  getLife: () => life,
+  setLife: (v) => { life = clamp(v, 0, LIFE_MAX); },
+  getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
   getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
   getCamera,
   reservedSeats: () => SEATS.filter(s => s.reserved).map(s => ({ who: s.regularId, side: s.side, x: s.x, y: s.y })),
@@ -2232,6 +2375,7 @@ window.__debug = {
     mood: +r.mood.toFixed(2), drinks: r.drinks, stage: r.stage.id, pose: r.pose,
   })),
   forceCaught: () => {
+    life = 0;
     caught = true;
     hasPlayedBefore = true;
     Sound.play('caught');
