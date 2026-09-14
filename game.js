@@ -21,6 +21,10 @@ caughtImage.src = 'assets/caught.jpg';
 const levelDoneImage = new Image();
 levelDoneImage.src = 'assets/LevelDone.png';
 
+// Poster image shown behind the title screen.
+const coverImage = new Image();
+coverImage.src = 'assets/cover.png';
+
 // ---- World ------------------------------------------------------------------
 // Portrait map (narrower than tall) to match the intended floor plan: a small
 // table up-left, a long many-seat table up-right, an L-shaped bar down the
@@ -51,24 +55,59 @@ function makeTable(cx, cy, opts = {}) {
   const w = opts.w ?? TABLE_SIZE;
   const h = opts.h ?? TABLE_SIZE;
   const seats = { n: 1, s: 1, e: 1, w: 1, ...opts.seats };
-  const pad = CHAIR_GAP + CHAIR_SIZE;
+  const type = opts.type ?? 'table';
+  const seatStyle = opts.seatStyle ?? 'chairs';
+  // A bare stool row (e.g. chairs at the bar) has no tabletop of its own to
+  // block movement around — only the chairs drawn there should. A wall
+  // bench (seatStyle 'bench') does draw a solid body matching its full w/h,
+  // same as a table, so those still get the table-shaped collider below.
+  const hasSolidBody = type !== 'bench' || seatStyle === 'bench';
+
+  let collider;
+  if (hasSolidBody) {
+    // A side only needs room for a chair to stick out if it actually has
+    // one — padding every side by the same chair-sized margin made the
+    // walkable corridors around chairless sides feel needlessly tight.
+    const CHAIR_PAD = CHAIR_GAP + CHAIR_SIZE;
+    const padN = seats.n > 0 ? CHAIR_PAD : CHAIR_GAP;
+    const padS = seats.s > 0 ? CHAIR_PAD : CHAIR_GAP;
+    const padW = seats.w > 0 ? CHAIR_PAD : CHAIR_GAP;
+    const padE = seats.e > 0 ? CHAIR_PAD : CHAIR_GAP;
+    collider = {
+      x: cx - (w / 2 + padW),
+      y: cy - (h / 2 + padN),
+      w: w + padW + padE,
+      h: h + padN + padS,
+    };
+  } else {
+    // Tight box around wherever the chairs actually land, instead of the
+    // w/h footprint used only to space them out (which has no matching
+    // visual and was blocking a much wider area than the chairs occupy).
+    const seatPoints = getTableSeats({ x: cx, y: cy, w, h, seats });
+    const half = CHAIR_SIZE / 2 + CHAIR_GAP;
+    const xs = seatPoints.map(p => p.x);
+    const ys = seatPoints.map(p => p.y);
+    collider = {
+      x: Math.min(...xs) - half,
+      y: Math.min(...ys) - half,
+      w: Math.max(...xs) - Math.min(...xs) + 2 * half,
+      h: Math.max(...ys) - Math.min(...ys) + 2 * half,
+    };
+  }
+
   return {
-    type: 'table',
+    type,
     x: cx,
     y: cy,
     w,
     h,
     seats,
+    seatStyle,
     // Sort by the table top's own front edge, not the wider chair footprint —
     // a customer seated south is standing at the table's edge and should
     // draw in front of it, not behind.
     sortY: cy + h / 2,
-    collider: {
-      x: cx - (w / 2 + pad),
-      y: cy - (h / 2 + pad),
-      w: w + 2 * pad,
-      h: h + 2 * pad,
-    },
+    collider,
   };
 }
 
@@ -94,10 +133,11 @@ function getTableSeats(table) {
 
 // The bar as a small L: a short counter, a vertical stem, and a foot that
 // meets it — three rectangular segments sharing the same visual treatment.
+// Coordinates traced from assets/planFloor.png (the hand-drawn floor plan).
 const BAR_SEGMENTS = [
-  { x: 10, y: 78, w: 56, h: 18 },   // short counter, upper-left
-  { x: 70, y: 104, w: 20, h: 126 }, // vertical stem
-  { x: 10, y: 212, w: 80, h: 18 },  // foot, meets the stem, touches the wall
+  { x: 1, y: 67, w: 71, h: 22 },  // short counter, upper-left
+  { x: 91, y: 109, w: 27, h: 90 }, // vertical stem
+  { x: 1, y: 177, w: 87, h: 23 }, // foot, meets the stem, touches the wall
 ].map(r => ({
   type: 'bar',
   collider: { x: r.x * SCALE, y: r.y * SCALE, w: r.w * SCALE, h: r.h * SCALE },
@@ -105,18 +145,33 @@ const BAR_SEGMENTS = [
 }));
 
 const TABLES = [
-  makeTable(40 * SCALE, 45 * SCALE, { w: 18 * SCALE, h: 20 * SCALE, seats: { n: 0, s: 0, w: 2, e: 2 } }),   // top-left
-  makeTable(150 * SCALE, 95 * SCALE, { w: 20 * SCALE, h: 140 * SCALE, seats: { n: 0, s: 0, w: 4, e: 4 } }), // top-right, long
-  makeTable(175 * SCALE, 210 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(175 * SCALE, 254 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(175 * SCALE, 298 * SCALE, { w: 16 * SCALE, h: 16 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
-  makeTable(85 * SCALE, 270 * SCALE, { w: 110 * SCALE, h: 24 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
-  makeTable(85 * SCALE, 320 * SCALE, { w: 110 * SCALE, h: 24 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }), // wide
+  makeTable(44 * SCALE, 42 * SCALE, { w: 40 * SCALE, h: 26 * SCALE, seats: { n: 0, s: 0, w: 0, e: 2 } }),    // top-left
+  makeTable(148 * SCALE, 58 * SCALE, { w: 40 * SCALE, h: 65 * SCALE, seats: { n: 0, s: 0, w: 4, e: 0 } }),   // top-right, long
+  makeTable(180 * SCALE, 210 * SCALE, { w: 38 * SCALE, h: 32 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
+  makeTable(180 * SCALE, 269 * SCALE, { w: 37 * SCALE, h: 33 * SCALE, seats: { n: 1, s: 1, e: 0, w: 0 } }),
+  makeTable(58 * SCALE, 258 * SCALE, { w: 114 * SCALE, h: 29 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }),  // wide
+  makeTable(58 * SCALE, 315 * SCALE, { w: 114 * SCALE, h: 29 * SCALE, seats: { n: 4, s: 4, e: 0, w: 0 } }),  // wide
 ];
 
-const FURNITURE = [...BAR_SEGMENTS, ...TABLES];
+// Wall-hugging benches: seating with no tabletop of its own. The four
+// wall/corner benches draw as a single long bench shape (`seatStyle:
+// 'bench'`) rather than a row of separate chairs; the two at the bar are
+// individual stools (`seatStyle: 'chairs'`, the default), since that's how
+// people actually sit at a bar. Reuses makeTable purely for its
+// evenly-spaced-seats math and collider (for the "near their table" delivery
+// check) — `type: 'bench'` tells the renderer to skip drawing a tabletop.
+const BENCHES = [
+  makeTable(39 * SCALE, 5 * SCALE, { w: 65 * SCALE, h: 10 * SCALE, seats: { n: 0, s: 3, e: 0, w: 0 }, type: 'bench', seatStyle: 'bench' }),   // top wall, left corner
+  makeTable(6 * SCALE, 43 * SCALE, { w: 6 * SCALE, h: 55 * SCALE, seats: { n: 0, s: 0, e: 3, w: 0 }, type: 'bench', seatStyle: 'bench' }),   // left wall
+  makeTable(164 * SCALE, 5 * SCALE, { w: 67 * SCALE, h: 10 * SCALE, seats: { n: 0, s: 3, e: 0, w: 0 }, type: 'bench', seatStyle: 'bench' }),  // top wall, right corner
+  makeTable(192 * SCALE, 58 * SCALE, { w: 16 * SCALE, h: 71 * SCALE, seats: { n: 0, s: 0, e: 0, w: 4 }, type: 'bench', seatStyle: 'bench' }), // right wall, beside the long table
+  makeTable(144 * SCALE, 151 * SCALE, { w: 16 * SCALE, h: 74 * SCALE, seats: { n: 0, s: 0, e: 0, w: 3 }, type: 'bench' }), // chairs at the bar (stem side)
+  makeTable(51 * SCALE, 222 * SCALE, { w: 95 * SCALE, h: 14 * SCALE, seats: { n: 3, s: 0, e: 0, w: 0 }, type: 'bench' }), // chairs at the bar (foot side)
+];
 
-const SEATS = TABLES.flatMap(t => getTableSeats(t).map(seat => ({ ...seat, table: t, occupied: false })));
+const FURNITURE = [...BAR_SEGMENTS, ...TABLES, ...BENCHES];
+
+const SEATS = [...TABLES, ...BENCHES].flatMap(t => getTableSeats(t).map(seat => ({ ...seat, table: t, occupied: false })));
 
 // Customers walk in from this point at the bottom wall.
 const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 * SCALE };
@@ -317,6 +372,35 @@ const CUSTOMER_WALK = buildSprite([
 
 const CUSTOMER_SHIRT_COLORS = ['#4a6fa5', '#8a4a9e', '#4a9e6a', '#c9a227', '#c9622f', '#5a7d8a'];
 
+// --- Ghost: a purely decorative apparition (see the state/update block near
+// the customers below). Translucent fill baked into the palette itself (via
+// rgba) so it reads as see-through even before the render pass's extra
+// globalAlpha fade is applied. Single frame — it drifts, it doesn't walk.
+const GHOST_PALETTE = {
+  '.': null,
+  g: 'rgba(225,235,255,0.75)',
+  e: 'rgba(30,30,45,0.85)',
+};
+const GHOST_IDLE = buildSprite([
+  R('.', 8, 'g', 8, '.', 8),
+  R('.', 6, 'g', 12, '.', 6),
+  R('.', 4, 'g', 16, '.', 4),
+  R('.', 3, 'g', 18, '.', 3),
+  R('.', 2, 'g', 20, '.', 2),
+  R('g', 24),
+  R('g', 24),
+  R('g', 8, 'e', 3, 'g', 2, 'e', 3, 'g', 8),                                      // eyes
+  R('g', 8, 'e', 3, 'g', 2, 'e', 3, 'g', 8),
+  R('g', 24),
+  R('g', 24),
+  R('g', 24),
+  R('g', 24),
+  R('g', 24),
+  R('g', 24),
+  R('g', 24),
+  R('.', 2, 'g', 4, '.', 2, 'g', 4, '.', 2, 'g', 4, '.', 2, 'g', 4),              // scalloped, wispy tail
+]);
+
 function makeCustomerPalette() {
   return {
     '.': null,
@@ -427,6 +511,7 @@ const SPRITES = {
   hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
   doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
   customer: { idle: CUSTOMER_IDLE, walk: CUSTOMER_WALK, palette: null },
+  ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
 };
 
 function drawSprite(sprite, palette, screenX, screenY, flipX) {
@@ -458,9 +543,10 @@ function getFootBox(e, x, y) {
   return { x: x - w / 2, y: y - h, w, h };
 }
 
-function collidesAt(e, x, y) {
+function collidesAt(e, x, y, exclude) {
   const box = getFootBox(e, x, y);
   for (const f of FURNITURE) {
+    if (f === exclude) continue;
     if (rectsOverlap(box, f.collider)) return true;
   }
   return false;
@@ -487,6 +573,152 @@ function tryMove(e, dx, dy) {
   return { x, y, blockedX, blockedY };
 }
 
+// ---- Customer path routing: customers don't have real-time obstacle
+// avoidance (see tryMove above, which is for the player/hunter), but the
+// floor plan is static, so a route from the door to a seat can be worked
+// out once, up front, with a coarse-grid search — cheap since it only runs
+// when a customer starts entering/leaving, never per frame. A line-of-sight
+// smoothing pass then collapses that grid path down to a handful of
+// waypoints so movement still reads as a straight walk, not grid-snapping.
+const PATH_CELL = 8 * SCALE;
+const PATH_MARGIN = (SPRITES.customer.idle.w * 0.55) / 2;
+
+function segmentHitsRect(p1, p2, rect, steps = 24) {
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = p1.x + (p2.x - p1.x) * t;
+    const y = p1.y + (p2.y - p1.y) * t;
+    if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) return true;
+  }
+  return false;
+}
+
+function findBlockingObstacle(p1, p2, exclude) {
+  for (const f of FURNITURE) {
+    if (f === exclude) continue;
+    const r = f.collider;
+    // Inflate by the customer's footprint so a "clear" line leaves room for
+    // their actual collision box, not just their center point.
+    const inflated = { x: r.x - PATH_MARGIN, y: r.y - PATH_MARGIN, w: r.w + 2 * PATH_MARGIN, h: r.h + 2 * PATH_MARGIN };
+    if (segmentHitsRect(p1, p2, inflated)) return f;
+  }
+  return null;
+}
+
+function pointBlocked(x, y, excludeTable) {
+  // Mirrors getFootBox's feet-anchored shape (see collision section above)
+  // so the grid agrees with the runtime collision check that walks it.
+  const footH = 7 * SCALE;
+  const box = { x: x - PATH_MARGIN, y: y - footH, w: PATH_MARGIN * 2, h: footH };
+  for (const f of FURNITURE) {
+    if (f === excludeTable) continue;
+    if (rectsOverlap(box, f.collider)) return true;
+  }
+  return false;
+}
+
+function cellFromKey(k, cols) {
+  return { cx: k % cols, cy: Math.floor(k / cols) };
+}
+
+// Same world clamp tryMove/updateCustomer apply to a customer's position —
+// the grid must agree, or it can route through a corner (e.g. a world edge)
+// the entity can never actually reach.
+const CUSTOMER_HALF_W = SPRITES.customer.idle.w / 2;
+const CUSTOMER_HALF_H = SPRITES.customer.idle.h / 2;
+function cellCenter(cx, cy) {
+  return {
+    x: clamp(cx * PATH_CELL, CUSTOMER_HALF_W, WORLD_W - CUSTOMER_HALF_W),
+    y: clamp(cy * PATH_CELL, CUSTOMER_HALF_H, WORLD_H - CUSTOMER_HALF_H),
+  };
+}
+
+// Full path computation: grid search for a walkable route, then collapse it
+// to the minimal set of waypoints a straight-line walk can follow without
+// clipping anything (skip ahead to the farthest point still in clear sight).
+function computeCustomerPath(from, to, excludeTable) {
+  if (!findBlockingObstacle(from, to, excludeTable)) return [to];
+
+  const cols = Math.ceil(WORLD_W / PATH_CELL);
+  const rows = Math.ceil(WORLD_H / PATH_CELL);
+  const toCell = p => ({
+    cx: clamp(Math.round(p.x / PATH_CELL), 0, cols - 1),
+    cy: clamp(Math.round(p.y / PATH_CELL), 0, rows - 1),
+  });
+  const key = (cx, cy) => cy * cols + cx;
+  const start = toCell(from);
+  const goal = toCell(to);
+
+  const blocked = new Map();
+  const isBlocked = (cx, cy) => {
+    const k = key(cx, cy);
+    if (!blocked.has(k)) {
+      const c = cellCenter(cx, cy);
+      blocked.set(k, pointBlocked(c.x, c.y, excludeTable));
+    }
+    return blocked.get(k);
+  };
+
+  const open = [{ cx: start.cx, cy: start.cy, g: 0, f: 0 }];
+  const cameFrom = new Map();
+  const gScore = new Map([[key(start.cx, start.cy), 0]]);
+  const closed = new Set();
+  const heuristic = (cx, cy) => Math.hypot(cx - goal.cx, cy - goal.cy);
+
+  let reached = null;
+  while (open.length) {
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) if (open[i].f < open[bi].f) bi = i;
+    const cur = open.splice(bi, 1)[0];
+    const ck = key(cur.cx, cur.cy);
+    if (closed.has(ck)) continue;
+    closed.add(ck);
+    if (cur.cx === goal.cx && cur.cy === goal.cy) { reached = ck; break; }
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = cur.cx + dx, ny = cur.cy + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        if (isBlocked(nx, ny)) continue;
+        if (dx !== 0 && dy !== 0 && (isBlocked(cur.cx + dx, cur.cy) || isBlocked(cur.cx, cur.cy + dy))) continue;
+        const g = cur.g + Math.hypot(dx, dy);
+        const nk = key(nx, ny);
+        if (gScore.has(nk) && g >= gScore.get(nk)) continue;
+        gScore.set(nk, g);
+        cameFrom.set(nk, ck);
+        open.push({ cx: nx, cy: ny, g, f: g + heuristic(nx, ny) });
+      }
+    }
+  }
+
+  if (reached === null) return [to]; // no walkable route found; fall back to a straight line
+
+  const cellPoints = [];
+  let k = reached;
+  while (cameFrom.has(k)) {
+    const { cx, cy } = cellFromKey(k, cols);
+    cellPoints.unshift(cellCenter(cx, cy));
+    k = cameFrom.get(k);
+  }
+  cellPoints.push(to);
+
+  // String-pulling: from `from`, skip ahead to the farthest waypoint still
+  // reachable in a straight line, repeat from there.
+  const waypoints = [];
+  let cursor = from;
+  let i = 0;
+  while (i < cellPoints.length) {
+    let farthest = i;
+    for (let j = i; j < cellPoints.length; j++) {
+      if (!findBlockingObstacle(cursor, cellPoints[j], excludeTable)) farthest = j;
+    }
+    waypoints.push(cellPoints[farthest]);
+    cursor = cellPoints[farthest];
+    i = farthest + 1;
+  }
+  return waypoints;
+}
+
 // ---- Entities -----------------------------------------------------------
 function makeEntity(kind, x, y) {
   const s = SPRITES[kind];
@@ -495,7 +727,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: s.idle.w,
     h: s.idle.h,
-    speed: (kind === 'doe' ? 62 : kind === 'customer' ? 38 : 54) * SCALE,
+    speed: (kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : 54) * SCALE,
     flip: false,
     legTimer: 0,
     legFrame: 0,
@@ -514,6 +746,13 @@ let caught = false;
 let score = 0;
 const POINTS_PER_DELIVERY = 10;
 const FORGOTTEN_PENALTY = 15;
+
+// While true, the CAUGHT screen shows a name-entry prompt instead of the
+// "press SPACE to restart" message — gameplay stays frozen (via `caught`)
+// until the player confirms a name, so the run's score gets saved with one.
+let enteringName = false;
+let nameInput = '';
+const NAME_MAX_LEN = 12;
 
 // ---- Life: instead of an instant game-over, getting caught costs a third of
 // a continuous life bar (1 = full). A brief invulnerability window after a hit
@@ -576,6 +815,8 @@ function spawnCustomer() {
   c.palette = makeCustomerPalette();
   c.state = 'entering';
   c.seat = seat;
+  c.path = computeCustomerPath(DOOR, seat, seat.table);
+  c.pathIndex = 0;
   c.sitTimer = 0;
   c.orderType = null;
   c.orderTimer = 0;
@@ -586,13 +827,17 @@ function spawnCustomer() {
 
 function updateCustomer(c, dt) {
   if (c.state === 'entering' || c.state === 'leaving') {
-    const target = c.state === 'entering' ? c.seat : DOOR;
+    const target = c.path[c.pathIndex];
     const dx = target.x - c.x;
     const dy = target.y - c.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 1.5 * SCALE) {
       c.x = target.x;
       c.y = target.y;
+      if (c.pathIndex < c.path.length - 1) {
+        c.pathIndex++;
+        return null;
+      }
       c.moving = false;
       if (c.state === 'entering') {
         c.state = 'sitting';
@@ -604,8 +849,17 @@ function updateCustomer(c, dt) {
       }
     } else {
       const step = Math.min(dist, c.speed * dt);
-      c.x += (dx / dist) * step;
-      c.y += (dy / dist) * step;
+      const stepX = (dx / dist) * step;
+      const stepY = (dy / dist) * step;
+      // Slide around other tables like the player does (the routed path
+      // above avoids them, this is just a safety net), but never collide
+      // with the customer's own table — its seats sit inside that table's
+      // padded collider, so excluding it is what lets them reach the seat.
+      const ownTable = c.seat.table;
+      const nx = clamp(c.x + stepX, c.w / 2, WORLD_W - c.w / 2);
+      if (!collidesAt(c, nx, c.y, ownTable)) c.x = nx;
+      const ny = clamp(c.y + stepY, c.h / 2, WORLD_H - c.h / 2);
+      if (!collidesAt(c, c.x, ny, ownTable)) c.y = ny;
       c.flip = dx < 0;
       c.moving = true;
     }
@@ -623,9 +877,43 @@ function updateCustomer(c, dt) {
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
       }
       c.state = 'leaving';
+      c.path = computeCustomerPath(c, DOOR, c.seat.table);
+      c.pathIndex = 0;
     }
   }
   return null;
+}
+
+// ---- Ghost: a purely aesthetic apparition. Every few minutes it drifts in
+// a straight line across the pub, through walls and furniture alike (no
+// collision, no interaction with score/hunter/player), and vanishes off the
+// far side. `ghost` is null whenever none is currently on screen.
+let ghost = null;
+const GHOST_INTERVAL_MIN = 90;
+const GHOST_INTERVAL_MAX = 180;
+let ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
+
+function spawnGhost() {
+  const y = 20 * SCALE + Math.random() * (WORLD_H - 40 * SCALE);
+  const margin = 24 * SCALE;
+  const fromLeft = Math.random() < 0.5;
+  ghost = makeEntity('ghost', fromLeft ? -margin : WORLD_W + margin, y);
+  ghost.targetX = fromLeft ? WORLD_W + margin : -margin;
+  ghost.moving = true;
+}
+
+function updateGhost(dt) {
+  ghostSpawnTimer -= dt;
+  if (!ghost && ghostSpawnTimer <= 0) {
+    spawnGhost();
+    ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
+  }
+  if (ghost) {
+    const dir = ghost.targetX > ghost.x ? 1 : -1;
+    ghost.x += dir * ghost.speed * dt;
+    ghost.flip = dir < 0;
+    if ((dir > 0 && ghost.x >= ghost.targetX) || (dir < 0 && ghost.x <= ghost.targetX)) ghost = null;
+  }
 }
 
 function pickClearSpawn(e) {
@@ -634,18 +922,21 @@ function pickClearSpawn(e) {
     const y = clamp(WORLD_H / 2 + (Math.random() < 0.5 ? 1 : -1) * Math.random() * WORLD_H * 0.4, e.h / 2, WORLD_H - e.h / 2);
     if (!collidesAt(e, x, y)) return { x, y };
   }
-  return { x: WORLD_W / 2, y: 200 * SCALE }; // fallback: open floor between bar and tables
+  return { x: 125 * SCALE, y: 150 * SCALE }; // fallback: open floor between the bar and the long table
 }
 
 function resetGame() {
-  player.x = WORLD_W / 2;
-  player.y = WORLD_H / 2;
+  const playerSpawn = pickClearSpawn(player);
+  player.x = playerSpawn.x;
+  player.y = playerSpawn.y;
   const spawn = pickClearSpawn(hunter);
   hunter.x = spawn.x;
   hunter.y = spawn.y;
   hunterDir = { x: 0, y: 0 };
   hunterChangeTimer = 0;
   caught = false;
+  enteringName = false;
+  nameInput = '';
   life = LIFE_MAX;
   hitInvulnTimer = 0;
   regenDelayTimer = 0;
@@ -658,9 +949,64 @@ function resetGame() {
   customerSpawnTimer = 3;
   player.carrying = null;
   floatingTexts.length = 0;
+  ghost = null;
+  ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
 }
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ---- High scores: kept in localStorage so they survive a page reload.
+// Read/write are wrapped in try/catch since localStorage can throw (private
+// browsing, disabled storage) — losing the high score list isn't worth a
+// crash over.
+const HIGH_SCORE_KEY = 'lepub_highscores';
+const HIGH_SCORE_MAX = 5;
+
+function loadHighScores() {
+  try {
+    const raw = localStorage.getItem(HIGH_SCORE_KEY);
+    const scores = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(scores)) return [];
+    // Normalize old entries saved before names were tracked (plain numbers)
+    // so a pre-existing list doesn't crash the high-score screen.
+    return scores.map(s => (typeof s === 'number' ? { name: '???', score: s } : s));
+  } catch {
+    return [];
+  }
+}
+
+function saveHighScore(name, value) {
+  if (value <= 0) return;
+  const scores = loadHighScores();
+  scores.push({ name: name || '???', score: value });
+  scores.sort((a, b) => b.score - a.score);
+  scores.length = Math.min(scores.length, HIGH_SCORE_MAX);
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(scores));
+  } catch {
+    // ignore — storage unavailable
+  }
+}
+
+// ---- App state: the title screen, its sub-menus, and the game itself are
+// all one state machine so update()/render() know what to run each frame.
+// 'playing' still uses `caught` internally for the in-game "you got caught"
+// splash — appState only changes once the player backs all the way out.
+let appState = 'title'; // 'title' | 'howto' | 'highscores' | 'playing'
+const MENU_ITEMS = ['New Game', 'How to Play', 'High Scores'];
+let menuIndex = 0;
+
+function selectMenuItem(index) {
+  const item = MENU_ITEMS[index];
+  if (item === 'New Game') {
+    resetGame();
+    appState = 'playing';
+  } else if (item === 'How to Play') {
+    appState = 'howto';
+  } else if (item === 'High Scores') {
+    appState = 'highscores';
+  }
+}
 
 // ---- Serving: 'E' grabs the oldest waiting order from the bar, or (while
 // already carrying one) delivers it if standing next to its customer. ------
@@ -710,8 +1056,44 @@ function handleInteract() {
 const keys = new Set();
 window.addEventListener('keydown', (e) => {
   keys.add(e.key.toLowerCase());
-  if (caught && e.key === ' ') resetGame();
-  if (!e.repeat && e.key.toLowerCase() === 'e') handleInteract();
+  const key = e.key.toLowerCase();
+
+  if (appState === 'title') {
+    if (!e.repeat) {
+      if (key === 'arrowup' || key === 'w') menuIndex = (menuIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
+      else if (key === 'arrowdown' || key === 's') menuIndex = (menuIndex + 1) % MENU_ITEMS.length;
+      else if (key === 'enter' || key === ' ') selectMenuItem(menuIndex);
+    }
+    return;
+  }
+  if (appState === 'howto' || appState === 'highscores') {
+    if (!e.repeat && (key === 'escape' || key === 'enter' || key === ' ')) appState = 'title';
+    return;
+  }
+
+  // appState === 'playing'
+  if (caught) {
+    if (enteringName) {
+      if (key === 'enter') {
+        saveHighScore(nameInput.trim() || 'Anonymous', score);
+        enteringName = false;
+      } else if (key === 'backspace') {
+        nameInput = nameInput.slice(0, -1);
+      } else if (key === 'escape') {
+        // Bail out of naming without saving — the run's score is lost.
+        enteringName = false;
+        appState = 'title';
+      } else if (e.key.length === 1 && nameInput.length < NAME_MAX_LEN && /[a-zA-Z0-9 '_-]/.test(e.key)) {
+        nameInput += e.key;
+      }
+      return;
+    }
+    if (key === ' ') resetGame();
+    else if (key === 'escape') appState = 'title';
+    return;
+  }
+  if (key === 'escape') { appState = 'title'; return; }
+  if (!e.repeat && key === 'e') handleInteract();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 
@@ -819,6 +1201,8 @@ function update(dt) {
     if (updateCustomer(c, dt) === 'remove') customers.splice(i, 1);
   }
 
+  updateGhost(dt);
+
   // Keep a carried order's target valid: if the customer it was picked up
   // for has given up and left (or somehow got served another way), hand it
   // off to anyone else currently waiting on the same drink instead of
@@ -885,6 +1269,9 @@ function update(dt) {
     regenDelayTimer = LIFE_REGEN_DELAY;
     if (life <= 1e-9) {
       caught = true;
+      enteringName = score > 0;
+      nameInput = '';
+      if (!enteringName) saveHighScore(null, score);
     } else {
       const angle = dist > 0.001 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
       const shove = tryMove(player, Math.cos(angle) * 24 * SCALE, Math.sin(angle) * 24 * SCALE);
@@ -976,6 +1363,25 @@ function drawChair(sx, sy) {
   ctx.fillRect(Math.round(sx - CHAIR_SIZE / 2 + 1), Math.round(sy + CHAIR_SIZE / 2 - 2), CHAIR_SIZE - 2, 1);
 }
 
+// A bench is just bare chairs against a wall — no tabletop, unlike drawTable.
+function drawBench(bench, camX, camY) {
+  if (bench.seatStyle === 'bench') {
+    // A wall bench reads as one long seat, not a row of separate chairs.
+    const x = Math.round(bench.x - bench.w / 2 - camX);
+    const y = Math.round(bench.y - bench.h / 2 - camY);
+    ctx.fillStyle = '#4a3222';
+    ctx.fillRect(x, y, bench.w, bench.h);
+    ctx.fillStyle = '#6a4a30';
+    ctx.fillRect(x + 1, y + 1, bench.w - 2, 1);
+    ctx.fillStyle = '#2e1e12';
+    ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1);
+    return;
+  }
+  for (const seat of getTableSeats(bench)) {
+    drawChair(seat.x - camX, seat.y - camY);
+  }
+}
+
 function drawTable(table, camX, camY) {
   const sx = table.x - camX;
   const sy = table.y - camY;
@@ -1004,6 +1410,7 @@ function drawTable(table, camX, camY) {
 
 function drawFurnitureItem(item, camX, camY) {
   if (item.type === 'bar') drawBar(item, camX, camY);
+  else if (item.type === 'bench') drawBench(item, camX, camY);
   else drawTable(item, camX, camY);
 }
 
@@ -1058,7 +1465,95 @@ function drawMapBounds(camX, camY) {
   );
 }
 
+// Poster-backed title screen: the cover image cover-fit behind a menu with
+// a keyboard cursor. Falls back to a flat panel if the image hasn't loaded
+// (or was never provided) so the menu is always usable.
+function renderTitleScreen() {
+  ctx.clearRect(0, 0, INTERNAL_W, INTERNAL_H);
+  if (coverImage.complete && coverImage.naturalWidth > 0) {
+    const scale = Math.max(INTERNAL_W / coverImage.naturalWidth, INTERNAL_H / coverImage.naturalHeight);
+    const dw = coverImage.naturalWidth * scale;
+    const dh = coverImage.naturalHeight * scale;
+    ctx.drawImage(coverImage, (INTERNAL_W - dw) / 2, (INTERNAL_H - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = '#0e0e12';
+    ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+  }
+
+  // Dark panel behind the title/menu so text stays legible over any art.
+  const panelH = 74;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, INTERNAL_H - panelH, INTERNAL_W, panelH);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e8620c';
+  ctx.font = '16px monospace';
+  ctx.fillText('LE PUB: THE CHASE', INTERNAL_W / 2, INTERNAL_H - panelH + 16);
+
+  ctx.font = '8px monospace';
+  MENU_ITEMS.forEach((item, i) => {
+    const y = INTERNAL_H - panelH + 34 + i * 13;
+    const selected = i === menuIndex;
+    ctx.fillStyle = selected ? '#f5f5f5' : '#9a9aa4';
+    ctx.fillText((selected ? '> ' : '  ') + item, INTERNAL_W / 2, y);
+  });
+}
+
+function renderHowToScreen() {
+  ctx.clearRect(0, 0, INTERNAL_W, INTERNAL_H);
+  ctx.fillStyle = '#0e0e12';
+  ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e8620c';
+  ctx.font = '12px monospace';
+  ctx.fillText('HOW TO PLAY', INTERNAL_W / 2, 26);
+
+  ctx.fillStyle = '#f5f5f5';
+  ctx.font = '8px monospace';
+  const lines = [
+    'Move: WASD / Arrow Keys',
+    '',
+    'Grab an order at the bar: E',
+    'Deliver it to the customer: E',
+    '',
+    'Serve customers before their',
+    'patience runs out',
+    '',
+    'Avoid the hunter chasing you',
+    'or lose a third of your life',
+    '',
+    'Press ENTER / ESC to go back',
+  ];
+  lines.forEach((line, i) => ctx.fillText(line, INTERNAL_W / 2, 48 + i * 12));
+}
+
+function renderHighScoresScreen() {
+  ctx.clearRect(0, 0, INTERNAL_W, INTERNAL_H);
+  ctx.fillStyle = '#0e0e12';
+  ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e8620c';
+  ctx.font = '12px monospace';
+  ctx.fillText('HIGH SCORES', INTERNAL_W / 2, 26);
+
+  ctx.fillStyle = '#f5f5f5';
+  ctx.font = '8px monospace';
+  const scores = loadHighScores();
+  if (!scores.length) {
+    ctx.fillText('No scores yet - go serve some drinks!', INTERNAL_W / 2, 54);
+  } else {
+    scores.forEach((s, i) => ctx.fillText((i + 1) + '. ' + s.name + ' - ' + s.score, INTERNAL_W / 2, 50 + i * 14));
+  }
+  ctx.fillText('Press ENTER / ESC to go back', INTERNAL_W / 2, INTERNAL_H - 14);
+}
+
 function render() {
+  if (appState === 'title') return renderTitleScreen();
+  if (appState === 'howto') return renderHowToScreen();
+  if (appState === 'highscores') return renderHighScoresScreen();
+
   // Camera centered on player, clamped to world bounds.
   let camX = player.x - INTERNAL_W / 2;
   let camY = player.y - INTERNAL_H / 2;
@@ -1094,6 +1589,19 @@ function render() {
         ctx.globalAlpha = 1;
       },
     })),
+    // Ghost: floats above the floor with no ground shadow and no collision —
+    // it's meant to read as passing through the scene, not standing in it.
+    ...(ghost ? [{
+      sortY: ghost.y,
+      draw: () => {
+        const sprite = SPRITES.ghost.idle;
+        const sx = ghost.x - camX - sprite.w / 2;
+        const sy = ghost.y - camY - sprite.h;
+        ctx.globalAlpha = 0.7;
+        drawSprite(sprite, SPRITES.ghost.palette, sx, sy, ghost.flip);
+        ctx.globalAlpha = 1;
+      },
+    }] : []),
   ];
   drawables.sort((a, b) => a.sortY - b.sortY);
   for (const d of drawables) d.draw();
@@ -1173,7 +1681,15 @@ function render() {
     ctx.fillText('CAUGHT!', INTERNAL_W / 2, INTERNAL_H / 2 - 6);
     ctx.fillStyle = '#f5f5f5';
     ctx.font = '8px monospace';
-    ctx.fillText('press SPACE to restart', INTERNAL_W / 2, INTERNAL_H / 2 + 10);
+    if (enteringName) {
+      // A blinking cursor after the typed name shows the field is live.
+      const cursor = Math.floor(performance.now() / 400) % 2 === 0 ? '_' : ' ';
+      ctx.fillText('NEW SCORE: ' + score + ' - ENTER YOUR NAME', INTERNAL_W / 2, INTERNAL_H / 2 + 10);
+      ctx.fillText('> ' + nameInput + cursor, INTERNAL_W / 2, INTERNAL_H / 2 + 22);
+      ctx.fillText('ENTER to confirm  /  ESC to skip', INTERNAL_W / 2, INTERNAL_H / 2 + 34);
+    } else {
+      ctx.fillText('SPACE to restart  /  ESC for menu', INTERNAL_W / 2, INTERNAL_H / 2 + 10);
+    }
   } else if (levelSplashTimer > 0) {
     if (levelDoneImage.complete && levelDoneImage.naturalWidth > 0) {
       // Cover-fit the image into the internal resolution, cropping overflow.
@@ -1199,7 +1715,7 @@ let lastTime = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
-  update(dt);
+  if (appState === 'playing') update(dt);
   render();
   requestAnimationFrame(loop);
 }
@@ -1208,7 +1724,8 @@ resetGame();
 requestAnimationFrame(loop);
 
 window.__debug = {
-  player, hunter, customers, SEATS, TABLES, BAR_SEGMENTS, handleInteract, spawnCustomer, DOOR, update, updateCustomer, keys,
+  player, hunter, customers, SEATS, TABLES, BAR_SEGMENTS, BENCHES, FURNITURE, handleInteract, spawnCustomer, DOOR, update, updateCustomer, keys,
+  computeCustomerPath, findBlockingObstacle, segmentHitsRect, pointBlocked, PATH_MARGIN, PATH_CELL,
   SPRITES, DOE_PALETTE, HUNTER_PALETTE, drawSprite, ctx, floatingTexts,
   getScore: () => score,
   getLevel,
@@ -1216,4 +1733,7 @@ window.__debug = {
   getLife: () => life,
   setLife: (v) => { life = v; },
   getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
+  getAppState: () => appState,
+  setAppState: (v) => { appState = v; },
+  loadHighScores, saveHighScore,
 };
