@@ -383,6 +383,19 @@ function cellCenter(cx, cy) {
   };
 }
 
+// DOOR sits at the very bottom of the world, below the lowest y a body can
+// actually stand at — movement is clamped to half a sprite in from every
+// world edge. Walking somebody straight at it leaves them stranded a few
+// pixels short of their last waypoint, close but never "arrived", which is
+// how leaving customers used to pile up invisibly at the bottom wall and eat
+// the spawn cap. Route to the nearest point they can actually occupy instead.
+function reachablePoint(e, p) {
+  return {
+    x: clamp(p.x, e.w / 2, WORLD_W - e.w / 2),
+    y: clamp(p.y, e.h / 2, WORLD_H - e.h / 2),
+  };
+}
+
 // Full path computation: grid search for a walkable route, then collapse it
 // to the minimal set of waypoints a straight-line walk can follow without
 // clipping anything (skip ahead to the farthest point still in clear sight).
@@ -477,13 +490,28 @@ function makeEntity(kind, x, y) {
     x, y,
     w: s.idle.w,
     h: s.idle.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : 54,
+    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : 54,
     flip: false,
     legTimer: 0,
     legFrame: 0,
     moving: false,
     palette: null,
   };
+}
+
+// Walk cycle: flip between the idle and walk frames while moving, and stand
+// on the idle one when stopped.
+function tickLegs(e, dt) {
+  if (e.moving) {
+    e.legTimer -= dt;
+    if (e.legTimer <= 0) {
+      e.legFrame = 1 - e.legFrame;
+      e.legTimer = 0.14;
+    }
+  } else {
+    e.legFrame = 0;
+    e.legTimer = 0;
+  }
 }
 
 const player = makeEntity('doe', WORLD_W / 2, WORLD_H / 2);
@@ -656,7 +684,7 @@ function updateCustomer(c, dt) {
         Dialogue.trigger('abandoned', null);
       }
       c.state = 'leaving';
-      c.path = computeCustomerPath(c, DOOR, c.seat.table);
+      c.path = computeCustomerPath(c, reachablePoint(c, DOOR), c.seat.table);
       c.pathIndex = 0;
     }
   }
@@ -668,8 +696,8 @@ function updateCustomer(c, dt) {
 // collision, no interaction with score/hunter/player), and vanishes off the
 // far side. `ghost` is null whenever none is currently on screen.
 let ghost = null;
-const GHOST_INTERVAL_MIN = 90;
-const GHOST_INTERVAL_MAX = 180;
+const GHOST_INTERVAL_MIN = 35;
+const GHOST_INTERVAL_MAX = 80;
 let ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
 
 function spawnGhost() {
@@ -692,6 +720,211 @@ function updateGhost(dt) {
     ghost.x += dir * ghost.speed * dt;
     ghost.flip = dir < 0;
     if ((dir > 0 && ghost.x >= ghost.targetX) || (dir < 0 && ghost.x <= ghost.targetX)) ghost = null;
+  }
+}
+
+// ---- Waiter: an occasional walk-on with exactly one job. Every minute or so
+// he comes in the door, walks round into the pocket the bar's L wraps around,
+// gives the counter a few squirts of water, and leaves the way he came.
+//
+// Like the ghost he is pure scenery: no orders, no seat, no score, no effect
+// on the chase. Unlike the ghost he is actually standing on the floor, so he
+// walks a routed path and respects furniture like everybody else. `waiter` is
+// null whenever nobody is on shift, which is most of the time.
+let waiter = null;
+// He owes each level exactly one visit, taken at a random moment inside it
+// rather than the instant the level ticks over — a shift, not a cutscene.
+// `waiterLevel` is the highest level he has already shown up for, so losing
+// points and re-crossing a threshold doesn't send him round again.
+const WAITER_DELAY_MIN = 15;
+const WAITER_DELAY_MAX = 55;
+let waiterLevel = 0;
+let waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
+const WAITER_SPRAY_TIME = 7;        // seconds spent working the counter
+const WAITER_SQUIRT_INTERVAL = 0.7; // one pull of the trigger
+const WAITER_SQUEEZE_TIME = 0.22;   // how long the squeeze frame is held
+const WAITER_SQUIRT_DROPS = 34;     // droplets per pull — a proper soaking
+const WAITER_MIST_COLOR = '#bfe4f2';
+// Sparks off the counter where the jet lands. Nobody has ever established
+// what is live under that bar top, and the waiter has stopped asking.
+const WAITER_SPARK_DELAY = 0.16;    // water's flight time before it arrives
+const WAITER_SPARK_COUNT = 18;
+// White-hot cores first: the bar top is already a row of amber glassware, and
+// a yellow spark sitting on it reads as one more bottle.
+const WAITER_SPARK_COLORS = ['#ffffff', '#fff6c2', '#ffd24a', '#ff8a24'];
+// Nozzle offset from his feet, in the spray pose: the bottle sits in the
+// sprite's outer columns, so the mist has to start out there too. Mirrored
+// with him when he faces the other way.
+const WAITER_NOZZLE_DX = 8.5;
+const WAITER_NOZZLE_DY = -6;
+
+// Where he works: the staff side of the upper-left counter. Feet clear the
+// counter's collider by a foot box's height, so he stands against the bar
+// rather than inside it, and far enough in from the ends to have counter to
+// spray in both directions.
+const WAITER_COUNTER = BAR_SEGMENTS[0].collider;
+function pickWaiterStation() {
+  const span = Math.max(1, WAITER_COUNTER.w - 32);
+  return {
+    x: WAITER_COUNTER.x + 16 + Math.random() * span,
+    y: WAITER_COUNTER.y + WAITER_COUNTER.h + 9,
+  };
+}
+
+function spawnWaiter() {
+  waiter = makeEntity('waiter', DOOR.x, DOOR.y);
+  waiter.state = 'entering';
+  waiter.station = pickWaiterStation();
+  waiter.path = computeCustomerPath(DOOR, waiter.station, null);
+  waiter.pathIndex = 0;
+  waiter.sprayTimer = 0;
+  waiter.squirtTimer = 0;
+  waiter.squeezeTimer = 0;
+  waiter.sparkTimer = 0;
+  waiter.flash = null;
+  waiter.mist = [];
+  waiter.sparks = [];
+  return waiter;
+}
+
+// Same walk as a customer's routed stroll, minus the own-table exclusion (he
+// isn't headed for a seat). Returns true on the frame he reaches the end of
+// his path.
+function waiterFollowPath(dt) {
+  const target = waiter.path[waiter.pathIndex];
+  const dx = target.x - waiter.x;
+  const dy = target.y - waiter.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1.5) {
+    waiter.x = target.x;
+    waiter.y = target.y;
+    if (waiter.pathIndex < waiter.path.length - 1) { waiter.pathIndex++; return false; }
+    waiter.moving = false;
+    return true;
+  }
+  const step = Math.min(dist, waiter.speed * dt);
+  const nx = clamp(waiter.x + (dx / dist) * step, waiter.w / 2, WORLD_W - waiter.w / 2);
+  if (!collidesAt(waiter, nx, waiter.y)) waiter.x = nx;
+  const ny = clamp(waiter.y + (dy / dist) * step, waiter.h / 2, WORLD_H - waiter.h / 2);
+  if (!collidesAt(waiter, waiter.x, ny)) waiter.y = ny;
+  waiter.flip = dx < 0;
+  waiter.moving = true;
+  return false;
+}
+
+// One pull of the trigger: a puff of droplets out of the nozzle, arcing down
+// onto the counter, plus the squeeze frame.
+function waiterSquirt() {
+  const dir = waiter.flip ? -1 : 1;
+  const ox = waiter.x + dir * WAITER_NOZZLE_DX;
+  const oy = waiter.y + WAITER_NOZZLE_DY;
+  for (let i = 0; i < WAITER_SQUIRT_DROPS; i++) {
+    // Fan the jet out: most droplets fly flat and fast, a few loft and hang,
+    // so a pull reads as a spray rather than a line of pixels.
+    const spread = Math.random();
+    const ttl = 0.6 + Math.random() * 0.7;
+    waiter.mist.push({
+      x: ox + dir * Math.random() * 2,
+      y: oy - 1 + Math.random() * 2,
+      vx: dir * (10 + spread * 26),
+      vy: -4 - Math.random() * 16,
+      size: Math.random() < 0.35 ? 2 : 1,
+      ttl, maxTtl: ttl,
+    });
+  }
+  waiter.squeezeTimer = WAITER_SQUEEZE_TIME;
+  waiter.sparkTimer = WAITER_SPARK_DELAY;
+}
+
+// ...and a moment later it lands. Sparks come off the counter top itself, out
+// along the jet, so the burst reads as a consequence of the water rather than
+// something happening at the nozzle.
+function waiterSparkBurst() {
+  const dir = waiter.flip ? -1 : 1;
+  const ix = waiter.x + dir * (13 + Math.random() * 7);
+  const iy = WAITER_COUNTER.y + WAITER_COUNTER.h - 1;
+  waiter.flash = { x: ix, y: iy, ttl: 0.1 };
+  for (let i = 0; i < WAITER_SPARK_COUNT; i++) {
+    const ttl = 0.25 + Math.random() * 0.45;
+    waiter.sparks.push({
+      x: ix, y: iy,
+      vx: dir * 10 + (Math.random() - 0.5) * 78,
+      vy: -34 - Math.random() * 56, // arc clear of the counter so they're seen against the wall
+      size: Math.random() < 0.3 ? 2 : 1,
+      // Weighted toward the hot end of the list: mostly white and near-white,
+      // with the odd ember.
+      color: WAITER_SPARK_COLORS[Math.floor(Math.random() ** 2 * WAITER_SPARK_COLORS.length)],
+      ttl, maxTtl: ttl,
+    });
+  }
+}
+
+function updateWaiter(dt) {
+  if (!waiter && getLevel() > waiterLevel) {
+    waiterDelay -= dt;
+    if (waiterDelay <= 0) {
+      spawnWaiter();
+      waiterLevel = getLevel();
+      waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
+    }
+  }
+  if (!waiter) return;
+
+  if (waiter.state === 'entering') {
+    if (waiterFollowPath(dt)) {
+      waiter.state = 'spraying';
+      waiter.sprayTimer = WAITER_SPRAY_TIME;
+      waiter.squirtTimer = 0.4;
+      // Face back along the counter toward its middle, so the spray lands on
+      // the bar instead of off the end of it.
+      waiter.flip = waiter.x > WAITER_COUNTER.x + WAITER_COUNTER.w / 2;
+    }
+  } else if (waiter.state === 'spraying') {
+    waiter.moving = false;
+    waiter.squeezeTimer = Math.max(0, waiter.squeezeTimer - dt);
+    waiter.pose = waiter.squeezeTimer > 0 ? 'sprayB' : 'spray';
+    waiter.squirtTimer -= dt;
+    if (waiter.squirtTimer <= 0) {
+      waiterSquirt();
+      waiter.squirtTimer = WAITER_SQUIRT_INTERVAL;
+    }
+    if (waiter.sparkTimer > 0) {
+      waiter.sparkTimer -= dt;
+      if (waiter.sparkTimer <= 0) waiterSparkBurst();
+    }
+    waiter.sprayTimer -= dt;
+    if (waiter.sprayTimer <= 0) {
+      waiter.state = 'leaving';
+      waiter.pose = null; // back to the walk cycle
+      waiter.path = computeCustomerPath(waiter, reachablePoint(waiter, DOOR), null);
+      waiter.pathIndex = 0;
+    }
+  } else if (waiter.state === 'leaving' && waiterFollowPath(dt)) {
+    waiter = null;
+    return;
+  }
+
+  for (let i = waiter.mist.length - 1; i >= 0; i--) {
+    const m = waiter.mist[i];
+    m.ttl -= dt;
+    if (m.ttl <= 0) { waiter.mist.splice(i, 1); continue; }
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+    m.vy += 26 * dt;
+  }
+  if (waiter.flash) {
+    waiter.flash.ttl -= dt;
+    if (waiter.flash.ttl <= 0) waiter.flash = null;
+  }
+  // Sparks are lighter and livelier than the water: they fly further, fall
+  // harder and are gone faster.
+  for (let i = waiter.sparks.length - 1; i >= 0; i--) {
+    const k = waiter.sparks[i];
+    k.ttl -= dt;
+    if (k.ttl <= 0) { waiter.sparks.splice(i, 1); continue; }
+    k.x += k.vx * dt;
+    k.y += k.vy * dt;
+    k.vy += 150 * dt;
   }
 }
 
@@ -1111,6 +1344,9 @@ function resetGame() {
   floatingTexts.length = 0;
   ghost = null;
   ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
+  waiter = null;
+  waiterLevel = 0;
+  waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
   // The regulars persist across restarts as characters, but every scrap of
   // their run state — orders, patience, mood, dialogue history and Nazim's
   // drink count — is wiped.
@@ -1643,6 +1879,7 @@ function update(dt) {
 
   updateRegulars(dt);
   updateGhost(dt);
+  updateWaiter(dt);
   updateDialogueTriggers(dt, input);
   updateAmbient(dt);
 
@@ -1684,18 +1921,8 @@ function update(dt) {
   }
 
   // Leg animation timers.
-  for (const e of [player, hunter, ...customers]) {
-    if (e.moving) {
-      e.legTimer -= dt;
-      if (e.legTimer <= 0) {
-        e.legFrame = 1 - e.legFrame;
-        e.legTimer = 0.14;
-      }
-    } else {
-      e.legFrame = 0;
-      e.legTimer = 0;
-    }
-  }
+  for (const e of [player, hunter, ...customers]) tickLegs(e, dt);
+  if (waiter) tickLegs(waiter, dt);
 
   // Life regen: only once a few hit-free seconds have passed, and never
   // while already fully caught (game over).
@@ -2357,6 +2584,37 @@ function drawGhost(g, camX, camY) {
   ctx.globalAlpha = 1;
 }
 
+// The waiter is an ordinary floor-standing character, plus the mist: drawn
+// after his sprite so the droplets read as leaving the nozzle rather than
+// being painted under his hand.
+function drawWaiter(w, camX, camY) {
+  drawEntity(w, camX, camY);
+  ctx.fillStyle = WAITER_MIST_COLOR;
+  for (const m of w.mist) {
+    ctx.globalAlpha = clamp(m.ttl / m.maxTtl, 0, 1) * 0.85;
+    ctx.fillRect(Math.round(m.x - camX), Math.round(m.y - camY), m.size, m.size);
+  }
+  // Sparks last, and additively: they're the brightest thing in the room for
+  // the fifth of a second they exist.
+  ctx.globalCompositeOperation = 'lighter';
+  if (w.flash) {
+    // A plus-shaped pop at the point of contact, so the sparks have a source.
+    ctx.globalAlpha = clamp(w.flash.ttl / 0.1, 0, 1) * 0.9;
+    ctx.fillStyle = '#ffffff';
+    const fx = Math.round(w.flash.x - camX);
+    const fy = Math.round(w.flash.y - camY);
+    ctx.fillRect(fx - 2, fy, 5, 1);
+    ctx.fillRect(fx, fy - 2, 1, 5);
+  }
+  for (const k of w.sparks) {
+    ctx.globalAlpha = clamp(k.ttl / k.maxTtl, 0, 1);
+    ctx.fillStyle = k.color;
+    ctx.fillRect(Math.round(k.x - camX), Math.round(k.y - camY), k.size, k.size);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
 function sortByY(a, b) { return a.sortY - b.sortY; }
 
 
@@ -2721,10 +2979,14 @@ function render() {
   // Floats above the floor with no ground shadow and no collision — it should
   // read as passing through the scene, not standing in it.
   if (ghost) pushDrawable(ghost.y, 'ghost', ghost);
+  // The waiter, by contrast, is on the floor like anyone else — his own pass
+  // exists only so the mist can be painted over his sprite.
+  if (waiter) pushDrawable(waiter.y, 'waiter', waiter);
   drawList.sort(sortByY);
   for (const d of drawList) {
     if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
     else if (d.type === 'ghost') drawGhost(d.ref, camX, camY);
+    else if (d.type === 'waiter') drawWaiter(d.ref, camX, camY);
     else drawEntity(d.ref, camX, camY);
   }
 
@@ -2796,6 +3058,9 @@ window.__debug = {
   computeCustomerPath, findBlockingObstacle, segmentHitsRect, pointBlocked, PATH_MARGIN, PATH_CELL,
   getGhost: () => ghost,
   spawnGhost,
+  getWaiter: () => waiter,
+  spawnWaiter,
+  waiterSchedule: () => ({ visitedThrough: waiterLevel, level: getLevel(), dueIn: +waiterDelay.toFixed(1) }),
   loadHighScores, saveHighScore,
   clearHighScores: () => { try { localStorage.removeItem(HIGH_SCORE_KEY); } catch {} },
   getNameEntry: () => ({ entering: enteringName, name: nameInput }),

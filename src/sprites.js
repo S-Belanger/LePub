@@ -445,11 +445,105 @@ const GHOST_IDLE = buildSprite([
   R('.', 1, 'g', 2, '.', 2, 'g', 2, '.', 2, 'g', 2, '.', 1),   // scalloped, wispy tail
 ]);
 
+// --- Waiter: the bar hand who wanders in now and then to give the counter a
+// squirt of water (see the waiter block in game.js). Drawn from a photo
+// reference: swept auburn hair, black rectangular glasses, a wide grin, dark
+// tee with a thin chain, and a service apron so he reads as staff at 1x.
+//
+// The spray poses are 20 wide instead of 14 so the outstretched arm and the
+// bottle have somewhere to go. The extra columns are split evenly either side
+// of the body, so swapping between walking and spraying doesn't slide him
+// sideways — drawSprite centres on the sprite's own width.
+const WAITER_PALETTE = {
+  '.': null,
+  h: '#5e3218', // auburn hair
+  H: '#8a5028', // the swept-back highlight in it
+  k: '#f2c39a', // skin
+  g: '#16161c', // heavy rectangular frames
+  w: '#8fa8bd', // lens catchlight
+  e: '#2a1c14', // eye behind the lens
+  m: '#f7f2e4', // grin
+  t: '#3c3f46', // dark grey tee
+  n: '#c9a227', // chain
+  a: '#d3c8b0', // apron
+  p: '#2b2b34', // jeans
+  s: '#1a1512', // shoes
+  b: '#5a94b4', // spray bottle
+  B: '#2f5f7c', // bottle shade / nozzle
+};
+
+const WAITER_IDLE = buildSprite([
+  '....hhhhhh....',
+  '...hHHhhhhh...',
+  '..hhHHhhhhhh..',
+  '..hkkkkkkkkh..',
+  '..ggggkkgggg..', // heavy rectangular frames, skin bridge between them
+  '..gwegkkgweg..', // catchlight, then the eye, behind each lens
+  '...kkkkkkkk...',
+  '....kmmmmk....', // the grin he's never photographed without
+  '....kkkkkk....',
+  '..tttnttnttt..', // chain over the collar
+  '.ttttttnttttt.', // ...down to the pendant
+  '.ttaaaaaaaatt.',
+  '.ktaaaaaaaatk.',
+  '..aaaaaaaaaa..',
+  '...ppp..ppp...',
+  '...ppp..ppp...',
+  '...sss..sss...',
+]);
+
+const WAITER_WALK = buildSprite([
+  ...WAITER_IDLE.rows.slice(0, 14),
+  '..ppp....ppp..',
+  '.ppp......ppp.',
+  'sss........sss',
+]);
+
+// Spraying: arm out, bottle in hand. The mist itself isn't in the sprite —
+// drawWaiter() puffs it out of the nozzle so it can drift and fade. The
+// nozzle's position here is what WAITER_NOZZLE_DX/DY in game.js point at.
+const WAITER_SPRAY = buildSprite([
+  '.......hhhhhh.......',
+  '......hHHhhhhh......',
+  '.....hhHHhhhhhh.....',
+  '.....hkkkkkkkkh.....',
+  '.....ggggkkgggg.....',
+  '.....gwegkkgweg.....',
+  '......kkkkkkkk......',
+  '.......kmmmmk.......',
+  '.......kkkkkk.......',
+  '.....tttnttnttt.....',
+  '....ttttttnttttt....',
+  '....ttaaaaaaaattkkB.', // forearm, then the nozzle
+  '....ktaaaaaaaatk.bB.',
+  '.....aaaaaaaaaa..bB.',
+  '......ppp..ppp......',
+  '......ppp..ppp......',
+  '......sss..sss......',
+]);
+
+// Second frame: the squeeze. The whole bottle dips a row and the wrist
+// follows it, so a squirt reads as a pull of the trigger rather than a
+// bottle held perfectly still.
+const WAITER_SPRAY_B = buildSprite([
+  ...WAITER_SPRAY.rows.slice(0, 11),
+  '....ttaaaaaaaattkk..',
+  '....ktaaaaaaaatk.bB.',
+  '.....aaaaaaaaaa..bB.',
+  '......ppp..ppp...bB.',
+  ...WAITER_SPRAY.rows.slice(15),
+]);
+
 const SPRITES = {
   hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
   doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
   customer: { idle: CUSTOMER_IDLE, walk: CUSTOMER_WALK, palette: null },
   ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
+  waiter: {
+    idle: WAITER_IDLE, walk: WAITER_WALK,
+    spray: WAITER_SPRAY, sprayB: WAITER_SPRAY_B,
+    palette: WAITER_PALETTE,
+  },
   nazim: {
     idle: NAZIM_IDLE, walk: NAZIM_IDLE, idleB: NAZIM_BLINK, talk: NAZIM_TALK,
     lean: NAZIM_LEAN, leanTalk: NAZIM_LEAN_TALK,

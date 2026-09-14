@@ -28,7 +28,7 @@ Script order in `index.html` matters: each file only uses things defined in the 
 | --- | --- |
 | `src/pixelfont.js` | 3×5 bitmap font: glyphs, `fontTextWidth`, `fontDrawText`, `fontDrawTextShadow`, `fontWrapText`. Pure data + helpers. |
 | `src/scenery.js` | The `PUB` palette, `makeSeededRandom`, and the `makeGlowCanvas`/`makeVignetteCanvas` lighting bakers. No game state. |
-| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`), every sprite and palette (doe, hunter, customers, the three regulars, order icons) and the `SPRITES` set map. No canvas, no game state. |
+| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`), every sprite and palette (doe, hunter, customers, the three regulars, the waiter, order icons) and the `SPRITES` set map. No canvas, no game state. |
 | `src/dialogue-content.js` | `DIALOGUE_LINES` and `DIALOGUE_EXCHANGES` — authored text only. |
 | `src/dialogue.js` | The `Dialogue` module: selection, weighting, cooldowns, queueing, repetition control. |
 | `src/regulars.js` | `REGULARS` config, `INTOX_STAGES`, `NAZIM_STAGE_VISUALS`, order weighting, mood constants. Data and pure functions. |
@@ -62,6 +62,8 @@ A collider is padded by `CHAIR_GAP + CHAIR_SIZE` **only on sides that actually h
 
 `BENCHES` is seating with no tabletop of its own: three wall benches (`seatStyle: 'bench'`, drawn as one long seat) tucked just inside the decorative wall bands so they aren't painted over by them, plus two rows of bar stools. They reuse `makeTable` purely for the seat math and the collider that the "near their table" delivery check needs; `type: 'bench'` tells the renderer to skip the tabletop.
 
+`reachablePoint(e, p)` clamps a destination into the box an entity can actually stand in (movement is clamped to half a sprite in from every world edge). `DOOR` sits below that box, so anything routed straight at it stops a few pixels short of its final waypoint and never registers as arrived — which is how leaving customers used to pile up invisibly against the bottom wall, holding seats' worth of the spawn cap forever. Every route *to* the door goes through it; routes to seats don't need it.
+
 `SEATS` is every table's *and bench's* seats flattened, each with a back-reference to its `table` plus `occupied`, `reserved` and `regularId` flags. Changing the layout means editing the literals — there is no generator and no map file.
 
 **`TABLES[0]` is the regulars' booth** at (62, 40), 40×22 with one chair each on south, west and east (Nazim, Sam, Gerald). It used to be 18×20 with two chairs down each long edge; that put seats ~7px apart, which is fine for anonymous patrons and unreadable once three 14×15 named characters sit there. The north side is left chairless because the plan's top wall bench is already within reach there.
@@ -80,7 +82,7 @@ A sprite set is keyed by pose name. Movers use `idle`/`walk` driven by `legFrame
 
 `makeEntity(kind, x, y)` creates the shared shape used by the player, hunter, customers **and regulars**. **An entity's `(x, y)` is its feet/anchor point, not top-left** — sprites draw upward from `y - sprite.h`, and this underlies collision boxes (`getFootBox`), z-sorting and bubble placement everywhere.
 
-`tryMove(e, dx, dy)` resolves X and Y independently against `FURNITURE` colliders so movement slides along walls/tables instead of stopping dead, returning `{x, y, blockedX, blockedY}`. `collidesAt(e, x, y, exclude)` takes an optional piece of furniture to ignore — that is what lets a customer walk *into* their own table's padded collider to reach the chair inside it. Base speeds: player **62**, customer 38, hunter 54 (recomputed every frame from the level), ghost 16.
+`tryMove(e, dx, dy)` resolves X and Y independently against `FURNITURE` colliders so movement slides along walls/tables instead of stopping dead, returning `{x, y, blockedX, blockedY}`. `collidesAt(e, x, y, exclude)` takes an optional piece of furniture to ignore — that is what lets a customer walk *into* their own table's padded collider to reach the chair inside it. Base speeds: player **62**, customer 38, hunter 54 (recomputed every frame from the level), waiter 46, ghost 16.
 
 ### 5. Customer/order state machine
 
@@ -90,7 +92,15 @@ Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), f
 
 **Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath`.
 
-**The ghost** (`updateGhost`) is purely decorative: every 90–180s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
+**The ghost** (`updateGhost`) is purely decorative: every 35–80s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
+
+**The waiter** (`updateWaiter`) is the other walk-on, and the one that actually uses the floor. He comes in through `DOOR`, walks a routed path (the same `computeCustomerPath`, with nothing excluded — he isn't headed for a seat) into the pocket the bar's L wraps around, stands against the upper-left counter and works it over with a spray bottle for `WAITER_SPRAY_TIME`, then routes back to the door and is removed. He has no order, no seat, no dialogue and no effect on score or the chase — changing any of that means giving him the customer order fields, not a new system. `drawWaiter` paints his sprite, then the droplets, then the sparks, so both read as coming off him rather than from under his hand.
+
+**One visit per level, taken at a random moment inside it.** `waiterLevel` is the highest level he has already shown up for and `waiterDelay` only counts down while a visit is owed (`getLevel() > waiterLevel`), so he lands `WAITER_DELAY_MIN`–`WAITER_DELAY_MAX` into each new level rather than on the level-up frame itself. Comparing against the highest level visited, not the current one, is what stops a run that loses points and re-crosses the same threshold from sending him round again.
+
+Squirts fire on `WAITER_SQUIRT_INTERVAL`. Each one holds the `sprayB` squeeze frame for a moment, pushes `WAITER_SQUIRT_DROPS` droplets out of the nozzle (arcing down under gravity, fading with their ttl), and arms `sparkTimer`: `WAITER_SPARK_DELAY` later — the water's flight time — `waiterSparkBurst()` fires sparks off the counter top where the jet lands, plus a one-frame white flash at the point of contact. Sparks are drawn with `'lighter'` and weighted toward white (`Math.random() ** 2` into `WAITER_SPARK_COLORS`), because the bar top is already a row of amber glassware and a yellow spark sitting on it reads as one more bottle.
+
+The `spray`/`sprayB` sprites are 20 wide instead of the walking 14 so the outstretched arm and bottle have somewhere to go, with the extra columns split evenly either side of the body — `drawSprite` centres on the sprite's own width, so uneven padding would slide him sideways every time he starts spraying. `WAITER_NOZZLE_DX`/`DY` in `game.js` point at where the nozzle pixel sits in those rows; move the bottle in `src/sprites.js` and the mist origin has to move with it.
 
 ### 6. Named regulars
 
@@ -181,7 +191,7 @@ Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and swa
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/level-splash state, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
-It also clears `enteringName`/`nameInput` and the ghost. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
+It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
 ## Development scaffolding
 
@@ -197,7 +207,8 @@ It also clears `enteringName`/`nameInput` and the ghost. **Any new piece of muta
 | `setNazimDrinks(n)` | Jump to any intoxication stage; returns the new stage and whether it changed. |
 | `computeCustomerPath` / `findBlockingObstacle` / `pointBlocked` | Check a layout edit hasn't sealed a seat off. |
 | `FURNITURE` / `BENCHES` | Every collider in one array — what a flood-fill reachability check runs over. |
-| `getGhost()` / `spawnGhost()` | Summon the apparition instead of waiting 90–180s for it. |
+| `getGhost()` / `spawnGhost()` | Summon the apparition instead of waiting 35–80s for it. |
+| `getWaiter()` / `spawnWaiter()` | Send the waiter in now; the returned entity's `state`/`pose`/`mist` can be driven by hand. |
 | `loadHighScores()` / `saveHighScore()` / `clearHighScores()` / `getNameEntry()` | Inspect and wipe the stored table, and see the live name field. |
 | `regularState()` | Order, patience, mood, drinks, stage and pose for all three. |
 | `triggerDialogue(category, who?)` / `clearDialogueCooldowns()` | Fire and unblock dialogue. |
