@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111317">
+  <meta name="description" content="Four original art and interface directions for Le Pub: The Chase.">
+  <title>Le Pub Art Direction Lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" as="image" href="assets/cinematic-pub.webp" type="image/webp" media="(min-width: 761px)">
+  <link rel="preload" as="image" href="assets/mobile/cinematic-pub.webp" type="image/webp" media="(max-width: 760px)">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-nav">
+    <a class="brand" href="../index.html" aria-label="Return to Le Pub">
+      <span class="brand-mark">LP</span>
+      <span>Art Direction Lab</span>
+    </a>
+
+    <div class="quick-tabs" role="tablist" aria-label="Choose an art direction">
+      <button class="quick-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="concept-cinematic" data-select="cinematic"><b>A</b><span>Cinematic</span></button>
+      <button class="quick-tab" type="button" role="tab" aria-selected="false" aria-controls="concept-noir" data-select="noir"><b>B</b><span>Noir</span></button>
+      <button class="quick-tab" type="button" role="tab" aria-selected="false" aria-controls="concept-cozy" data-select="cozy"><b>C</b><span>Cozy</span></button>
+      <button class="quick-tab" type="button" role="tab" aria-selected="false" aria-controls="concept-arcade" data-select="arcade"><b>D</b><span>Arcade</span></button>
+    </div>
+
+    <a class="nav-link" href="../index.html">Play current build</a>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div class="intro-copy">
+        <p class="eyebrow">Four original directions</p>
+        <h1 id="page-title">Choose the pub worth chasing.</h1>
+        <p>Same cast and same gameplay. Each option changes the art workload, emotional tone, sprite scale, and HUD priorities.</p>
+      </div>
+      <div class="intro-controls" role="group" aria-label="Viewer controls">
+        <span><kbd>1</kbd> to <kbd>4</kbd> switch</span>
+        <span><kbd>&larr;</kbd> <kbd>&rarr;</kbd> browse</span>
+        <button type="button" class="preview-toggle" data-preview-toggle>Preview only <kbd>P</kbd></button>
+      </div>
+    </section>
+
+    <section class="viewer" aria-label="Le Pub visual concepts">
+      <article class="concept concept--cinematic is-active" id="concept-cinematic" role="tabpanel" data-concept="cinematic">
+        <div class="concept-media">
+          <picture>
+            <source media="(max-width: 760px)" srcset="assets/mobile/cinematic-pub.webp">
+            <img src="assets/cinematic-pub.webp" alt="Cinematic detailed pixel-art pub with the deer waiter running from the hunter" width="1672" height="941" fetchpriority="high">
+          </picture>
+          <div class="game-ui cinema-ui" aria-hidden="true">
+            <div class="cinema-status">
+              <span class="hud-label">SHIFT 01</span>
+              <span class="life-orbs"><i></i><i></i><i></i></span>
+            </div>
+            <div class="cinema-score">
+              <small>SERVICE</small>
+              <strong>70</strong><span>/100</span>
+            </div>
+            <div class="cinema-order">
+              <span class="drink-icon"><i></i></span>
+              <span><small>OLDEST ORDER</small><strong>Blond ale for Nazim</strong></span>
+              <b>38s</b>
+            </div>
+          </div>
+        </div>
+        <div class="concept-brief">
+          <div class="concept-heading">
+            <span class="concept-letter">A</span>
+            <div>
+              <h2>Candlelight Cinema</h2>
+              <p>Make the pub itself the star. Rich material detail and authored light turn every shift into a place players want to inhabit.</p>
+            </div>
+          </div>
+          <dl class="decision-grid">
+            <div><dt>Best for</dt><dd>Atmosphere, screenshots, story</dd></div>
+            <div><dt>Art rule</dt><dd>24-32 px cast, layered light</dd></div>
+            <div><dt>HUD rule</dt><dd>Quiet brass instruments</dd></div>
+            <div><dt>Tradeoff</dt><dd>Highest production workload</dd></div>
+          </dl>
+          <p class="reference-note">Reference traits: environmental density from <a href="https://eastwardgame.com/media/" target="_blank" rel="noreferrer">Eastward</a> and pixel-consistent dynamic light from <a href="https://sabotagestudio.com/presskits/sea-of-stars/" target="_blank" rel="noreferrer">Sea of Stars</a>.</p>
+        </div>
+      </article>
+
+      <article class="concept concept--noir" id="concept-noir" role="tabpanel" data-concept="noir" hidden>
+        <div class="concept-media">
+          <picture>
+            <source media="(max-width: 760px)" srcset="assets/mobile/neon-noir.webp">
+            <img src="assets/neon-noir.webp" alt="High contrast neon-noir pixel-art pub chase with coral and mint lighting" width="1672" height="941" loading="lazy">
+          </picture>
+          <div class="game-ui noir-ui" aria-hidden="true">
+            <div class="noir-heading">
+              <span>LAST CALL</span>
+              <strong>01:42</strong>
+            </div>
+            <div class="noir-threat">
+              <small>HUNTER RANGE</small>
+              <div class="threat-ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+            <div class="noir-score"><span>TIP</span><strong>70</strong></div>
+            <div class="noir-action"><kbd>E</kbd><span>SERVE</span></div>
+          </div>
+        </div>
+        <div class="concept-brief">
+          <div class="concept-heading">
+            <span class="concept-letter">B</span>
+            <div>
+              <h2>Neon Last Call</h2>
+              <p>Turn the shift into a stylish pursuit. A severe palette and angular HUD make threat, routes, and reactions read immediately.</p>
+            </div>
+          </div>
+          <dl class="decision-grid">
+            <div><dt>Best for</dt><dd>Tension, identity, fast play</dd></div>
+            <div><dt>Art rule</dt><dd>Four hues, hard silhouettes</dd></div>
+            <div><dt>HUD rule</dt><dd>Threat-first, angular frames</dd></div>
+            <div><dt>Tradeoff</dt><dd>Less cozy and conversational</dd></div>
+          </dl>
+          <p class="reference-note">Reference traits: palette discipline, negative space, and hand-animated clarity from <a href="https://www.heartmachine.com/hyper-light-drifter" target="_blank" rel="noreferrer">Hyper Light Drifter</a>.</p>
+        </div>
+      </article>
+
+      <article class="concept concept--cozy" id="concept-cozy" role="tabpanel" data-concept="cozy" hidden>
+        <div class="concept-media">
+          <picture>
+            <source media="(max-width: 760px)" srcset="assets/mobile/cozy-story.webp">
+            <img src="assets/cozy-story.webp" alt="Warm character-focused pixel-art pub where patrons react to a comic chase" width="1672" height="941" loading="lazy">
+          </picture>
+          <div class="game-ui cozy-ui" aria-hidden="true">
+            <div class="cozy-shift">
+              <span>Evening shift</span>
+              <b>70</b>
+            </div>
+            <div class="cozy-orders">
+              <small>Waiting</small>
+              <span class="cozy-ticket"><i class="mug"></i>Nazim</span>
+              <span class="cozy-ticket"><i class="plate"></i>Table 4</span>
+            </div>
+            <div class="cozy-life"><span>Steady now</span><i></i><i></i><i></i></div>
+            <div class="cozy-dialogue">
+              <span class="speaker">GERALD</span>
+              <p>You want a tip? Walk faster.</p>
+            </div>
+          </div>
+        </div>
+        <div class="concept-brief">
+          <div class="concept-heading">
+            <span class="concept-letter">C</span>
+            <div>
+              <h2>Corner Booth Stories</h2>
+              <p>Build around the regulars. Bigger faces, stronger reactions, and a friendly ticket system make the pub feel like a sitcom under pressure.</p>
+            </div>
+          </div>
+          <dl class="decision-grid">
+            <div><dt>Best for</dt><dd>Characters, humor, broad appeal</dd></div>
+            <div><dt>Art rule</dt><dd>Large faces, softer geometry</dd></div>
+            <div><dt>HUD rule</dt><dd>Readable tickets and dialogue</dd></div>
+            <div><dt>Tradeoff</dt><dd>Hunter feels less dangerous</dd></div>
+          </dl>
+          <p class="reference-note">Reference traits: expressive characters and dense lived-in spaces from <a href="https://eastwardgame.com/media/" target="_blank" rel="noreferrer">Eastward</a>, translated into a brighter social comedy.</p>
+        </div>
+      </article>
+
+      <article class="concept concept--arcade" id="concept-arcade" role="tabpanel" data-concept="arcade" hidden>
+        <div class="concept-media">
+          <picture>
+            <source media="(max-width: 760px)" srcset="assets/mobile/arcade-16bit.webp">
+            <img src="assets/arcade-16bit.webp" alt="Bold low-resolution 16-bit pub chase with chunky characters and clear action lanes" width="1672" height="941" loading="lazy">
+          </picture>
+          <div class="game-ui arcade-ui" aria-hidden="true">
+            <div class="arcade-topline">
+              <span><small>ROUND</small><strong>1</strong></span>
+              <span class="arcade-life"><i></i><i></i><i></i></span>
+              <span><small>SCORE</small><strong>00070</strong></span>
+            </div>
+            <div class="arcade-combo"><small>FAST SERVE</small><strong>x3</strong></div>
+            <div class="arcade-action"><kbd>E</kbd><span>DROP THE PINT</span></div>
+          </div>
+        </div>
+        <div class="concept-brief">
+          <div class="concept-heading">
+            <span class="concept-letter">D</span>
+            <div>
+              <h2>Closing Time Turbo</h2>
+              <p>Commit to the arcade. Chunky sprites, six colors, and oversized feedback make every decision readable before the next beat lands.</p>
+            </div>
+          </div>
+          <dl class="decision-grid">
+            <div><dt>Best for</dt><dd>Clarity, speed, achievable scope</dd></div>
+            <div><dt>Art rule</dt><dd>Native 320 x 180 discipline</dd></div>
+            <div><dt>HUD rule</dt><dd>Scoreboard and big feedback</dd></div>
+            <div><dt>Tradeoff</dt><dd>Least cinematic direction</dd></div>
+          </dl>
+          <p class="reference-note">Reference traits: fast action legibility and compact feedback from <a href="https://deadcells.com/" target="_blank" rel="noreferrer">Dead Cells</a>, reframed for a top-down serving chase.</p>
+        </div>
+      </article>
+    </section>
+
+    <nav class="direction-rail" aria-label="All four directions">
+      <button type="button" class="direction-choice is-active" data-select="cinematic">
+        <span class="rail-key">A</span><span><b>Candlelight Cinema</b><small>Atmospheric and premium</small></span><i class="palette palette-a"></i>
+      </button>
+      <button type="button" class="direction-choice" data-select="noir">
+        <span class="rail-key">B</span><span><b>Neon Last Call</b><small>Graphic and tense</small></span><i class="palette palette-b"></i>
+      </button>
+      <button type="button" class="direction-choice" data-select="cozy">
+        <span class="rail-key">C</span><span><b>Corner Booth Stories</b><small>Warm and character-led</small></span><i class="palette palette-c"></i>
+      </button>
+      <button type="button" class="direction-choice" data-select="arcade">
+        <span class="rail-key">D</span><span><b>Closing Time Turbo</b><small>Chunky and immediate</small></span><i class="palette palette-d"></i>
+      </button>
+    </nav>
+  </main>
+
+  <div class="asset-error" role="status" aria-live="polite" hidden>One of the concept images could not be loaded. Refresh the local server and try again.</div>
+  <script src="app.js"></script>
+</body>
+</html>

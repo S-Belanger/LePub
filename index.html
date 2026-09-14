@@ -2,16 +2,62 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0a10">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Le Pub: The Chase</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="game-wrap">
-    <h1>LE PUB</h1>
-    <p class="subtitle">Une chasse sans pitié... Serve the customers and dodge the hunter!</p>
-    <canvas id="game" width="640" height="360"></canvas>
-    <p class="controls">Move: <kbd>WASD</kbd> / <kbd>Arrow Keys</kbd> &nbsp;|&nbsp; Grab order at bar / Deliver: <kbd>E</kbd> &nbsp;|&nbsp; Restart after catch: <kbd>Space</kbd></p>
+  <!-- Fullscreen shell: the canvas is the whole page. Everything else is a
+       DOM overlay stacked on top of it, so nothing steals layout space. -->
+  <div id="shell">
+    <div id="stage">
+      <canvas id="game" width="320" height="180"></canvas>
+    </div>
+
+    <!-- Corner controls. Kept quiet until touched/hovered. -->
+    <div id="top-bar">
+      <button id="btn-help" type="button" class="chip" aria-label="Help">?</button>
+      <button id="btn-sound" type="button" class="chip sound" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
+      <button id="btn-fullscreen" type="button" class="chip" aria-label="Toggle fullscreen">&#9974;</button>
+    </div>
+
+    <!-- Start / help overlay. Replaces the old permanent title block. -->
+    <div id="overlay" class="overlay">
+      <div class="panel">
+        <h1>LE PUB</h1>
+        <p class="subtitle">Une chasse sans piti&eacute;&hellip; serve the regulars, dodge the hunter.</p>
+        <ul class="keys">
+          <li><span>Move</span><kbd>WASD</kbd><kbd>Arrows</kbd><em class="touch-only">left stick</em></li>
+          <li><span>Grab / Deliver</span><kbd>E</kbd><kbd>Space</kbd><em class="touch-only">right button</em></li>
+          <li><span>Sound</span><kbd>M</kbd><em class="touch-only">SFX button</em></li>
+          <li><span>Restart</span><kbd>Space</kbd><em class="touch-only">on-screen button</em></li>
+        </ul>
+        <button id="btn-start" type="button" class="primary">START SHIFT</button>
+        <p class="hint">Nazim, Sam and Gerald are always at the corner table.</p>
+      </div>
+    </div>
+
+    <!-- Caught screen actions (the art itself is painted in the canvas). -->
+    <div id="caught-actions" class="hidden">
+      <button id="btn-restart" type="button" class="primary">RESTART</button>
+    </div>
+
+    <!-- Touch controls, only shown on touch-capable devices. -->
+    <div id="touch" class="hidden">
+      <div id="stick" class="stick"><div class="stick-knob"></div></div>
+      <button id="btn-action" type="button" class="action" aria-label="Grab or deliver order">E</button>
+    </div>
   </div>
+
+  <script src="src/pixelfont.js"></script>
+  <script src="src/scenery.js"></script>
+  <script src="src/sprites.js"></script>
+  <script src="src/dialogue-content.js"></script>
+  <script src="src/dialogue.js"></script>
+  <script src="src/regulars.js"></script>
+  <script src="src/sound.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
