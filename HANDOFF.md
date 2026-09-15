@@ -30,6 +30,13 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 19:55 — pushed, previewed, review page updated
+
+- Branch at `4db06bd`, in sync. Preview <https://lepub-5as0nhdru-maisoncastros-projects.vercel.app>
+  (`dpl_ArMtvLgixTnhFaW9pwx4XQY3HQnf`), posted on PR #3. Review page
+  (reference / before / now, cast sheets) republished at the same URL.
+- Waiting on the user's verdict and the architectural plan.
+
 ### 19:45 — visual pass 3: perimeter props, fireplace light, compact tickets; docs; deploying
 
 - `drawWallProps(ctx)` at the end of `drawArchitecture`: stone fireplace
