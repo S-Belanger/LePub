@@ -30,6 +30,15 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:03 (wall clock; earlier stamps in this session were estimates) — pushed and previewed
+
+- Branch at `302047f`, in sync with upstream, 11 commits ahead of
+  `origin/main`. Preview: <https://lepub-ft9jl787e-maisoncastros-projects.vercel.app>
+  (`dpl_DnwySQjAqqXZdhLYsJzbXBaB3AN2`); link posted on PR #3. Draft, not for
+  merging. Native Vercel checks still need the repo owner to install the
+  Vercel GitHub App (see 17:26).
+- Waiting on: the user's real bar architectural plan for a layout pass.
+
 ### 19:35 — batch E (juice) done; docs updated; all ten recommendations in
 
 - Hit-stop (`HIT_STOP` 0.08 s freeze) and the emptied HUD pint rocking with
