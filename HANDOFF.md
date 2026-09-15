@@ -30,6 +30,46 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:05 — batch A (loop) done: stations, tips, tray
+
+- `BAR_STATIONS` (taps/shelf/hatch → order types) and a `station` on each
+  `BAR_SEGMENTS` entry; `nearestBarSegment()` resolves the L's corner by
+  distance; `findOldestPendingOrder(types)` filters by station; a
+  wrong-station press floats "SHELF >" toward the right counter.
+  `drawStationTag` paints a parchment label on each counter.
+- `deliveryTip()`: 10 + round(10 × patience fraction), +5 CLUTCH under 20%.
+- `player.carrying` → `player.tray` (max `TRAY_MAX` 2); full tray sets speed
+  `TRAY_SPEED` 54; `doubleArmed`/`doubleHitFree` pay `DOUBLE_BONUS` 10 when
+  both land unhit (a hit or a dropped order cancels it). `canDeliverTo()`
+  extracted; interact tries delivery first, then pickup.
+- Smoke test covers the loop end to end (station refusal, two pickups, speed
+  54/62, both deliveries, double). Passes. Edge capture clean.
+- Next: batch B — hunter states (scan/chase/lost), A* pursuit, late entry
+  through the door, serve-the-hunter.
+
+### 17:40 — design pass approved; implementation starting
+
+- `git fetch`: branch is 6 ahead / 0 behind `origin/main` — nothing to merge.
+- User approved the full design review. Direction in force, in this order:
+  1. Station pickup: each `BAR_SEGMENTS` rect serves a group of order types;
+     interact at a station grabs the oldest order of that group.
+  2. Speed-scaled tips: 10 + round(10 × patience fraction), "CLUTCH +5"
+     under 20% patience.
+  3. Tray: carry two, speed 62→54, "DOUBLE" bonus if both land unhit.
+  4. Hunter states: scanning (cone + line of sight) → chase ("!" + whistle)
+     → lost (3 s). 5. Serve the hunter: periodic order; delivery seats him
+     8 s. 6. Hunter A* pursuit (recomputed ~1.5 s) under the jitter layer.
+  7. Nazim stages matter: drunk = faster orders/double tips; gone = wanders
+     the booth lane + spill puddles; Gerald orders water (non-alcohol, drops
+     a stage). 8. The round: all three regulars order together, 20 s bonus.
+  9. Shifts end: 100 tips or 3 min, 15 s last-call rush, tally board;
+     endless after shift 5. 10. Hunter enters via DOOR after 20 s.
+  Juice: off-camera hunter vignette pulse + footsteps, hit-stop + HUD pint
+  knock, ghost shudders the hunter.
+- User will send the bar's real architectural plan; expect a layout pass
+  afterwards. Build station pickup against `BAR_SEGMENTS` data so a remap is
+  a one-line change.
+
 ### 17:26 — why PR #3 gets no Vercel check (blocked on repo owner)
 
 - Diagnosis: Vercel project `lepub` (`prj_6vjBFT18p2WKio9SJNGZiIpEtU3M`, team

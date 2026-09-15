@@ -195,13 +195,29 @@ function getTableSeats(table) {
 // The bar as a small L: a short counter, a vertical stem, and a foot that
 // meets it — three rectangular segments sharing the same visual treatment.
 // Coordinates traced from assets/planFloor.png (the hand-drawn floor plan).
+//
+// Each segment is also a *station*: the taps pour the beers, the shelf holds
+// the wine and cocktails, the kitchen hatch does food. An order can only be
+// picked up at the station that makes it, so every trip to the bar is a
+// choice — which station is nearer, whose patience is reddest, is the hunter
+// between me and the taps. Remapping a station is a one-word edit here.
+const BAR_STATIONS = {
+  taps: { label: 'TAPS', types: ['beer-dark', 'beer-red', 'beer-blond'] },
+  shelf: { label: 'SHELF', types: ['wine', 'cocktail'] },
+  hatch: { label: 'KITCHEN', types: ['food'] },
+};
+function stationForType(type) {
+  for (const id in BAR_STATIONS) if (BAR_STATIONS[id].types.indexOf(type) !== -1) return id;
+  return null;
+}
 const BAR_SEGMENTS = [
-  { x: 1, y: 67, w: 71, h: 22 },   // short counter, upper-left
-  { x: 91, y: 109, w: 27, h: 90 }, // vertical stem
-  { x: 1, y: 177, w: 87, h: 23 },  // foot, meets the stem, touches the wall
+  { x: 1, y: 67, w: 71, h: 22, station: 'taps' },    // short counter, upper-left
+  { x: 91, y: 109, w: 27, h: 90, station: 'shelf' }, // vertical stem
+  { x: 1, y: 177, w: 87, h: 23, station: 'hatch' },  // foot, meets the stem, touches the wall
 ].map(r => ({
   type: 'bar',
-  collider: r,
+  collider: { x: r.x, y: r.y, w: r.w, h: r.h },
+  station: r.station,
   sortY: r.y + r.h,
 }));
 
@@ -629,6 +645,19 @@ let score = 0;
 let gameTime = 0;
 const POINTS_PER_DELIVERY = 10;
 const FORGOTTEN_PENALTY = 15;
+// Tips scale with how fresh the order still is: a full second helping of the
+// base for an instant delivery, nothing extra for one that scraped in, and a
+// flat bonus for rescuing an order in its last fifth. The patience bar is a
+// score meter, not just a fail timer.
+const CLUTCH_FRACTION = 0.2;
+const CLUTCH_BONUS = 5;
+
+function deliveryTip(target) {
+  const frac = clamp(target.sitTimer / target.patienceDuration, 0, 1);
+  const clutch = frac < CLUTCH_FRACTION;
+  const tip = POINTS_PER_DELIVERY + Math.round(POINTS_PER_DELIVERY * frac) + (clutch ? CLUTCH_BONUS : 0);
+  return { tip, clutch };
+}
 
 // ---- Life: instead of an instant game-over, getting caught costs a third of
 // a continuous life bar (1 = full). A brief invulnerability window after a hit
@@ -692,9 +721,17 @@ function addFloatingText(x, y, text, color) {
   floatingTexts.push({ x, y, text, color, ttl: 1 });
 }
 
-// player.carrying: null, or { type, customer } while ferrying an order from
-// the bar to the customer who ordered it.
-player.carrying = null;
+// player.tray: up to TRAY_MAX { type, customer } items while ferrying orders from
+// the bar to the customers who ordered them.
+player.tray = [];
+// A second order on the tray slows the Doe under the hunter's top speed, so
+// carrying two is a real bet. Landing both without taking a hit pays out.
+const PLAYER_SPEED = 62;
+const TRAY_MAX = 2;
+const TRAY_SPEED = 54;
+const DOUBLE_BONUS = 10;
+let doubleArmed = false;    // the tray was full at some point this trip
+let doubleHitFree = true;   // ...and nobody has been hit since
 
 // ---- Customers: trickle in from the door, walk to a free seat, sit for a
 // while, then leave. No movement collision with the chase, but once seated
@@ -1324,7 +1361,7 @@ function updateDialogueTriggers(dt, input) {
   }
 
   // Ferrying one drink around the entire pub.
-  if (player.carrying) {
+  if (player.tray.length) {
     carryTimer += dt;
     if (carryTimer > 20) {
       carryTimer = -18;
@@ -1442,7 +1479,9 @@ function resetGame() {
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
   customerSpawnTimer = 3;
-  player.carrying = null;
+  player.tray.length = 0;
+  doubleArmed = false;
+  doubleHitFree = true;
   floatingTexts.length = 0;
   ghost = null;
   ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
@@ -1479,17 +1518,25 @@ function nearRect(x, y, rect, margin) {
 // age rather than by array position keeps the queue fair now that two
 // populations feed it, and makes "who does this drink belong to" deterministic
 // even when several people want the same thing.
-function findOldestPendingOrder() {
+// `types`, when given, restricts the search to what one station can make.
+function findOldestPendingOrder(types) {
   let best = null;
+  const wants = t => !types || types.indexOf(t) !== -1;
   for (const c of customers) {
-    if (c.state !== 'sitting' || !c.orderType || c.served || c.beingCarried) continue;
+    if (c.state !== 'sitting' || !c.orderType || c.served || c.beingCarried || !wants(c.orderType)) continue;
     if (!best || c.orderPlacedAt < best.orderPlacedAt) best = c;
   }
   for (const r of regulars) {
-    if (!r.orderType || r.served || r.beingCarried) continue;
+    if (!r.orderType || r.served || r.beingCarried || !wants(r.orderType)) continue;
     if (!best || r.orderPlacedAt < best.orderPlacedAt) best = r;
   }
   return best;
+}
+
+function removeFromTray(target) {
+  for (let i = player.tray.length - 1; i >= 0; i--) {
+    if (player.tray[i].customer === target) player.tray.splice(i, 1);
+  }
 }
 
 // A delivery that actually landed. Everything a completed order awards happens
@@ -1498,10 +1545,19 @@ function findOldestPendingOrder() {
 function completeDelivery(target) {
   target.served = true;
   target.beingCarried = false;
-  player.carrying = null;
-  score += POINTS_PER_DELIVERY;
+  removeFromTray(target);
+  const { tip, clutch } = deliveryTip(target);
+  score += tip;
   Sound.play('deliver');
-  addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
+  addFloatingText(target.x, target.y - target.h - 4, '+' + tip + (clutch ? ' CLUTCH' : ''), clutch ? PUB.amber : '#3ddc61');
+  // Both tray orders landed with no hit in between: the tray bet paid off.
+  if (doubleArmed && player.tray.length === 0) {
+    if (doubleHitFree) {
+      score += DOUBLE_BONUS;
+      addFloatingText(player.x, player.y - player.h - 12, 'DOUBLE +' + DOUBLE_BONUS, PUB.amber);
+    }
+    doubleArmed = false;
+  }
 
   if (!target.isRegular) {
     noteOrderCleared(target);
@@ -1532,35 +1588,73 @@ function registerWhiff() {
   }
 }
 
+// Delivery works either right next to the customer, or anywhere near the
+// table they're seated at — with several seats per side on the bigger tables,
+// walking all the way around to their exact chair isn't fair.
+function canDeliverTo(target) {
+  if (!target || target.state !== 'sitting' || target.served) return false;
+  const nearCustomer = Math.hypot(player.x - target.x, player.y - target.y) < INTERACT_RANGE;
+  const nearTheirTable = target.seat && target.seat.table &&
+    nearRect(player.x, player.y, target.seat.table.collider, INTERACT_RANGE);
+  return nearCustomer || nearTheirTable;
+}
+
+// The segment the player is standing at, or null. Where the foot meets the
+// stem a spot can be in reach of both, so the closer counter wins rather
+// than whichever is listed first.
+function nearestBarSegment() {
+  let best = null;
+  let bestDist = Infinity;
+  for (const b of BAR_SEGMENTS) {
+    if (!nearRect(player.x, player.y, b.collider, INTERACT_RANGE)) continue;
+    const r = b.collider;
+    const dx = Math.max(r.x - player.x, 0, player.x - (r.x + r.w));
+    const dy = Math.max(r.y - player.y, 0, player.y - (r.y + r.h));
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) { bestDist = d; best = b; }
+  }
+  return best;
+}
+
 function handleInteract() {
   if (caught) return;
 
-  if (player.carrying) {
-    // player.carrying.customer is kept valid (or reassigned to someone else
-    // waiting on the same drink) by the per-frame check in update(), which
-    // drops the order entirely once nobody wants it — so target should
-    // always be set here, but this is kept defensive just in case.
-    const target = player.carrying.customer;
-    // Delivery works either right next to the customer, or anywhere near the
-    // table they're seated at — with several seats per side on the bigger
-    // tables, walking all the way around to their exact chair isn't fair.
-    const nearCustomer = target ? Math.hypot(player.x - target.x, player.y - target.y) < INTERACT_RANGE : false;
-    const nearTheirTable = target && target.seat && target.seat.table &&
-      nearRect(player.x, player.y, target.seat.table.collider, INTERACT_RANGE);
-    if (target && (nearCustomer || nearTheirTable) && target.state === 'sitting' && !target.served) {
-      completeDelivery(target);
-    } else {
-      registerWhiff();
+  // Deliver first: whichever tray order belongs to someone in reach. Each
+  // item's customer is kept valid (or reassigned) by the per-frame check in
+  // update(), which drops an order entirely once nobody wants it.
+  for (const item of player.tray) {
+    if (canDeliverTo(item.customer)) {
+      completeDelivery(item.customer);
+      return;
     }
-    return;
   }
 
-  if (BAR_SEGMENTS.some(seg => nearRect(player.x, player.y, seg.collider, INTERACT_RANGE))) {
-    const pending = findOldestPendingOrder();
+  const seg = nearestBarSegment();
+  if (seg) {
+    if (player.tray.length >= TRAY_MAX) {
+      addFloatingText(player.x, player.y - player.h - 4, 'TRAY FULL', PUB.creamDim);
+      registerWhiff();
+      return;
+    }
+    const pending = findOldestPendingOrder(BAR_STATIONS[seg.station].types);
     if (pending) {
       pending.beingCarried = true;
-      player.carrying = { type: pending.orderType, customer: pending };
+      player.tray.push({ type: pending.orderType, customer: pending });
+      if (player.tray.length === TRAY_MAX) {
+        doubleArmed = true;
+        doubleHitFree = true;
+      }
       Sound.play('pickup');
+      return;
+    }
+    // Nothing this station makes is wanted. Point at the one that has the
+    // oldest order, so a wrong-counter press teaches the map instead of
+    // just buzzing.
+    const elsewhere = findOldestPendingOrder();
+    if (elsewhere) {
+      const station = BAR_STATIONS[stationForType(elsewhere.orderType)];
+      if (station) addFloatingText(player.x, player.y - player.h - 4, station.label + ' >', PUB.amber);
+      Sound.play('whiff');
       return;
     }
   }
@@ -1911,6 +2005,7 @@ function update(dt) {
 
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
+  player.speed = player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED;
   player.moving = input.x !== 0 || input.y !== 0;
   if (input.x !== 0) player.flip = input.x < 0;
   const playerMove = tryMove(player, input.x * player.speed * dt, input.y * player.speed * dt);
@@ -1991,25 +2086,27 @@ function update(dt) {
   // wasting the trip. If nobody else wants it either, drop the order
   // entirely rather than leaving the player stuck "carrying" a drink with
   // no possible delivery target, which would block grabbing a new one.
-  if (player.carrying) {
-    const target = player.carrying.customer;
+  for (let i = player.tray.length - 1; i >= 0; i--) {
+    const item = player.tray[i];
+    const target = item.customer;
     // `orderType` is also checked because a regular's order can lapse while
     // they stay in their seat — for a walk-in, leaving is the only way out.
     const stillWanted = target && target.state === 'sitting' && !target.served &&
-      target.orderType === player.carrying.type;
+      target.orderType === item.type;
     if (!stillWanted) {
       // Deliberately only walk-ins: silently re-pointing a drink at a
       // different *named* regular would make "whose pint is this" ambiguous,
       // and Gerald being handed Nazim's beer is a bug, not a feature. A
       // regular's order always has to be picked up for them on purpose.
       const replacement = customers.find(c =>
-        c.state === 'sitting' && !c.served && !c.beingCarried && c.orderType === player.carrying.type
+        c.state === 'sitting' && !c.served && !c.beingCarried && c.orderType === item.type
       );
       if (replacement) {
-        player.carrying.customer = replacement;
+        item.customer = replacement;
         replacement.beingCarried = true;
       } else {
-        player.carrying = null;
+        player.tray.splice(i, 1);
+        doubleArmed = false;   // one of the pair evaporated; no double for a single
       }
     }
   }
@@ -2047,6 +2144,7 @@ function update(dt) {
     life = Math.max(0, life - LIFE_HIT_FRACTION);
     hitInvulnTimer = LIFE_HIT_INVULN;
     regenDelayTimer = LIFE_REGEN_DELAY;
+    doubleHitFree = false;
 
     if (life <= 1e-9) {
       caught = true;
@@ -2765,6 +2863,21 @@ function drawBar(bar, camX, camY) {
     drawBarProp(prop, camX, camY);
   }
   if (horizontal && c.w > 60) drawCounterPlant(x + c.w - 8, y + 4);
+  drawStationTag(bar, x, y, horizontal);
+}
+
+// A small parchment tag on the counter naming the station, so the player can
+// read the bar's map from across the room.
+function drawStationTag(bar, x, y, horizontal) {
+  const station = BAR_STATIONS[bar.station];
+  if (!station) return;
+  const c = bar.collider;
+  const tw = fontTextWidth(station.label) + 4;
+  const th = FONT_H + 3;
+  const tx = horizontal ? x + Math.round(c.w / 2 - tw / 2) : x + Math.round(c.w / 2 - tw / 2);
+  const ty = horizontal ? y + 3 : y + Math.round(c.h / 2 - th / 2);
+  drawParchmentPlate(tx, ty, tw, th, UI.brassDark);
+  fontDrawText(ctx, station.label, tx + 2, ty + 2, UI.ink);
 }
 
 function drawCounterPlant(x, y) {
@@ -3107,7 +3220,7 @@ function pushDrawable(sortY, type, ref) {
 
 function spriteForEntity(e) {
   const set = SPRITES[e.kind];
-  if (e === player && e.carrying) {
+  if (e === player && e.tray.length) {
     return set[e.moving && e.legFrame === 1 ? 'carryWalk' : 'carry'] || set.idle;
   }
   // Seated regulars pick a named pose; movers use the walk cycle.
@@ -3823,10 +3936,10 @@ function render() {
   placedOrderBubbles.push({ x: measuredHud.x, y: measuredHud.y, w: measuredHud.w, h: measuredHud.h });
   for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
   for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
-  if (player.carrying) {
-    const carriedFor = player.carrying.customer;
+  for (const item of player.tray) {
+    const carriedFor = item.customer;
     const carriedPatience = carriedFor ? clamp(carriedFor.sitTimer / carriedFor.patienceDuration, 0, 1) : null;
-    drawOrderBubble(player.x, entityHeadTop(player), camX, camY, player.carrying.type, false, carriedPatience);
+    drawOrderBubble(player.x, entityHeadTop(player), camX, camY, item.type, false, carriedPatience);
   }
 
   drawDialogueBubbles(camX, camY);

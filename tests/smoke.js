@@ -252,6 +252,47 @@ function run() {
     },
   );
 
+  // The serving loop: orders are picked up at the station that makes them,
+  // the tray holds two, tips scale with patience, and the DOUBLE pays only
+  // when both tray orders land.
+  debug.resetGame();
+  const seatFor = (type, i) => {
+    debug.spawnCustomer();
+    const c = debug.customers[debug.customers.length - 1];
+    c.state = 'sitting'; c.x = c.seat.x; c.y = c.seat.y; c.path = null; c.pathIndex = 0;
+    c.sitTimer = 40; c.patienceDuration = 40; c.orderType = type; c.orderPlacedAt = i; c.orderAppearAt = 0;
+    return c;
+  };
+  const wineDrinker = seatFor('wine', 0);
+  const beerDrinker = seatFor('beer-red', 1);
+  const standAt = seg => { debug.player.x = seg.collider.x + 12; debug.player.y = seg.collider.y - 6; };
+  const segFor = id => debug.BAR_SEGMENTS.find(b => b.station === id);
+  standAt(segFor('hatch'));
+  debug.handleInteract();
+  if (debug.player.tray.length !== 0 || wineDrinker.beingCarried || beerDrinker.beingCarried) throw new Error('The kitchen should not hand over a drink order.');
+  standAt(segFor('shelf'));
+  debug.handleInteract();
+  if (debug.player.tray.length !== 1 || !wineDrinker.beingCarried || beerDrinker.beingCarried) throw new Error('Shelf should hand over the wine order only.');
+  standAt(segFor('taps'));
+  debug.handleInteract();
+  if (debug.player.tray.length !== 2 || !beerDrinker.beingCarried) throw new Error('Taps should hand over the beer as the second tray item.');
+  debug.update(0.05);
+  if (debug.player.speed !== 54) throw new Error('A full tray should slow the player to 54, got ' + debug.player.speed);
+  debug.handleInteract();
+  if (debug.player.tray.length !== 2) throw new Error('A third pickup must be refused on a full tray.');
+  debug.player.x = wineDrinker.x; debug.player.y = wineDrinker.y + 6;
+  debug.handleInteract();
+  if (debug.player.tray.length !== 1 || !wineDrinker.served) throw new Error('Wine was not delivered next to its customer.');
+  const afterFirst = debug.getScore();
+  if (afterFirst < 15 || afterFirst > 25) throw new Error('A fresh delivery should tip 15-25, got ' + afterFirst);
+  debug.player.x = beerDrinker.x; debug.player.y = beerDrinker.y + 6;
+  debug.handleInteract();
+  if (debug.player.tray.length !== 0 || !beerDrinker.served) throw new Error('Beer was not delivered next to its customer.');
+  if (debug.getScore() - afterFirst < 25) throw new Error('Second tray delivery should include the DOUBLE bonus.');
+  debug.update(0.05);
+  if (debug.player.speed !== 62) throw new Error('Empty tray should restore speed 62.');
+  debug.resetGame();
+
   // Every UI board the game can show: the HUD at a real score and partial
   // life, the level-done board, the caught board with the name field open,
   // and the ledger after a name is filed. All of them are pure canvas
@@ -272,7 +313,7 @@ function run() {
   debug.render();
 
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and render pass with HUD, level and caught boards.`);
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, and render pass with HUD, level and caught boards.`);
 }
 
 run();
