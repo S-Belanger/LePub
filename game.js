@@ -2882,12 +2882,16 @@ function buildDecor() {
   }
 
   // Hand-placed so they sit over the room rather than over the furniture.
+  // (x, y) is where the pool lands on the floor; the shade hangs LAMP_DROP
+  // above it in screen space, with a visible cone between.
   const lamps = [
-    { x: 40, y: 40, r: 34, phase: 0.0 },
-    { x: 150, y: 92, r: 38, phase: 1.7 },
-    { x: 40, y: 150, r: 32, phase: 3.1 },
-    { x: 150, y: 232, r: 32, phase: 4.4 },
-    { x: 85, y: 296, r: 40, phase: 5.6 },
+    { x: 40, y: 44, r: 46, phase: 0.0 },
+    { x: 150, y: 96, r: 48, phase: 1.7 },
+    { x: 42, y: 150, r: 44, phase: 3.1 },
+    { x: 78, y: 128, r: 40, phase: 2.2 },    // over the pocket behind the bar
+    { x: 150, y: 236, r: 44, phase: 4.4 },
+    { x: 60, y: 296, r: 50, phase: 5.6 },
+    { x: 150, y: 322, r: 40, phase: 0.9 },
   ];
 
   // Cool light sources: two windows in the rear wall, and the door.
@@ -2927,13 +2931,15 @@ function glowFor(radius, rgb, alpha) {
 }
 
 const WARM_RGB = [255, 190, 92];
+const HOT_RGB = [255, 226, 160];
 const COOL_RGB = [91, 166, 201];
+const LAMP_DROP = 26;   // screen px between a pendant shade and its floor pool
 
 // Rebuilt only when the viewport changes size.
 let vignetteCanvas = null;
 function ensureVignette() {
   if (vignetteCanvas && vignetteCanvas.width === viewW && vignetteCanvas.height === viewH) return;
-  vignetteCanvas = makeVignetteCanvas(viewW, viewH, 0.34);
+  vignetteCanvas = makeVignetteCanvas(viewW, viewH, 0.55);
 }
 
 function drawGlow(glow, worldX, worldY, alpha, camX, camY) {
@@ -3341,35 +3347,52 @@ function drawRoom(camX, camY) {
 // before the characters so people are lit by the room, not tinted through it.
 function drawFloorLight(camX, camY) {
   for (const lamp of DECOR.lamps) {
-    drawGlow(glowFor(lamp.r, WARM_RGB, 0.38), lamp.x, lamp.y, lampIntensity(lamp), camX, camY);
-    // Broken vertical highlights mimic warm bulbs reflected in old varnish.
-    // They deliberately stop and restart instead of reading as vector lines.
+    const k = lampIntensity(lamp);
+    // A wide soft pool, then a hot core: the reference's lamps have a bright
+    // disc directly under the shade and a long soft skirt.
+    drawGlow(glowFor(lamp.r, WARM_RGB, 0.55), lamp.x, lamp.y, k, camX, camY);
+    drawGlow(glowFor(Math.round(lamp.r * 0.45), HOT_RGB, 0.5), lamp.x, lamp.y - 2, k, camX, camY);
+    // Varnish reflection: a long broken streak straight under the bulb, the
+    // way the boards throw a lamp back in the reference.
     const sx = Math.round((lamp.x - camX) * 2) / 2;
     const sy = Math.round((lamp.y - camY) * 2) / 2;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.18 * lampIntensity(lamp);
-    for (let i = 0; i < 6; i++) {
-      const ry = sy + 5 + i * 4;
-      const rw = Math.max(0.5, 4 - i * 0.55);
-      ctx.fillStyle = i < 2 ? PUB.cream : PUB.amber;
-      ctx.fillRect(sx - rw / 2 + ((i & 1) ? 0.5 : 0), ry, rw, i < 2 ? 0.5 : 1);
+    for (let i = 0; i < 9; i++) {
+      const ry = sy + 2 + i * 3;
+      const rw = Math.max(0.5, 3 - i * 0.28);
+      ctx.globalAlpha = (0.42 - i * 0.04) * k;
+      ctx.fillStyle = i < 3 ? '#fff4d6' : PUB.amber;
+      ctx.fillRect(sx - rw / 2 + ((i & 1) ? 0.5 : 0), ry, rw, i < 3 ? 1 : 1.5);
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+  }
+  // The bar is its own light source: bottles and the gantry lamp lay a warm
+  // strip along every counter top.
+  for (const seg of BAR_SEGMENTS) {
+    const c = seg.collider;
+    const horizontal = c.w >= c.h;
+    const length = horizontal ? c.w : c.h;
+    for (let p = 10; p < length - 4; p += 20) {
+      const gx = horizontal ? c.x + p : c.x + c.w / 2 - 2;
+      const gy = horizontal ? c.y + c.h / 2 - 4 : c.y + p;
+      drawGlow(glowFor(18, HOT_RGB, 0.16), gx, gy, 0.8, camX, camY);
+    }
   }
   for (const table of TABLES) {
     const items = DECOR.clutter.get(table) || [];
     for (const item of items) {
       if (item.kind !== 'candle') continue;
-      drawGlow(glowFor(9, WARM_RGB, 0.24), table.x + item.ox, table.y + item.oy, 0.82, camX, camY);
+      drawGlow(glowFor(13, HOT_RGB, 0.5), table.x + item.ox, table.y + item.oy, 0.9, camX, camY);
     }
   }
   for (const w of DECOR.windows) {
-    drawGlow(glowFor(22, COOL_RGB, 0.16), w.x + w.w / 2, 8, 1, camX, camY);
+    drawGlow(glowFor(26, COOL_RGB, 0.22), w.x + w.w / 2, 8, 1, camX, camY);
   }
-  // A low, warm readability halo follows the player. It is deliberately much
-  // dimmer than a lamp pool: visible as separation, never as a spotlight.
-  drawGlow(glowFor(18, WARM_RGB, 0.11), player.x, player.y - 2, 0.75, camX, camY);
+  // Readability halos on the two leads, dim enough to be separation rather
+  // than a spotlight, so they read even when a route runs between pools.
+  drawGlow(glowFor(22, WARM_RGB, 0.3), player.x, player.y - 4, 1, camX, camY);
+  if (hunterState !== 'arriving') drawGlow(glowFor(20, WARM_RGB, 0.22), hunter.x, hunter.y - 4, 1, camX, camY);
   // The door brightens while someone is coming in or going out.
   let doorBusy = 0;
   for (const c of customers) {
@@ -3377,7 +3400,34 @@ function drawFloorLight(camX, camY) {
     const d = Math.hypot(c.x - DOOR.x, c.y - DOOR.y);
     if (d < 40) doorBusy = Math.max(doorBusy, 1 - d / 40);
   }
-  drawGlow(glowFor(24, COOL_RGB, 0.18), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+  drawGlow(glowFor(26, COOL_RGB, 0.2), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+}
+
+// A soft additive rectangle (stepped edges, no gradient) for counter tops.
+function drawGlowRect(x, y, w, h, alpha) {
+  for (let i = 0; i < 3; i++) {
+    ctx.globalAlpha = alpha * (0.5 + i * 0.25);
+    ctx.fillStyle = 'rgb(255,190,92)';
+    ctx.fillRect(Math.round(x + i * 3), Math.round(y + i * 3), Math.max(0, w - i * 6), Math.max(0, h - i * 6));
+  }
+  ctx.globalAlpha = 1;
+}
+
+// The room is dark first, then lit. A single multiply over everything drawn
+// so far (floor, furniture, people) drops the scene to a night base; the
+// additive pools above bring back the honey wherever a lamp hangs. This is
+// what makes the lamps the brightest thing on screen rather than the floor.
+// Two steps, both a touch cool so the warm pools sit forward: the floor is
+// multiplied twice (once alone, once with everything else) and ends up near
+// black between lamps, while furniture and people take only the second,
+// lighter step and stay readable in the dark.
+const DARK_FLOOR = '#6a6066';
+const DARK_SCENE = '#a49a9e';
+function drawDarkness(colour) {
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = colour;
+  ctx.fillRect(0, 0, viewW, viewH);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // ---- Furniture --------------------------------------------------------------
@@ -3388,88 +3438,171 @@ function drawBar(bar, camX, camY) {
   const x = Math.round(c.x - camX);
   const y = Math.round(c.y - camY);
   const horizontal = c.w >= c.h;
-  const faceDepth = 6;
+  // Three-quarter view: the south edge of every counter is a tall front
+  // face; the long east side of the stem is a thinner side face.
+  const front = 9;
+  const side = horizontal ? 0 : 4;
 
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(x + 2, y + c.h + 1, c.w, 3);
+  ctx.fillRect(x + 2, y + c.h + 1, c.w, 4);
 
-  // Clipped dark silhouette, then a dimensional customer-facing front.
   ctx.fillStyle = PUB.ink;
-  ctx.fillRect(x + 1, y, c.w - 2, c.h);
-  ctx.fillRect(x, y + 1, c.w, c.h - 2);
-  ctx.fillStyle = PUB.barFront;
-  ctx.fillRect(x + 1, y + 1, c.w - 2, c.h - 2);
+  ctx.fillRect(x + 1, y, c.w - 2, c.h + 1);
+  ctx.fillRect(x, y + 1, c.w, c.h - 1);
 
-  if (horizontal) {
-    ctx.fillStyle = PUB.barFrontDark;
-    ctx.fillRect(x + 1, y + c.h - faceDepth, c.w - 2, faceDepth - 1);
-    ctx.fillStyle = PUB.barFront;
-    ctx.fillRect(x + 2, y + c.h - faceDepth + 1, c.w - 4, faceDepth - 2);
-    ctx.fillStyle = PUB.barFrontLit;
-    ctx.fillRect(x + 1, y + c.h - faceDepth, c.w - 2, 1);
-    for (let px = x + 5; px < x + c.w - 3; px += 7) {
-      ctx.fillStyle = PUB.barFrontDark;
-      ctx.fillRect(px, y + c.h - faceDepth + 1, 0.5, faceDepth - 2);
-      ctx.fillStyle = PUB.barFrontLit;
-      ctx.fillRect(px + 0.5, y + c.h - faceDepth + 1.5, 0.5, faceDepth - 3);
-    }
-  } else {
-    ctx.fillStyle = PUB.barFrontDark;
-    ctx.fillRect(x + c.w - faceDepth, y + 1, faceDepth - 1, c.h - 2);
-    ctx.fillStyle = PUB.barFront;
-    ctx.fillRect(x + c.w - faceDepth + 1, y + 2, faceDepth - 2, c.h - 4);
-    ctx.fillStyle = PUB.barFrontLit;
-    ctx.fillRect(x + c.w - faceDepth, y + 1, 1, c.h - 2);
-    for (let py = y + 6; py < y + c.h - 3; py += 8) {
-      ctx.fillStyle = PUB.barFrontDark;
-      ctx.fillRect(x + c.w - faceDepth + 1, py, faceDepth - 2, 0.5);
-      ctx.fillStyle = PUB.barFrontLit;
-      ctx.fillRect(x + c.w - faceDepth + 1.5, py + 0.5, faceDepth - 3, 0.5);
-    }
-  }
-
-  // Thick walnut worktop with a fine golden bevel and long grain scratches.
+  // Worktop.
+  const topH = c.h - front;
+  const topW = c.w - side;
   ctx.fillStyle = PUB.tableEdge;
-  if (horizontal) ctx.fillRect(x, y, c.w, c.h - faceDepth + 1);
-  else ctx.fillRect(x, y, c.w - faceDepth + 1, c.h);
+  ctx.fillRect(x, y, topW + 1, topH + 1);
   ctx.fillStyle = PUB.barTop;
-  if (horizontal) ctx.fillRect(x + 1, y + 1, c.w - 2, c.h - faceDepth - 1);
-  else ctx.fillRect(x + 1, y + 1, c.w - faceDepth - 1, c.h - 2);
+  ctx.fillRect(x + 1, y + 1, topW - 1, topH - 1);
   ctx.fillStyle = PUB.barTopLit;
-  if (horizontal) ctx.fillRect(x + 1, y + 1, c.w - 2, 1.5);
-  else ctx.fillRect(x + 1, y + 1, 1.5, c.h - 2);
+  ctx.fillRect(x + 1, y + 1, topW - 1, 1.5);
+  ctx.fillRect(x + 1, y + 1, 1, topH - 1);
   ctx.fillStyle = PUB.barTopHi;
-  if (horizontal) ctx.fillRect(x + 2, y + 1, c.w - 4, 0.5);
-  else ctx.fillRect(x + 1, y + 2, 0.5, c.h - 4);
-  ctx.globalAlpha = 0.55;
+  ctx.fillRect(x + 2, y + 1, topW - 3, 0.5);
+  ctx.globalAlpha = 0.5;
   ctx.fillStyle = PUB.tableTopHi;
-  if (horizontal) {
-    for (let px = x + 5; px < x + c.w - 5; px += 12) {
-      ctx.fillRect(px, y + 3.5 + ((px >> 2) & 1), Math.min(6, x + c.w - px - 3), 0.5);
-    }
-  } else {
-    for (let py = y + 5; py < y + c.h - 5; py += 12) {
-      ctx.fillRect(x + 3.5 + ((py >> 2) & 1), py, 0.5, Math.min(6, y + c.h - py - 3));
+  for (let py = y + 4; py < y + topH - 2; py += 3) {
+    for (let px = x + 3 + ((py * 3) % 7); px < x + topW - 4; px += 11) {
+      ctx.fillRect(px, py, Math.min(5, x + topW - px - 3), 0.5);
     }
   }
   ctx.globalAlpha = 1;
 
-  // Brass foot rail follows the customer edge.
+  // Front face: panelled walnut with a lit top lip and a dark base.
+  const fy = y + topH;
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(x + 1, fy, c.w - 2, front);
+  ctx.fillStyle = PUB.barFrontLit;
+  ctx.fillRect(x + 1, fy, c.w - 2, 1);
+  ctx.fillStyle = PUB.barFrontDark;
+  for (let px = x + 4; px < x + c.w - 3; px += 8) {
+    ctx.fillRect(px, fy + 2, 0.5, front - 4);
+    ctx.fillRect(px + 5, fy + 2, 0.5, front - 4);
+    ctx.fillRect(px, fy + 2, 5.5, 0.5);
+    ctx.fillRect(px, fy + front - 2.5, 5.5, 0.5);
+  }
+  ctx.fillRect(x + 1, fy + front - 1.5, c.w - 2, 1.5);
+  // Brass foot rail on little brackets.
+  ctx.fillStyle = PUB.brassDark || '#7d521a';
+  ctx.fillRect(x + 2, fy + front - 2.5, c.w - 4, 1);
   ctx.fillStyle = PUB.brass;
-  if (horizontal) {
-    ctx.fillRect(x + 2, y + c.h - 2, c.w - 4, 0.5);
-    for (let px = x + 5; px < x + c.w - 3; px += 9) ctx.fillRect(px, y + c.h - 2.5, 0.5, 1.5);
-  } else {
-    ctx.fillRect(x + c.w - 2, y + 2, 0.5, c.h - 4);
-    for (let py = y + 5; py < y + c.h - 3; py += 9) ctx.fillRect(x + c.w - 2.5, py, 1.5, 0.5);
+  ctx.fillRect(x + 2, fy + front - 3, c.w - 4, 1);
+  for (let px = x + 5; px < x + c.w - 3; px += 10) ctx.fillRect(px, fy + front - 2, 1, 1.5);
+
+  // Side face on the stem.
+  if (side) {
+    ctx.fillStyle = PUB.barFrontDark;
+    ctx.fillRect(x + topW, y + 1, side, c.h - 1);
+    ctx.fillStyle = PUB.barFront;
+    ctx.fillRect(x + topW, y + 1, 1, topH);
   }
 
   for (const prop of DECOR.barProps) {
     if (prop.seg !== bar) continue;
     drawBarProp(prop, camX, camY);
   }
-  if (horizontal && c.w > 60) drawCounterPlant(x + c.w - 8, y + 4);
+  if (bar.station === 'taps') drawTapRow(x, y, topW);
+  if (bar.station === 'shelf') drawBottleGantry(x, y, topW, topH);
+  if (bar.station === 'hatch') drawKitchenHatch(x, y, topW);
+  if (horizontal && c.w > 60) drawCounterPlant(x + topW - 8, y + 4);
   drawStationTag(bar, x, y, horizontal);
+}
+
+// A row of brass tap handles along the back edge of the taps counter.
+function drawTapRow(x, y, topW) {
+  for (let px = x + 10; px < x + topW - 12; px += 9) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px - 1.5, y + 1, 4, 3);          // font base
+    ctx.fillStyle = PUB.brassDark || '#7d521a';
+    ctx.fillRect(px - 1, y - 4, 3, 5.5);           // font body
+    ctx.fillStyle = PUB.brass;
+    ctx.fillRect(px - 1, y - 4, 1.5, 5);
+    ctx.fillRect(px - 0.5, y - 7, 2, 3.5);         // handle
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(px - 0.5, y - 7, 1, 1);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px + 1.5, y - 2, 1, 1.5);         // spout
+  }
+}
+
+// The back-bar as an island gantry down the middle of the stem: two shelves
+// of lit bottles under a brass rail, hanging glasses along the top. This is
+// the reference's glowing bottle wall, moved onto the counter so the bar
+// stays free-standing.
+function drawBottleGantry(x, y, topW, topH) {
+  const gx = x + Math.round(topW / 2) - 4;
+  const gy = y + 6;
+  const gh = topH - 12;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(gx - 1, gy - 6, 10, gh + 7);
+  ctx.fillStyle = PUB.barFrontDark;
+  ctx.fillRect(gx, gy - 5, 8, gh + 5);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(gx - 1, gy - 6, 10, 1);                 // top rail
+  // Hanging glasses under the rail.
+  ctx.fillStyle = PUB.glass;
+  for (let py = gy - 4; py < gy + gh - 2; py += 6) {
+    ctx.fillRect(gx + 0.5, py, 1, 1.5);
+    ctx.fillRect(gx + 6.5, py, 1, 1.5);
+  }
+  // Shelves and bottles. Bottle colours from the room palette, each with a
+  // lit shoulder so the shelf reads as backlit.
+  const colours = [PUB.bottleAmber, PUB.bottleGreen, PUB.tomato, PUB.bottleClear, PUB.amber, PUB.burgundy];
+  let i = 0;
+  for (let py = gy - 1; py < gy + gh - 4; py += 5) {
+    ctx.fillStyle = PUB.barFront;
+    ctx.fillRect(gx, py + 4, 8, 1);                    // shelf
+    ctx.fillStyle = PUB.brassDark || '#7d521a';
+    ctx.fillRect(gx, py + 4, 8, 0.5);
+    for (let px = gx + 1.5; px < gx + 7; px += 2, i++) {
+      const col = colours[(i * 7 + (py | 0)) % colours.length];
+      ctx.fillStyle = col;
+      ctx.fillRect(px, py + 0.5, 1.5, 3.5);
+      ctx.fillStyle = '#fff2c8';
+      ctx.fillRect(px, py + 0.5, 0.5, 1);
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(px + 0.5, py - 0.5, 0.5, 1);          // neck
+    }
+  }
+  // A small lamp on the gantry throws light down the bottles.
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = 'rgb(255,200,110)';
+  ctx.fillRect(gx - 4, gy - 6, 16, gh + 8);
+  ctx.globalAlpha = 0.18;
+  ctx.fillRect(gx - 1, gy - 4, 10, gh + 4);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+// The kitchen hatch: a warm serving window with plates under a heat lamp.
+function drawKitchenHatch(x, y, topW) {
+  const hx = x + Math.round(topW / 2) - 12;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(hx - 1, y - 9, 26, 11);
+  ctx.fillStyle = '#5a2e1c';
+  ctx.fillRect(hx, y - 8, 24, 9);
+  ctx.fillStyle = '#7a4a2a';
+  ctx.fillRect(hx + 1, y - 7, 22, 6);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(hx + 2, y - 8, 20, 1);                   // heat lamp bar
+  ctx.fillStyle = '#ffd27a';
+  for (let px = hx + 4; px < hx + 22; px += 6) ctx.fillRect(px, y - 7, 2, 1);
+  for (let px = hx + 3; px < hx + 21; px += 6) {
+    ctx.fillStyle = '#e9e2d0';
+    ctx.fillRect(px, y - 3, 4, 1.5);                    // plate
+    ctx.fillStyle = PUB.bottleAmber;
+    ctx.fillRect(px + 1, y - 4, 2, 1);                  // food
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = 'rgb(255,200,110)';
+  ctx.fillRect(hx - 3, y - 9, 30, 14);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
 }
 
 // A small parchment tag on the counter naming the station, so the player can
@@ -3551,42 +3684,59 @@ function drawSeatChairs(table, camX, camY) {
     const alternate = (Math.round(table.x + table.y) + i * 3) % 7 < 2;
     const base = alternate ? PUB.chairAlt : PUB.chair;
     const lit = alternate ? PUB.chairAltLit : PUB.chairLit;
-    const vertical = seat.side === 'n' || seat.side === 's';
-    const w = vertical ? 8 : 7;
-    const h = vertical ? 7 : 8;
+    const w = 8;
     const cx = centerX - w / 2;
-    const cy = centerY - h / 2;
-
+    const seatY = centerY - 2;          // cushion
+    // Shadow and legs.
     ctx.fillStyle = PUB.tableShadow;
-    ctx.fillRect(cx + 1.5, cy + h - 0.5, w, 2);
-    // Thin dark legs protrude from the upholstered seat.
+    ctx.fillRect(cx + 1, seatY + 4, w, 2.5);
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(cx + 0.5, cy + h - 1, 1, 2.5);
-    ctx.fillRect(cx + w - 1.5, cy + h - 1, 1, 2.5);
-    ctx.fillRect(cx + 1, cy + 1, w - 2, h - 1);
-    ctx.fillRect(cx + 0.5, cy + 2, w - 1, h - 3);
-    ctx.fillStyle = base;
-    ctx.fillRect(cx + 1, cy + 2, w - 2, h - 3);
-    ctx.fillStyle = lit;
-    ctx.fillRect(cx + 1.5, cy + 2, w - 3, 0.5);
-    ctx.fillRect(cx + 1, cy + 2.5, 0.5, h - 4);
-    // Carved back rail faces away from the table; orientation now reads even
-    // when the character temporarily obscures the cushion.
-    const backAtStart = seat.side === 's' || seat.side === 'e';
-    ctx.fillStyle = PUB.tableEdge;
-    if (vertical) {
-      const by = backAtStart ? cy + h - 1.5 : cy;
-      ctx.fillRect(cx, by, w, 1.5);
+    ctx.fillRect(cx + 0.5, seatY + 3, 1, 3.5);
+    ctx.fillRect(cx + w - 1.5, seatY + 3, 1, 3.5);
+    // Back rail: away from the table. North chairs show it behind the
+    // cushion, south chairs in front (it will sit over the sitter's legs, as
+    // it should), side chairs to the outside.
+    const backOnTop = seat.side === 'n';
+    const backBottom = seat.side === 's';
+    if (backOnTop) {
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(cx, seatY - 6, w, 6.5);
+      ctx.fillStyle = PUB.tableEdge;
+      ctx.fillRect(cx + 0.5, seatY - 5.5, w - 1, 5.5);
       ctx.fillStyle = PUB.barTopLit;
-      ctx.fillRect(cx + 1, by + (backAtStart ? 0 : 0.5), w - 2, 0.5);
-    } else {
-      const bx = backAtStart ? cx + w - 1.5 : cx;
-      ctx.fillRect(bx, cy, 1.5, h);
-      ctx.fillStyle = PUB.barTopLit;
-      ctx.fillRect(bx + (backAtStart ? 0 : 0.5), cy + 1, 0.5, h - 2);
+      ctx.fillRect(cx + 1, seatY - 5.5, w - 2, 0.5);
+      ctx.fillStyle = PUB.barFrontDark;
+      for (let px = cx + 2; px < cx + w - 1; px += 2) ctx.fillRect(px, seatY - 4.5, 0.5, 3.5);
     }
+    // Cushion with a lit top edge and tufting.
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(cx, seatY - 0.5, w, 5);
     ctx.fillStyle = base;
-    ctx.fillRect(centerX - 0.5, centerY, 1, 0.5);
+    ctx.fillRect(cx + 0.5, seatY, w - 1, 4);
+    ctx.fillStyle = lit;
+    ctx.fillRect(cx + 1, seatY, w - 2, 1);
+    ctx.fillRect(cx + 2.5, seatY + 2, 0.5, 0.5);
+    ctx.fillRect(cx + 5, seatY + 2, 0.5, 0.5);
+    ctx.fillStyle = PUB.barFrontDark;
+    ctx.fillRect(cx + 0.5, seatY + 3.5, w - 1, 0.5);
+    if (backBottom) {
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(cx, seatY + 3.5, w, 4);
+      ctx.fillStyle = PUB.tableEdge;
+      ctx.fillRect(cx + 0.5, seatY + 4, w - 1, 3);
+      ctx.fillStyle = PUB.barTopLit;
+      ctx.fillRect(cx + 1, seatY + 4, w - 2, 0.5);
+      ctx.fillStyle = PUB.barFrontDark;
+      for (let px = cx + 2; px < cx + w - 1; px += 2) ctx.fillRect(px, seatY + 5, 0.5, 1.5);
+    } else if (seat.side === 'w' || seat.side === 'e') {
+      const bx = seat.side === 'e' ? cx + w - 1.5 : cx;
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(bx - 0.5, seatY - 5, 2.5, 9.5);
+      ctx.fillStyle = PUB.tableEdge;
+      ctx.fillRect(bx, seatY - 4.5, 1.5, 8.5);
+      ctx.fillStyle = PUB.barTopLit;
+      ctx.fillRect(bx, seatY - 4.5, 1.5, 0.5);
+    }
   }
 }
 
@@ -3610,6 +3760,17 @@ function drawBench(bench, camX, camY) {
   ctx.fillStyle = PUB.chairLit;
   ctx.fillRect(x + 1.5, y + 1, bench.w - 3, 0.5);
   ctx.fillRect(x + 1, y + 1.5, 0.5, bench.h - 3);
+  // A padded back along the wall side, buttoned, so it reads as a booth.
+  if (bench.w > bench.h) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 4, bench.w, 5);
+    ctx.fillStyle = PUB.chair;
+    ctx.fillRect(x + 0.5, y - 3.5, bench.w - 1, 4);
+    ctx.fillStyle = PUB.chairLit;
+    ctx.fillRect(x + 1, y - 3.5, bench.w - 2, 0.5);
+    ctx.fillStyle = PUB.tableEdge;
+    for (let px = x + 4; px < x + bench.w - 3; px += 6) ctx.fillRect(px, y - 1.5, 1, 1);
+  }
   ctx.fillStyle = PUB.tableEdge;
   ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1.5);
   for (let px = x + 4; px < x + bench.w - 3; px += 8) {
@@ -3639,18 +3800,26 @@ function drawTable(table, camX, camY) {
 
   const x = sx - halfW;
   const y = sy - halfH;
-  const front = Math.min(3.5, Math.max(2.5, table.h * 0.14));
+  // Three-quarter view: a real front face under the top, and legs.
+  const front = Math.min(8, Math.max(5, Math.round(table.h * 0.28)));
   ctx.fillStyle = PUB.tableEdge;
   ctx.fillRect(x + 1, y, table.w - 2, table.h);
   ctx.fillRect(x, y + 1, table.w, table.h - 2);
-  // Deep front lip and small bracket/leg shadows provide the missing height.
-  ctx.fillStyle = PUB.barFrontDark;
-  ctx.fillRect(x + 1, y + table.h - front - 0.5, table.w - 2, front);
   ctx.fillStyle = PUB.barFront;
-  ctx.fillRect(x + 2, y + table.h - front, table.w - 4, front - 1);
-  ctx.fillStyle = PUB.tableEdge;
-  ctx.fillRect(x + Math.min(6, table.w * 0.16), y + table.h - 1, 2, 2);
-  ctx.fillRect(x + table.w - Math.min(8, table.w * 0.16) - 1, y + table.h - 1, 2, 2);
+  ctx.fillRect(x + 1, y + table.h - front, table.w - 2, front - 1);
+  ctx.fillStyle = PUB.barFrontLit;
+  ctx.fillRect(x + 1, y + table.h - front, table.w - 2, 1);
+  ctx.fillStyle = PUB.barFrontDark;
+  ctx.fillRect(x + 1, y + table.h - 1.5, table.w - 2, 1.5);
+  for (let px = x + 5; px < x + table.w - 4; px += 7) ctx.fillRect(px, y + table.h - front + 2, 0.5, front - 4);
+  // Legs, with the ink outline broken so they read as turned wood.
+  ctx.fillStyle = PUB.ink;
+  const legIn = Math.min(5, Math.round(table.w * 0.12));
+  ctx.fillRect(x + legIn, y + table.h - 1, 2.5, 3);
+  ctx.fillRect(x + table.w - legIn - 2.5, y + table.h - 1, 2.5, 3);
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(x + legIn + 0.5, y + table.h - 1, 1, 2.5);
+  ctx.fillRect(x + table.w - legIn - 2, y + table.h - 1, 1, 2.5);
 
   ctx.fillStyle = PUB.tableTop;
   ctx.fillRect(x + 1, y + 1, table.w - 2, table.h - front - 1);
@@ -3760,27 +3929,50 @@ function drawFurnitureItem(item, camX, camY) {
 function drawForeground(camX, camY) {
   for (const lamp of DECOR.lamps) {
     const x = Math.round(lamp.x - camX);
-    const y = Math.round(lamp.y - camY);
-    if (x < -8 || y < -8 || x > viewW + 8 || y > viewH + 8) continue;
+    const fy = Math.round(lamp.y - camY);
+    const y = fy - LAMP_DROP;
+    if (x < -30 || fy < -30 || x > viewW + 30 || y > viewH + 30) continue;
     const glow = lampIntensity(lamp);
+    // Light cone from the shade to the pool: three stepped trapezoids, additive.
+    ctx.globalCompositeOperation = 'lighter';
+    for (let band = 0; band < 3; band++) {
+      ctx.globalAlpha = 0.045 * glow;
+      ctx.fillStyle = 'rgb(255,200,110)';
+      const steps = 7;
+      for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        const halfW = 4 + t * (lamp.r * 0.55 - band * 4);
+        const yy = y + 3 + t * (LAMP_DROP - 4);
+        ctx.fillRect(Math.round(x - halfW), Math.round(yy), Math.round(halfW * 2), Math.ceil((LAMP_DROP - 4) / (steps - 1)) + 1);
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+
+    // The fixture: cord, a green enamel dome shade with a brass rim and the
+    // bulb showing under it. Bigger than before because it now hangs in the
+    // room rather than sitting on the floor plan.
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x - 0.25, y - 9, 0.5, 5); // cord
-    ctx.fillStyle = PUB.barFrontDark;
-    ctx.fillRect(x - 2, y - 4.5, 4, 0.5);  // shade cap
-    ctx.fillRect(x - 3.5, y - 4, 7, 1);
-    ctx.fillStyle = PUB.barTop;
-    ctx.fillRect(x - 4.5, y - 3, 9, 1);
-    ctx.fillStyle = PUB.barTopLit;
-    ctx.fillRect(x - 5, y - 2, 10, 1);
+    ctx.fillRect(x - 0.5, y - 40, 1, 34);          // cord runs off the top
+    ctx.fillRect(x - 2, y - 7, 4, 1.5);            // cap
+    ctx.fillStyle = '#1d3a2c';
+    ctx.fillRect(x - 3.5, y - 5.5, 7, 1.5);
+    ctx.fillRect(x - 5.5, y - 4, 11, 1.5);
+    ctx.fillRect(x - 7, y - 2.5, 14, 1.5);
+    ctx.fillStyle = '#2f5a42';
+    ctx.fillRect(x - 3, y - 5.5, 3, 1);
+    ctx.fillRect(x - 5, y - 4, 4, 1);
+    ctx.fillRect(x - 6.5, y - 2.5, 5, 1);
     ctx.fillStyle = PUB.brass;
-    ctx.fillRect(x - 5.5, y - 1, 11, 0.5); // rim
-    ctx.fillRect(x - 3.5, y - 2.5, 7, 0.5);
-    ctx.fillStyle = glow > 1 ? '#fff3d2' : PUB.amber;
-    ctx.fillRect(x - 2, y - 0.5, 4, 1.5);  // bulb under the rim
-    ctx.fillStyle = PUB.cream;
-    ctx.fillRect(x - 0.5, y - 0.5, 1, 0.5);
+    ctx.fillRect(x - 7.5, y - 1, 15, 1);            // rim
+    ctx.fillStyle = PUB.brassLit || '#f6d688';
+    ctx.fillRect(x - 6, y - 1, 5, 0.5);
+    ctx.fillStyle = glow > 1 ? '#fff8e0' : '#ffe9b0';
+    ctx.fillRect(x - 2.5, y, 5, 2);                 // bulb
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 1, y, 2, 1);
     ctx.fillStyle = PUB.amberDim;
-    ctx.fillRect(x - 1, y + 1, 2, 0.5);
+    ctx.fillRect(x - 1.5, y + 2, 3, 0.5);
   }
 
   if (prefersReducedMotion) return;
@@ -3797,7 +3989,7 @@ function drawForeground(camX, camY) {
 // resets for free along with the score.
 function drawGrade() {
   const lvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP);
-  const nightAlpha = Math.min(0.29, 0.08 + (lvl - 1) * 0.023);
+  const nightAlpha = Math.min(0.16, 0.03 + (lvl - 1) * 0.014);
   ctx.globalAlpha = nightAlpha;
   ctx.fillStyle = PUB.midnight;
   ctx.fillRect(0, 0, viewW, viewH);
@@ -4610,7 +4802,7 @@ function render() {
 
   drawBackdrop();
   drawRoom(camX, camY);
-  drawFloorLight(camX, camY);
+  drawDarkness(DARK_FLOOR);
   drawSpills(camX, camY);
 
   // Furniture and characters share one y-sorted pass so nearer (lower) things
@@ -4638,6 +4830,11 @@ function render() {
     else drawEntity(d.ref, camX, camY);
   }
 
+  // Night base over everything drawn so far, then the lamps paint the room
+  // back in — people included, so a character between pools is genuinely in
+  // the dark and one under a lamp is genuinely lit.
+  drawDarkness(DARK_SCENE);
+  drawFloorLight(camX, camY);
   drawForeground(camX, camY);
   drawGrade();
 

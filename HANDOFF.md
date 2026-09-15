@@ -30,6 +30,31 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:45 — visual pass 1: darkness + additive light, 3/4 furniture (committed)
+
+- User rejected the state as "still the old style"; executing the reference
+  look now. Decision: drawing switches to three-quarter top-down (fronts on
+  everything, characters facing camera) while colliders/routes/hitboxes stay.
+- Render order now: room → `drawDarkness(DARK_FLOOR)` (multiply) → spills →
+  y-sorted → `drawDarkness(DARK_SCENE)` → `drawFloorLight` (additive) →
+  `drawForeground` → grade. Floor ends near-black between lamps; furniture
+  and people take only the lighter step.
+- Seven pendant lamps (`DECOR.lamps`, pool point + `LAMP_DROP` 26 above it):
+  wide warm pool + hot core (`HOT_RGB`), long broken varnish streak, a
+  stepped additive cone from the green enamel shade to the pool, big fixture
+  with brass rim and bulb. Candle glows stronger; bottle light along every
+  counter (`glowFor(18, HOT)` every 20 px); halos on Doe (r22) and hunter.
+- Bar: 9 px panelled front with brass foot rail, side face on the stem;
+  `drawTapRow` (brass fonts + handles) on the taps, `drawBottleGantry`
+  (two lit shelves of bottles, hanging glasses, its own lamp) down the stem,
+  `drawKitchenHatch` (heat lamp, plates) on the foot. Tables: 5–8 px fronts
+  with panel slats and turned legs. Chairs: cushion + back rail placed away
+  from the table (north behind, south in front, sides outside). Wall benches
+  get a buttoned back. Night tint reduced (0.03–0.16), vignette 0.55.
+- Smoke passes; review frame captured (scratchpad `review/review-frame.png`).
+- Next: Doe + hunter re-authored at 32×36 backing pixels with faces; then
+  regulars/customers; then perimeter props; then ticket weight.
+
 ### 18:20 — honest art-direction review published
 
 - Branch already in sync with origin at the ledger commit; nothing new to
