@@ -30,6 +30,23 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 20:50 — direction: plan approved as-is; a second room and an asset zip are coming
+
+- User: "That floor plan is excellent. Keep it that way." — do not change
+  `assets/art-direction/floor-plan.png` or the layout it describes.
+- A **second room with a different layout** will be shown later, and a
+  **zip of GPT-generated assets** (room + characters) that I must match the
+  game to. Implications for the asset work when it starts:
+  1. Rooms become data: one definition per room (furniture, stations, seats,
+     lamps, props, door, walls) instead of the literals in `game.js`, so a
+     second layout is a file, not a fork. Re-run scratchpad `render-plan.js`
+     per room to give the artist its plan.
+  2. The loader (`src/assets.js`) should read whatever the zip contains —
+     inspect it first, then write the JSON frame maps around the actual
+     sheets rather than the spec's ideal; clean up in Aseprite where needed.
+  3. Keep procedural art as the fallback per asset so partial zips still run.
+- Nothing to build until the zip arrives. Branch in sync at `6afdbae`.
+
 ### 20:40 — floor plan for the art prompts
 
 - `assets/art-direction/floor-plan.png` + `.json`: the room as the game
