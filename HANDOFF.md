@@ -4,7 +4,42 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
-## 2026-09-14 23:26 America/Toronto — visual pass browser-validated, ready to publish
+## 2026-09-14 23:04 America/Toronto — preview PR opened
+
+### Published state
+
+- Committed the complete art-direction, routing, test, and continuity pass as
+  `8f7cc5a` (`feat: apply warm overhead pub art direction`).
+- Pushed `feat/regulars-responsive-pixel-polish`; the local branch and
+  `origin/feat/regulars-responsive-pixel-polish` are synchronized (`0 0`).
+- Opened PR #3, **Warm overhead pub visual overhaul**, against `main`:
+  <https://github.com/S-Belanger/LePub/pull/3>
+- The branch is one commit ahead of `origin/main`, which remains at `e0a5b2e`.
+- GitHub had not yet reported a Vercel check, deployment, or bot comment when
+  this checkpoint was written. The PR was opened specifically to trigger the
+  connected Vercel preview; check PR #3 for the preview URL/status.
+
+### Validated contents of the PR
+
+- Warm overhead environmental pass plus character, HUD, dialogue, and order
+  bubble polish based on the supplied reference.
+- Exact feet-aware route collision fix and viewport-safe bubble placement.
+- `tests/smoke.js`, including all 40 customer routes in/out, regulars, waiter,
+  render pass, and authored sprite-palette coverage.
+- 20/20 randomized smoke passes plus clean desktop/mobile Edge sessions with
+  no console, page, request, or HTTP errors.
+- `AGENTS.md` and this ledger provide the interruption failsafe requested by
+  the user.
+
+### Remaining work / next action
+
+- This is a visual review checkpoint, not a claim that the reference-level
+  redesign is finally approved. Inspect the Vercel preview, collect the user's
+  feedback, and continue refining density/materials/animation as needed.
+- Commit and push this final ledger update so the remote branch itself contains
+  the exact PR/publish state.
+
+## 2026-09-14 23:02 America/Toronto — visual pass browser-validated, ready to publish
 
 ### Repository state
 
@@ -45,7 +80,7 @@ contents here.
   feature branch, open a new PR against `main`, then record the commit and PR
   URL in a final handoff checkpoint.
 
-## 2026-09-14 23:18 America/Toronto — character and gameplay-UI pass implemented
+## 2026-09-14 22:58 America/Toronto — character and gameplay-UI pass implemented
 
 ### Work completed in this milestone
 
