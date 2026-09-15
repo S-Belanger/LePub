@@ -2932,6 +2932,7 @@ function glowFor(radius, rgb, alpha) {
 
 const WARM_RGB = [255, 190, 92];
 const HOT_RGB = [255, 226, 160];
+const FIRE_RGB = [255, 150, 60];
 const COOL_RGB = [91, 166, 201];
 const LAMP_DROP = 26;   // screen px between a pendant shade and its floor pool
 
@@ -3301,6 +3302,160 @@ function drawArchitecture(ctx) {
   ctx.fillRect(dx + doorW / 2, bottom + 2, 0.5, WALL_BOTTOM_H - 3);
   ctx.fillStyle = PUB.brass;
   ctx.fillRect(dx + doorW - 4, bottom + 6, 1, 1);
+
+  drawWallProps(ctx);
+}
+
+// The pub's stories live on its walls: a stone fireplace in the pocket
+// behind the bar, a mounted stag over the rear wall, a string of bulbs along
+// the crown rail, a coat stand and a barrel in the front corners, palms on
+// the side walls. All of it sits on the wall bands or in dead corners, so no
+// collider moves and the lanes stay clean.
+const FIREPLACE = { x: 0, y: 116, w: 14, h: 34 };
+function drawWallProps(ctx) {
+  // Fireplace: rough stone surround, black hearth, embers, a mantel with a
+  // bottle and a candle.
+  const f = FIREPLACE;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(f.x, f.y, f.w + 1, f.h);
+  const stones = ['#5a5652', '#6b6660', '#4a4642', '#767069'];
+  let si = 0;
+  for (let y = f.y + 1; y < f.y + f.h - 1; y += 4) {
+    for (let x = f.x + ((y >> 2) & 1) * 2; x < f.x + f.w; x += 4, si++) {
+      ctx.fillStyle = stones[si % stones.length];
+      ctx.fillRect(x + 0.5, y + 0.5, 3, 3);
+    }
+  }
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(f.x + 2, f.y + 10, f.w - 3, 18);           // hearth opening
+  ctx.fillStyle = '#2a1008';
+  ctx.fillRect(f.x + 3, f.y + 11, f.w - 5, 16);
+  ctx.fillStyle = '#c8501a';                               // logs and embers
+  ctx.fillRect(f.x + 4, f.y + 22, f.w - 7, 3);
+  ctx.fillStyle = '#ff9a2a';
+  ctx.fillRect(f.x + 5, f.y + 19, 3, 3);
+  ctx.fillRect(f.x + 9, f.y + 20, 2, 2);
+  ctx.fillStyle = '#ffd86a';
+  ctx.fillRect(f.x + 6, f.y + 17, 1.5, 2);
+  ctx.fillRect(f.x + 9.5, f.y + 18, 1, 1.5);
+  ctx.fillStyle = '#fff2b0';
+  ctx.fillRect(f.x + 6.5, f.y + 16, 0.5, 1);
+  ctx.fillStyle = PUB.barTop;                              // mantel
+  ctx.fillRect(f.x, f.y + 7, f.w + 2, 2.5);
+  ctx.fillStyle = PUB.barTopHi;
+  ctx.fillRect(f.x, f.y + 7, f.w + 2, 0.5);
+  ctx.fillStyle = PUB.bottleGreen;                         // bottle on the mantel
+  ctx.fillRect(f.x + 3, f.y + 3, 2, 4);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(f.x + 3.5, f.y + 2, 1, 1.5);
+  ctx.fillStyle = PUB.cream;                               // candle
+  ctx.fillRect(f.x + 9, f.y + 4, 1.5, 3);
+  ctx.fillStyle = PUB.amber;
+  ctx.fillRect(f.x + 9.5, f.y + 3, 0.5, 1);
+  ctx.fillStyle = PUB.brass;                               // fender
+  ctx.fillRect(f.x + 1, f.y + f.h - 2, f.w - 1, 1);
+
+  // The stag over the rear wall: walnut shield, brown head, tan antlers.
+  const sx = 116, sy = 2;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(sx - 4, sy + 4, 9, 9);
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(sx - 3.5, sy + 4.5, 8, 8);
+  ctx.fillStyle = PUB.barTopHi;
+  ctx.fillRect(sx - 3, sy + 5, 7, 0.5);
+  ctx.fillStyle = '#6b4a30';
+  ctx.fillRect(sx - 2, sy + 6, 5, 5);                      // head
+  ctx.fillRect(sx - 1, sy + 11, 3, 1.5);                   // muzzle
+  ctx.fillStyle = '#4a3020';
+  ctx.fillRect(sx - 0.5, sy + 11.5, 2, 1);
+  ctx.fillStyle = '#e8ddc0';
+  ctx.fillRect(sx - 3, sy + 7, 1, 1.5);                    // ears
+  ctx.fillRect(sx + 3, sy + 7, 1, 1.5);
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(sx - 1, sy + 8, 0.5, 0.5);                  // eyes
+  ctx.fillRect(sx + 1.5, sy + 8, 0.5, 0.5);
+  ctx.fillStyle = '#d3a26b';                               // antlers
+  ctx.fillRect(sx - 3.5, sy + 1, 0.5, 5);
+  ctx.fillRect(sx + 4, sy + 1, 0.5, 5);
+  ctx.fillRect(sx - 5, sy + 2, 2, 0.5);
+  ctx.fillRect(sx + 4, sy + 2, 2, 0.5);
+  ctx.fillRect(sx - 4.5, sy, 0.5, 2);
+  ctx.fillRect(sx + 5, sy, 0.5, 2);
+  ctx.fillRect(sx - 3, sy + 3, 1, 0.5);
+  ctx.fillRect(sx + 3, sy + 3, 1, 0.5);
+
+  // String lights along the crown rail: a sagging wire, a warm bulb every
+  // seven pixels.
+  for (let x = 4; x < WORLD_W - 4; x += 7) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, 3.5, 7, 0.5);
+    ctx.fillRect(x + 3, 4, 1, 1);
+    ctx.fillStyle = (x / 7) % 3 === 0 ? '#ffd27a' : (x / 7) % 3 === 1 ? '#ff9a5a' : '#fff0b8';
+    ctx.fillRect(x + 2.5, 5, 2, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x + 3, 5, 0.5, 0.5);
+  }
+
+  // Coat stand in the front-left corner: a pole, hooks, two coats, a hat.
+  const cx = 12, cy = 336;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(cx - 0.5, cy, 2, 22);
+  ctx.fillRect(cx - 4, cy + 20, 9, 1.5);                   // foot
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(cx - 3, cy + 1, 7, 0.5);                    // hooks
+  ctx.fillRect(cx - 3, cy + 1, 0.5, 1.5);
+  ctx.fillRect(cx + 3.5, cy + 1, 0.5, 1.5);
+  ctx.fillStyle = '#4a3a2c';                               // coat, brown
+  ctx.fillRect(cx - 5, cy + 3, 4, 12);
+  ctx.fillStyle = '#5c4a38';
+  ctx.fillRect(cx - 4.5, cy + 3.5, 1, 11);
+  ctx.fillStyle = '#2f4a3a';                               // coat, green
+  ctx.fillRect(cx + 2, cy + 3, 4, 11);
+  ctx.fillStyle = '#3f5c48';
+  ctx.fillRect(cx + 2.5, cy + 3.5, 1, 10);
+  ctx.fillStyle = '#8d342f';                               // hat on top
+  ctx.fillRect(cx - 2, cy - 2, 5, 2.5);
+  ctx.fillRect(cx - 1, cy - 3.5, 3, 1.5);
+
+  // A barrel in the front-right corner: staves and brass hoops.
+  const bx = 186, by = 334;
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(bx + 1, by + 22, 12, 2.5);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(bx, by, 12, 23);
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(bx + 0.5, by + 0.5, 11, 22);
+  ctx.fillStyle = PUB.barFrontLit;
+  ctx.fillRect(bx + 1, by + 1, 2, 21);
+  ctx.fillStyle = PUB.barFrontDark;
+  for (let px = bx + 3.5; px < bx + 11; px += 2.5) ctx.fillRect(px, by + 1, 0.5, 21);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(bx + 0.5, by + 4, 11, 1);
+  ctx.fillRect(bx + 0.5, by + 17, 11, 1);
+  ctx.fillStyle = PUB.barTop;
+  ctx.fillRect(bx + 1, by + 0.5, 10, 1.5);                 // lid
+
+  // Palms on the side walls, half in the wall plane.
+  for (const [px, py] of [[194, 150], [194, 300], [5, 220]]) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px - 3, py + 8, 6, 5);                     // pot
+    ctx.fillStyle = '#7a3a2a';
+    ctx.fillRect(px - 2.5, py + 8.5, 5, 4);
+    ctx.fillStyle = '#9a4a34';
+    ctx.fillRect(px - 2.5, py + 8.5, 5, 1);
+    ctx.fillStyle = PUB.green;                              // fronds
+    ctx.fillRect(px - 0.5, py, 1, 8);
+    ctx.fillRect(px - 5, py + 1, 4.5, 1.5);
+    ctx.fillRect(px + 0.5, py + 2, 4.5, 1.5);
+    ctx.fillRect(px - 6, py + 4, 5.5, 1.5);
+    ctx.fillRect(px + 0.5, py + 5, 5.5, 1.5);
+    ctx.fillRect(px - 2, py - 2, 4, 2);
+    ctx.fillStyle = PUB.greenLit;
+    ctx.fillRect(px - 4.5, py + 1, 2, 0.5);
+    ctx.fillRect(px + 1, py + 2, 2, 0.5);
+    ctx.fillRect(px - 5.5, py + 4, 2.5, 0.5);
+    ctx.fillRect(px - 1, py - 2, 2, 0.5);
+  }
 }
 
 // One world-sized canvas holding passes 2-4. Built at load; the frame loop
@@ -3389,6 +3544,10 @@ function drawFloorLight(camX, camY) {
   for (const w of DECOR.windows) {
     drawGlow(glowFor(26, COOL_RGB, 0.22), w.x + w.w / 2, 8, 1, camX, camY);
   }
+  // The fire: an orange pool that breathes, plus a hotter core in the hearth.
+  const fire = prefersReducedMotion ? 1 : 0.86 + Math.sin(gameTime * 9.3) * 0.08 + Math.sin(gameTime * 23.7) * 0.06;
+  drawGlow(glowFor(34, FIRE_RGB, 0.5), FIREPLACE.x + 8, FIREPLACE.y + 24, fire, camX, camY);
+  drawGlow(glowFor(12, HOT_RGB, 0.5), FIREPLACE.x + 7, FIREPLACE.y + 21, fire, camX, camY);
   // Readability halos on the two leads, dim enough to be separation rather
   // than a spotlight, so they read even when a route runs between pools.
   drawGlow(glowFor(22, WARM_RGB, 0.3), player.x, player.y - 4, 1, camX, camY);
@@ -4323,11 +4482,15 @@ function orderBubbleSpotFree(rect) {
 // whole pixels instead of easing through fractional sizes.
 function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor, grow) {
   const icon = ORDER_ICONS[orderType];
-  const pad = 3;
+  // A ticket is compact while nobody is in a hurry; it grows to the full
+  // card once patience drops under 40% or it is yours, so the room's lamps
+  // stay the brightest thing on screen most of the time.
+  const urgent = patienceFraction != null && patienceFraction < 0.4;
+  const pad = highlighted || urgent || patienceFraction == null ? 3 : 1;
   const bw = spriteVisualW(icon.sprite) + pad * 2;
   const full = spriteVisualH(icon.sprite) + pad * 2;
   const step = grow == null || grow >= 1 ? 3 : Math.max(1, Math.ceil(grow * 3));
-  const bh = step === 3 ? full : (step === 2 ? full - 4 : 3);
+  const bh = step === 3 ? full : (step === 2 ? Math.max(3, full - 4) : 3);
   const reserveTop = patienceFraction != null && step === 3 ? 3 : 0;
   let bx = clamp(Math.round(worldX - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
   let by = clamp(

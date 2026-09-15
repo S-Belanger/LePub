@@ -21,6 +21,15 @@ Translate its visual language into the game rather than copying its camera:
   dimensions;
 - favor crisp authored pixels and stepped light over smooth filters.
 
+## Status (2026-09-15)
+
+Implemented: night base with additive pendant pools and cones, varnish
+streaks, lit bar/gantry/hatch and fireplace; three-quarter furniture fronts,
+chair backs, bench backs; the whole cast authored at backing resolution with
+faces; perimeter props; walnut/brass/parchment UI. Still to do: the waiter and
+ghost at backing resolution, more walk-in variety (hats, hair shapes), rain on
+the windows, and a real back-bar once the architectural plan lands.
+
 ## Acceptance check
 
 A recolor of the old slab furniture and 1x sprites is not this direction. A

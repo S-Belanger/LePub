@@ -30,6 +30,22 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 19:45 — visual pass 3: perimeter props, fireplace light, compact tickets; docs; deploying
+
+- `drawWallProps(ctx)` at the end of `drawArchitecture`: stone fireplace
+  with embers/mantel in the bar pocket (`FIREPLACE` {0,116,14,34}), stag
+  trophy at x 116 on the rear wall, string lights on the crown rail, coat
+  stand (12,336), barrel (186,334), three palms on the side walls. The fire
+  is a breathing `FIRE_RGB` pool + hot core in `drawFloorLight`.
+- Order tickets are compact (pad 1) unless patience < 40% or carried.
+- `assets/gameplay.png` = natural review frame. `CLAUDE.md` §3 (sprite
+  pipeline: `lightSprite`, HD sheets) and §12 (render order with the two
+  darkness steps, props, seven lamps) rewritten; art-direction README has a
+  status block (todo: waiter/ghost HD, walk-in variety, window rain, real
+  back-bar after the plan).
+- Smoke passes; Edge captures clean (desktop start/play/tally/caught,
+  mobile play/caught).
+
 ### 19:20 — visual pass 2: the whole cast re-authored at backing resolution
 
 - `src/sprites.js`: `lightSprite(rows, ramps, w, h)` — literal-row sheets at
