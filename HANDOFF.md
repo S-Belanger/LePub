@@ -30,7 +30,20 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
-### 17:12 — UI rehaul complete and browser-validated (uncommitted)
+### 17:18 — committed, pushed, new preview deployed
+
+- Committed the whole tree (Codex renderer milestone + UI rehaul) as
+  `fa51bdf` and pushed; branch is in sync with its upstream. Only this
+  ledger entry is uncommitted after it.
+- GitHub still reports no Vercel check on PR #3, so a non-production preview
+  was made from the linked project: <https://lepub-8gdszbpj1-maisoncastros-projects.vercel.app>
+  (inspector: <https://vercel.com/maisoncastros-projects/lepub/5tha4DBDQVGXNzEaN36ddfJ7Yezj>,
+  `dpl_5tha4DBDQVGXNzEaN36ddfJ7Yezj`). Deployment Protection remains on.
+  The first `vercel deploy` returned "Not authorized"; the retry succeeded.
+- Preview link posted on PR #3. PR stays a draft pending the user's review.
+- Next: collect the user's feedback on the hosted build.
+
+### 17:12 — UI rehaul complete and browser-validated (now committed in fa51bdf)
 
 - DOM shell rebuilt in `style.css`/`index.html` on the same walnut/brass/
   parchment/leather palette as the canvas kit: wainscot letterbox with one
