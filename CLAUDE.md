@@ -150,13 +150,21 @@ Their orders are framed in amber (`BUBBLE_FRAME_REGULAR`) so they read apart fro
 
 Gerald's escalation is content-side: his lines about Nazim declare a `nazim: [...]` stage gate, so he can't use drunk material on a sober man.
 
-### 7. Carrying and delivery
+**His night costs and pays.** Drunk or gone (`nazimIsFarGone`): order cooldown ×`NAZIM_FAST_ORDER` 0.6 and alcohol tips ×`NAZIM_TIP_MULT` 2. Gone: each delivery has a `NAZIM_SPILL_CHANCE` of knocking the pint (`addSpill` — `spills` slow player and hunter to `SPILL_SLOW` 60% within 9px for 25 s, drawn by `drawSpills` under the y-sorted pass), and every 12–20 s he gets up (`startNazimWander`/`updateNazimWander`: lean pose plus his sway, 14 px/s to a spot near the booth, a pause, then home). While up he is in `dynamicBlockers`, which `collidesAt` checks after `FURNITURE` so everyone slides round him; routes ignore him. Entering gone sets `waterOwed`, so his next order is `'water'` (an `ORDER_ICONS` entry made at the taps and excluded from walk-in `ORDER_TYPES`); delivering it takes `NAZIM_WATER_SOBERS` 2 drinks off with the `sobered` exchange instead of a thank-you. Keep pouring for double tips, or cut him off — that's the choice.
 
-`player.carrying` holds `{ type, customer }` referencing a *specific* person — walk-in or regular — flagged `beingCarried` so two orders are never picked up for one person. `handleInteract()` (bound to `E`, `Space`, and the touch action button) either grabs an order at the bar or delivers the carried one.
+**The round.** Every `ROUND_INTERVAL` 90–150 s, when none of the three is mid-order, `tryCallRound()` gives all three an order with `ROUND_PATIENCE` 32 s; all three served inside `ROUND_WINDOW` 20 s pays `ROUND_BONUS` 25 (`noteRoundDelivery`), otherwise `roundMissed`.
 
-`findOldestPendingOrder()` picks by `orderPlacedAt` across **both** populations, so the queue stays fair now that two feed it.
+### 7. Stations, the tray, tips and delivery
 
-Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`). If the target stops wanting the order, `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
+**Orders are picked up at the station that makes them.** `BAR_STATIONS` maps each `BAR_SEGMENTS` entry's `station` (`taps` → beers and water, `shelf` → wine/cocktail, `hatch` → food) to its order types, and `findOldestPendingOrder(types)` filters the queue by them. `nearestBarSegment()` resolves the L's corner by distance, not array order. A press at the wrong counter floats the right station's label (`SHELF >`) instead of just buzzing. `drawStationTag` paints a parchment label on each counter. Remapping a station is a one-word edit.
+
+**The tray.** `player.tray` holds up to `TRAY_MAX` (2) `{ type, customer }` items, each referencing a *specific* person — walk-in, regular or the hunter — flagged `beingCarried` so two orders are never picked up for one person. A full tray drops speed to `TRAY_SPEED` (54, under the hunter's late-game 60); landing both without a hit pays `DOUBLE_BONUS` (`doubleArmed`/`doubleHitFree`, cancelled by a hit or a dropped order). `handleInteract()` (`E`, `Space`, the touch action) tries a delivery first — whichever tray item's customer is in reach (`canDeliverTo`) — then a pickup.
+
+**Tips** (`deliveryTip`): `POINTS_PER_DELIVERY` 10 plus another 10 scaled by remaining patience, plus `CLUTCH_BONUS` 5 under `CLUTCH_FRACTION` 20%. The patience bar is a score meter, not just a fail timer. Every tip earned or lost goes through `earnTips`/`loseTips` so the shift ledger (`shiftStats`) stays exact.
+
+`findOldestPendingOrder()` picks by `orderPlacedAt` across walk-ins, regulars **and the hunter**, so the queue stays fair.
+
+Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`); the hunter is served at arm's length (`HUNTER_SERVE_RANGE` 26, wider than the ~15px catch radius). If a target stops wanting its order (`stillWantsOrder`), `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped from the tray so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
 
 ### 8. Dialogue
 
@@ -168,23 +176,31 @@ A reactive layer on top of gameplay. It never pauses the chase, blocks input, or
 - **`Dialogue.reset()` is called from `resetGame()`**, so a restart cancels everything queued or on screen; `resetDialogueTriggers()` clears the edge-detection state alongside it.
 - **Rendering** is `drawDialogueBubbles()`. Placement tries, in order: clear above the speaker's order bubble; straight above their head; pinned to the top of the camera; and only then hanging off the shoulder facing away from the booth. Bubbles are nudged sideways before vertically when two are on screen, and the HUD's footprint is fed in as an obstacle so a line can never sit on the score.
 
-### 9. Hunter AI: pursuit, not wandering
+### 9. Hunter AI: a rhythm, then pursuit
 
-`pickNewHunterDirection()` re-aims at the player's *current* position on a short timer with random angle jitter and a small chance to pause. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst.
+`updateHunter()` is a state machine (`hunterState`): **arriving** (hidden at `DOOR` for `HUNTER_ARRIVAL_FIRST` 20 s on a first run, `HUNTER_ARRIVAL_RETRY` 8 s on a restart, so a new player learns the bar before the chase; not drawn, can't catch) → **scanning** (half-speed prowl between random clear spots with a pause-and-look; he notices the Doe only inside a ±60° cone in front of him with a clear line through the furniture, within `hunterSightRange()` 70 + 4/level px — or within `HUNTER_HEAR_RANGE` 24 regardless; walking into him counts) → **chase** ("!" placard via `showHunterAlert`, `whistle` cue) → **lost** ("?" for `HUNTER_LOST_TIME` 3 s after `hunterLoseTime()` 4 + 0.5/level s out of sight) → scanning. **drinking** is 8 s sat out after being bought a pint. The ghost drifting through him forces a 1.2 s `lost` once per apparition. `setHunterState()` clears the route and slide state.
+
+**He is a patron too.** `hunter.isHunter` and the shared order fields; `hunterWantsPint()` every `HUNTER_ORDER_INTERVAL` 45–75 s with 25 s patience and no penalty; his ticket is framed `BUBBLE_FRAME_HUNTER` (tomato); `hunterServed()` pays the tip plus `HUNTER_SERVE_BONUS` 20 and seats him. Buying the man who's hunting you a pint is the joke the premise was begging for.
+
+**In chase he is a pathfinder.** `hunterRouteTo()` runs the same A* as customers with `HUNTER_FOOTPRINT` — the search is body-size aware (`footprintFor(kind, cell)`; `findBlockingObstacle`/`pointBlocked`/`cellCenter`/`computeCustomerPath` take an optional `fp`) and the hunter uses a **4px grid**, because on the 8px one his 11.6px foot box finds no clear centre in the 15px lane beside the bar stem though he physically fits. The route is recomputed every `hunterRepathInterval()` 1.5 → 0.8 s. `pickNewHunterDirection()` then aims at the next waypoint with half the old angle jitter and a small chance to pause, so he still reads as a man running rather than a homing missile. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst.
 
 Only one axis blocked means it is scraping along something. Re-aiming sooner is the first response, but pursuit alone cannot get round a *long* obstacle: every re-aim re-rolls the sideways component, so the hunter random-walks up and down the same wall forever and the player is safe just by standing on the other side of the bar. So after `HUNTER_RUB_TIME` of getting nowhere it commits to one direction along the open axis (`hunterSlide`) and holds it for `HUNTER_SLIDE_TIME` before trying the other way — plain wall following. The slide vector still leans into the wall, so the frame the obstacle runs out nothing is blocked, the slide clears itself, and pursuit resumes. `hunterRubTimer` and `hunterSlide` both reset in `resetGame()`.
 
-The hunter is still not a pathfinder, and the floor plan's bar leaves a couple of long detours it can only find by luck. A player who stands perfectly still behind the bar can outlast it.
+The rub/slide layer stays as the safety net for the cases the grid can't express; a route that fails outright falls back to a straight line and lets the slide sort it out. A red edge pulse (`drawDangerEdge`) and footstep cues (`step`) mark him within `DANGER_RANGE` 80 while chasing, strongest when he's off camera.
 
 ### 10. Life and capture
 
-Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
+Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. A hit also holds the floor for `HIT_STOP` 0.08 s and rocks the emptied pint on the HUD sign (`pintKnockTimer`/`pintKnockIndex`). Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
 
 **High scores** live in `localStorage` under `lepub_highscores` (top 5, `{name, score}`; plain numbers from older saves are normalized on read, and every access is wrapped because storage can throw outright). Being caught with a score calls `beginNameEntry()`: while `enteringName` is true the caught screen shows a name field instead of the restart prompt, and the keydown handler takes the keyboard outright so no other shortcut can eat a letter or drop the score. The DOM restart button is hidden for the same reason (`syncCaughtDom`). Typing a name needs a keyboard, so on a touch device (`canTypeName()`) the score is filed unnamed rather than showing a field nobody can fill.
 
-### 11. Levels and difficulty
+### 11. Shifts and difficulty
 
-Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`, `LEVEL_UP_SCORE` 100). Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the displayed level keeps climbing. Per level: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — sharper aim, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint. Crossing a new high-water level freezes the simulation for a 2.5-second `LevelDone.png` splash; losing points and re-crossing the same threshold does not replay it.
+The run is a sequence of **shifts**, and `getLevel()` returns the shift number — difficulty follows the shift, not the score, so losing tips never makes the room easier. A shift ends when `shiftTips` reaches `shiftTarget(n)` = 100 + 40(n−1), or, for the first `SHIFT_TIMED_COUNT` (5) shifts, when its `SHIFT_LENGTH` 180 s clock runs out. The final `LAST_CALL_TIME` 15 s are **last call**: bar bell, `lastCall` lines, no new walk-ins, patience drains ×`LAST_CALL_PATIENCE` (1.5), the HUD clock turns red and blinks under 5 s. Shifts ≥ 6 are untimed.
+
+`endShift()` snapshots `shiftTally` and freezes the floor; `drawShiftTallyOverlay` shows it on a walnut board over `LevelDone.png` (DONE in cream if the target was met, OVER in red if the clock beat you; served / forgotten / clutch / doubles / rounds / hits / best shift) and waits for Space, `E` or the touch action (`startNextShift()`). That press is the run's natural stopping point. The HUD sign reads `TIPS shift/target` on its top line and `TOTAL n  m:ss` beside the pints.
+
+Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the shift number keeps climbing. Per shift: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — wider sight, faster repath, longer memory, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint.
 
 ### 12. Render passes
 
@@ -225,7 +241,7 @@ The shell uses the same materials as the canvas UI: `.board` is a walnut plank (
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/level-splash state, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
-It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
+It also clears `enteringName`/`nameInput`, the ghost, the waiter, the tray and double state, the hunter's state machine and order (he restarts `arriving` at the door), spills, dynamic blockers, the round, the shift (number, clock, tips, tally, stats) and the hit-stop/pint-knock timers. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
 ## Development scaffolding
 
@@ -233,8 +249,8 @@ It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new p
 
 | Helper | Use |
 | --- | --- |
-| `setScore(n)` / `getScore()` / `getLevel()` | Level is derived from score, so `setScore` is how you reach a level. |
-| `setLife(n)` / `getLife()` / `getLevelSplash()` | Inspect the damage/regen bar and current completed-level transition. |
+| `setScore(n)` / `getScore()` / `getLevel()` | Total tips; `getLevel()` is the shift number (use `setShift` to change it). |
+| `setLife(n)` / `getLife()` | Inspect the damage/regen bar. |
 | `getViewport()` / `getCamera()` | Current internal resolution, integer scale, orientation, camera origin. |
 | `reservedSeats()` / `freeGenericSeats()` | Inspect seat reservation. |
 | `forceRegularOrder(id, type?)` | Make a regular order now, optionally of a given type. |
@@ -242,6 +258,9 @@ It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new p
 | `computeCustomerPath` / `findBlockingObstacle` / `pointBlocked` | Check a layout edit hasn't sealed a seat off. |
 | `FURNITURE` / `BENCHES` | Every collider in one array — what a flood-fill reachability check runs over. |
 | `getGhost()` / `spawnGhost()` | Summon the apparition instead of waiting 35–80s for it. |
+| `getHunterState()` / `setHunterState(s, t?)` / `hunterCanSeePlayer()` / `hunterWantsPint()` | Drive the hunter's state machine, test his sight, make him order. |
+| `getShift()` / `setShift(n)` / `setShiftClock(t)` / `endShift()` / `startNextShift()` | Jump shifts, force last call, open and close the tally board. |
+| `getSpills()` / `getRound()` / `callRound()` / `startNazimWander()` | Nazim's consequences and the round, on demand. |
 | `getWaiter()` / `spawnWaiter()` | Send the waiter in now; the returned entity's `state`/`pose`/`mist` can be driven by hand. |
 | `loadHighScores()` / `saveHighScore()` / `clearHighScores()` / `getNameEntry()` | Inspect and wipe the stored table, and see the live name field. |
 | `regularState()` | Order, patience, mood, drinks, stage and pose for all three. |

@@ -23,6 +23,7 @@ const Dialogue = (function () {
     restart: 3,
     hunterNear: 2,
     lastCall: 3,
+    hunterSpooked: 2,
     waterOrdered: 3,
     sobered: 3,
     roundCalled: 3,

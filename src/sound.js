@@ -108,6 +108,11 @@ const Sound = (function () {
         if (!allow(name, 0.12)) return;
         tone(115, 0.045, { type: 'square', volume: 0.035 });
         break;
+      case 'step':
+        // A boot on the boards, felt more than heard.
+        if (!allow(name, 0.2)) return;
+        tone(95, 0.06, { to: 60, type: 'triangle', volume: 0.07 });
+        break;
       case 'bell':
         // Last call: the bar bell, twice.
         tone(1760, 0.18, { type: 'triangle', volume: 0.09 });

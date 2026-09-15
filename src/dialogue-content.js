@@ -187,6 +187,9 @@ const DIALOGUE_LINES = [
   { who: 'sam', category: 'lastCall', text: "Bell's gone. Everybody wants everything now." },
   { who: 'nazim', category: 'lastCall', stage: ['sober', 'warm', 'buzzed'], text: "Already? The night was just getting good." },
   { who: 'nazim', category: 'lastCall', stage: ['drunk', 'gone'], text: "Last call is a state of mind." },
+  { who: 'sam', category: 'hunterSpooked', text: "Did he just flinch at nothing?" },
+  { who: 'gerald', category: 'hunterSpooked', text: "Big man. Scared of a draught." },
+  { who: 'nazim', category: 'hunterSpooked', stage: ['drunk', 'gone'], text: "I saw it too. The see-through fella." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------

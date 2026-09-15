@@ -1,6 +1,6 @@
 # Le Pub: The Chase
 
-A compact pixel-art serving game where a waiter in a deer onesie works a crowded pub while a hunter stalks the room. Pick up the oldest waiting order at the bar, deliver it before the customer loses patience, and keep moving long enough to finish the next level.
+A compact pixel-art serving game where a waiter in a deer onesie works a crowded pub while a hunter stalks the room. Pick orders up at the right station, deliver them before the customer loses patience, and keep moving long enough to close the shift.
 
 **Live demo:** [lepub.vercel.app](https://lepub.vercel.app)
 
@@ -44,12 +44,12 @@ Opening `index.html` directly also works in modern browsers, although serving th
 
 ## How to play
 
-1. Watch for order bubbles above seated customers and the three corner-table regulars.
-2. Move beside any section of the L-shaped bar and grab the oldest waiting order.
-3. Carry it to the highlighted customer. You can deliver beside the customer or anywhere close to their table.
-4. Deliver quickly for 10 points. Letting an order expire costs 15 points.
-5. Avoid the hunter. Contact removes one of three life segments and briefly shoves you to safety.
-6. Survive and keep serving. Every 100 points completes a level and makes the pub busier and the hunter more accurate.
+1. Watch for order tickets above seated customers, the three corner-table regulars — and, now and then, the hunter.
+2. Pick orders up at the station that makes them: beers and water at the **TAPS**, wine and cocktails at the **SHELF**, food from the **KITCHEN**. The tray holds two, but a full tray slows you down; land both without a hit for a double.
+3. Carry them to their customers. You can deliver beside the customer or anywhere close to their table.
+4. Tips scale with how fresh the order still is: 10 to 20, plus a clutch bonus for a last-second save. Letting an order expire costs 15.
+5. Avoid the hunter. He walks in a little after you start, prowls, and only chases once he's actually seen you. Contact removes one of three pints and briefly shoves you to safety. Buy him a pint and he sits it out for a while.
+6. Work the shift. The first five run three minutes with a last-call rush; every shift closes on a tally board, and each one makes the pub busier and the hunter sharper. Keep Nazim drinking for double tips — or let Gerald order him a water.
 
 Life begins regenerating after three hit-free seconds. A fully empty bar takes 20 seconds to refill, and the third hit before recovery ends the shift.
 
@@ -84,7 +84,7 @@ Their dialogue reacts to successful and missed deliveries, near misses, the hunt
 - **Patience:** each order bubble includes a green, amber, or red countdown bar.
 - **Delivery feedback:** score changes float above the affected customer, while order bubbles pop in and shrink away on a whole-pixel animation.
 - **Life and recovery:** three partially refillable segments, a short post-hit invulnerability window, collision-aware knockback, and visible player flicker.
-- **Difficulty:** higher levels add customers, speed up arrivals, improve the hunter's tracking, and deepen the night tint.
+- **Difficulty:** each shift adds customers, speeds up arrivals, widens the hunter's sight and sharpens his tracking, and deepens the night tint.
 - **Responsive presentation:** separate portrait and landscape viewports, camera clamping, safe-area-aware controls, and optional fullscreen.
 - **Sound:** lightweight synthesized Web Audio cues with no audio downloads; the mute preference is stored locally when browser storage is available.
 - **Reduced motion:** ambient dust, lamp flicker, and seated sway are disabled when the operating system requests reduced motion.
@@ -133,7 +133,7 @@ The dependency-free smoke test loads the production scripts in their real
 order, runs every customer seat route in and out, completes a waiter visit,
 and exercises the render pass against a lightweight canvas/DOM stand-in.
 
-For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and crossing a 100-point level boundary.
+For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and closing a shift on both the clock and the tips target.
 
 ### Debug console
 

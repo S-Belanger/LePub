@@ -30,6 +30,26 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 19:35 — batch E (juice) done; docs updated; all ten recommendations in
+
+- Hit-stop (`HIT_STOP` 0.08 s freeze) and the emptied HUD pint rocking with
+  a splash (`pintKnockTimer`/`pintKnockIndex`).
+- `drawDangerEdge()`: stepped red bands on the hunter's side while he
+  chases within `DANGER_RANGE` 80, pulsing, stronger off camera; `step`
+  footstep cue paced by distance (`hunterStepTimer`).
+- The ghost passing within 14 px of a scanning/chasing hunter forces a 1.2 s
+  `lost` with a "?!" placard, once per apparition (`ghost.spooked`);
+  `hunterSpooked` lines.
+- `CLAUDE.md` sections 6/7/9/10/11/15 and the debug table rewritten for
+  stations, tray, tips, hunter states, footprint-aware A*, Nazim's
+  consequences, the round, shifts. `README.md` how-to-play updated. Start
+  overlay hint names the stations and the tray.
+- Smoke: 8 scripts, loop, hunter, Nazim, round, spook, shifts, boards —
+  passes repeatedly. Edge captures clean. `assets/gameplay.png` refreshed.
+- Next: commit, push, redeploy preview, note on PR #3. Then wait for the
+  user's real bar plan (layout pass: re-trace `BAR_SEGMENTS`/`TABLES`/
+  `BENCHES`, remap `station` ids, re-run smoke for routes).
+
 ### 19:15 — batch D (shifts) done: timed shifts, last call, tally board
 
 - Level is no longer derived from score: `getLevel()` returns `shift`, so

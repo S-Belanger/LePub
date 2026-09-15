@@ -384,6 +384,17 @@ function run() {
   if (debug.getScore() - beforeRound < 25 + 30) throw new Error('Round should pay the three tips plus the bonus.');
   debug.resetGame();
 
+  // The ghost drifting through the hunter stops him for a moment, once.
+  debug.resetGame();
+  debug.setHunterState('chase');
+  debug.hunter.x = 100; debug.hunter.y = 150; debug.player.x = 100; debug.player.y = 300;
+  debug.spawnGhost();
+  const apparition = debug.getGhost();
+  apparition.x = debug.hunter.x - 2; apparition.y = debug.hunter.y; apparition.targetX = debug.hunter.x + 40;
+  debug.update(0.05);
+  if (debug.getHunterState().state !== 'lost') throw new Error('The ghost passing through the hunter should spook him.');
+  debug.resetGame();
+
   // Shifts: the clock runs, last call arms in the final seconds and stops
   // new walk-ins, the tally board freezes the floor until a press, and the
   // next shift starts from zero with the target raised.
@@ -434,7 +445,7 @@ function run() {
   debug.render();
 
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, shifts, and render pass with HUD, tally and caught boards.`);
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, shifts, and render pass with HUD, tally and caught boards.`);
 }
 
 run();

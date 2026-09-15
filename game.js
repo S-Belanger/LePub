@@ -710,6 +710,13 @@ function deliveryTip(target) {
 // `caught` still means "game over" — it only flips true once life hits 0.
 let life = 1;
 const LIFE_MAX = 1;
+// A hit lands with a beat: the whole floor holds for a few frames and the
+// pint that just went shakes on the sign.
+const HIT_STOP = 0.08;
+const PINT_KNOCK_TIME = 0.5;
+let hitStopTimer = 0;
+let pintKnockTimer = 0;
+let pintKnockIndex = -1;
 const LIFE_HIT_FRACTION = 1 / 3;
 const LIFE_HIT_INVULN = 1.5;
 const LIFE_REGEN_DELAY = 3;
@@ -991,6 +998,17 @@ function updateGhost(dt) {
     const dir = ghost.targetX > ghost.x ? 1 : -1;
     ghost.x += dir * ghost.speed * dt;
     ghost.flip = dir < 0;
+    // Drifting through the hunter gives him a turn: he stops dead for a
+    // second, which is the one thing the ghost does to the chase. Once per
+    // apparition, so it can't be farmed by standing him in its path.
+    if (!ghost.spooked && (hunterState === 'chase' || hunterState === 'scanning') &&
+      Math.hypot(ghost.x - hunter.x, ghost.y - hunter.y) < 14) {
+      ghost.spooked = true;
+      setHunterState('lost', 1.2);
+      showHunterAlert('?!', 1.2);
+      Sound.play('lost');
+      Dialogue.trigger('hunterSpooked', null);
+    }
     if ((dir > 0 && ghost.x >= ghost.targetX) || (dir < 0 && ghost.x <= ghost.targetX)) ghost = null;
   }
 }
@@ -1762,6 +1780,9 @@ function resetGame() {
   life = LIFE_MAX;
   hitInvulnTimer = 0;
   regenDelayTimer = 0;
+  hitStopTimer = 0;
+  pintKnockTimer = 0;
+  pintKnockIndex = -1;
   shift = 1;
   shiftClock = 0;
   shiftTips = 0;
@@ -2305,6 +2326,7 @@ let hunterFacing = { x: 1, y: 0 };
 let hunterAlert = null;          // { text, timer } placard over his head
 let hunterOrderTimer = 0;        // until his next pint craving
 let hunterScanLookTimer = 0;     // scanning: pause-and-look cadence
+let hunterStepTimer = 0;         // chase: footstep cue cadence
 const HUNTER_ARRIVAL_FIRST = 20; // seconds before he walks in on a first run
 const HUNTER_ARRIVAL_RETRY = 8;  // ...and on a restart
 const HUNTER_LOST_TIME = 3;
@@ -2520,6 +2542,13 @@ function updateHunter(dt) {
         Dialogue.trigger('hunterLost', null);
         return;
       }
+      // Footsteps you can hear when he's close, quicker the closer he is.
+      hunterStepTimer -= dt;
+      const stepDist = Math.hypot(player.x - hunter.x, player.y - hunter.y);
+      if (hunterStepTimer <= 0 && stepDist < DANGER_RANGE * 1.3 && hunter.moving) {
+        Sound.play('step');
+        hunterStepTimer = 0.28 + 0.3 * (stepDist / (DANGER_RANGE * 1.3));
+      }
       hunterRepathTimer -= dt;
       if (hunterRepathTimer <= 0 || !hunterPath) {
         hunterRepathTimer = hunterRepathInterval();
@@ -2615,6 +2644,9 @@ function update(dt) {
 
   // The tally board freezes the floor until the player starts the next shift.
   if (shiftTally) return;
+  // Hit-stop: a few frames of nothing so a hit reads as an impact.
+  if (hitStopTimer > 0) { hitStopTimer -= dt; return; }
+  if (pintKnockTimer > 0) pintKnockTimer -= dt;
 
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
@@ -2721,6 +2753,9 @@ function update(dt) {
     regenDelayTimer = LIFE_REGEN_DELAY;
     doubleHitFree = false;
     shiftStats.hits++;
+    hitStopTimer = HIT_STOP;
+    pintKnockTimer = PINT_KNOCK_TIME;
+    pintKnockIndex = Math.min(LIFE_SEGMENT_COUNT - 1, Math.floor(life * LIFE_SEGMENT_COUNT + 1e-6));
 
     if (life <= 1e-9) {
       caught = true;
@@ -3770,6 +3805,34 @@ function drawGrade() {
 
   ensureVignette();
   ctx.drawImage(vignetteCanvas, 0, 0);
+  drawDangerEdge();
+}
+
+// A red pulse creeping in from the edge the hunter is on while he's close
+// and chasing — strongest when he's off camera, which is when you need it.
+const DANGER_RANGE = 80;
+function drawDangerEdge() {
+  if (hunterState !== 'chase' || caught) return;
+  const dx = hunter.x - player.x;
+  const dy = hunter.y - player.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > DANGER_RANGE) return;
+  const cam = getCamera();
+  const onScreen = hunter.x - cam.x > -8 && hunter.x - cam.x < viewW + 8 && hunter.y - cam.y > -8 && hunter.y - cam.y < viewH + 8;
+  const pulse = 0.65 + 0.35 * Math.sin(gameTime * 9);
+  const strength = (1 - dist / DANGER_RANGE) * (onScreen ? 0.22 : 0.42) * pulse;
+  if (strength <= 0.01) return;
+  // Three stepped bands rather than a gradient, weighted toward his side.
+  const wx = Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0;
+  const wy = wx === 0 ? Math.sign(dy) : 0;
+  for (let band = 0; band < 3; band++) {
+    ctx.fillStyle = 'rgba(189,73,56,' + (strength * (1 - band * 0.3)).toFixed(3) + ')';
+    const t = 2 + band * 2;
+    if (wx <= 0) ctx.fillRect(0, 0, t, viewH);                 // left
+    if (wx >= 0) ctx.fillRect(viewW - t, 0, t, viewH);         // right
+    if (wy <= 0) ctx.fillRect(0, 0, viewW, t);                 // top
+    if (wy >= 0) ctx.fillRect(0, viewH - t, viewW, t);         // bottom
+  }
 }
 
 // ---- Y-sorted pass ----------------------------------------------------------
@@ -4369,7 +4432,15 @@ function drawHud() {
 
   const pintY = textY + FONT_H + 3;
   for (let i = 0; i < LIFE_SEGMENT_COUNT; i++) {
-    const x = hud.x + HUD_PAD_X + i * (PINT_W + PINT_GAP);
+    let x = hud.x + HUD_PAD_X + i * (PINT_W + PINT_GAP);
+    // The pint that just went rocks on the rail and throws a splash.
+    const knocked = pintKnockTimer > 0 && i === pintKnockIndex;
+    if (knocked) {
+      x += Math.round(Math.sin(pintKnockTimer * 40)) ;
+      ctx.fillStyle = PUB.amber;
+      ctx.fillRect(x + PINT_W + 1, pintY + PINT_H - 2 - Math.round(pintKnockTimer * 6), 1, 1);
+      ctx.fillRect(x - 2, pintY + PINT_H - 1 - Math.round(pintKnockTimer * 4), 1, 1);
+    }
     drawPint(x, pintY, clamp(life * LIFE_SEGMENT_COUNT - i, 0, 1));
   }
   // Brass coaster rail under the pints so they sit on something.
