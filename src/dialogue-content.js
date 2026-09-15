@@ -173,6 +173,15 @@ const DIALOGUE_LINES = [
   { who: 'gerald', category: 'hunterServed', text: "Bribery. Finally some proper hospitality." },
   { who: 'nazim', category: 'hunterServed', stage: ['sober', 'warm'], text: "He drinks like a man with a plan." },
   { who: 'nazim', category: 'hunterServed', stage: ['drunk', 'gone'], text: "Cheers, hunter. No. Not cheers." },
+  // ------------------------------------------------- NAZIM'S NIGHT, PAID FOR
+  { who: 'gerald', category: 'spill', text: "That's a pint on the floor. Mind it." },
+  { who: 'sam', category: 'spill', text: "He's watering the boards again." },
+  { who: 'nazim', category: 'spill', stage: ['gone'], text: "The glass moved. I saw it." },
+  { who: 'sam', category: 'nazimUp', text: "He's up. Nobody make eye contact." },
+  { who: 'gerald', category: 'nazimUp', text: "Sit down, Nazim. That's a lane." },
+  { who: 'nazim', category: 'nazimUp', stage: ['gone'], text: "Just stretching. Legs. Both." },
+  { who: 'gerald', category: 'roundMissed', text: "That wasn't a round. That was three drinks." },
+  { who: 'sam', category: 'roundMissed', text: "Staggered arrivals. Like a bad wedding." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------
@@ -309,6 +318,55 @@ const DIALOGUE_EXCHANGES = [
     lines: [
       { who: 'gerald', text: "Round two. Try the walking this time.", delay: 0 },
       { who: 'sam', text: "He can't hear you. He's new again.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'waterOrdered',
+    lines: [
+      { who: 'gerald', text: "Water for him. Now. On me.", delay: 0 },
+      { who: 'nazim', text: "I ordered no water.", delay: 1.5 },
+    ],
+  },
+  {
+    category: 'waterOrdered',
+    lines: [
+      { who: 'gerald', text: "Cut him off. Water. Tall one.", delay: 0 },
+      { who: 'sam', text: "He'll drink it and call it a cocktail.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'sobered',
+    lines: [
+      { who: 'nazim', text: "That's... wet. Thank you.", delay: 0 },
+      { who: 'gerald', text: "Now sit up straight.", delay: 1.4 },
+    ],
+  },
+  {
+    category: 'roundCalled',
+    lines: [
+      { who: 'gerald', text: "A round. Three. Go.", delay: 0 },
+      { who: 'sam', text: "Together, mind. It's a round, not a queue.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'roundCalled',
+    lines: [
+      { who: 'sam', text: "Round's on Gerald tonight.", delay: 0 },
+      { who: 'gerald', text: "Round's on whoever's slowest.", delay: 1.4 },
+    ],
+  },
+  {
+    category: 'roundDone',
+    lines: [
+      { who: 'sam', text: "Three at once. That's a proper pub.", delay: 0 },
+      { who: 'gerald', text: "Fine. That was competent.", delay: 1.5 },
+    ],
+  },
+  {
+    category: 'roundDone', nazim: ['drunk', 'gone'],
+    lines: [
+      { who: 'nazim', text: "To the deer!", delay: 0 },
+      { who: 'gerald', text: "Quietly, Nazim.", delay: 1.2 },
     ],
   },
 ];

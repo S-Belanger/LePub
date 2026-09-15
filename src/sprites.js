@@ -326,8 +326,11 @@ const ORDER_ICONS = {
   cocktail: { sprite: detailSprite(buildSprite(COCKTAIL_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
   wine: { sprite: detailSprite(buildSprite(WINE_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
   food: { sprite: detailSprite(buildSprite(FOOD_ROWS)), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
+  // A pint of water: only ever ordered for Nazim, never by a walk-in.
+  water: { sprite: detailSprite(buildSprite(MUG_ROWS)), palette: { '.': null, f: '#e4f4f8', o: '#2a1c10', L: '#9fd3e8' } },
 };
-const ORDER_TYPES = Object.keys(ORDER_ICONS);
+// What walk-ins can roll. Water is Gerald's idea, not on the menu.
+const ORDER_TYPES = Object.keys(ORDER_ICONS).filter(t => t !== 'water');
 function randomOrderType() { return ORDER_TYPES[Math.floor(Math.random() * ORDER_TYPES.length)]; }
 
 // ---- The regulars: Nazim, Sam and Gerald ------------------------------------

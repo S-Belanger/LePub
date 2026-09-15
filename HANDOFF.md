@@ -30,6 +30,29 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:55 — batch C (regulars) done: Nazim's night has consequences, the round
+
+- Drunk/gone Nazim: order cooldown ×0.6 (`NAZIM_FAST_ORDER`), alcohol tips
+  ×2 (`NAZIM_TIP_MULT`, "X2 +N" float). Gone: 50% a delivery knocks a pint
+  (`addSpill`; `spills` slow player and hunter to 60% within 9 px for 25 s,
+  drawn by `drawSpills` under the y-sorted pass; `spill` cue); every 12–20 s
+  he gets up (`startNazimWander`/`updateNazimWander`: lean pose + sway,
+  14 px/s to a spot near the booth, pause, back to his seat) and is a
+  `dynamicBlockers` entry so `collidesAt` slides others round him.
+- Entering `gone` sets `waterOwed`; his next order is `'water'` (new
+  `ORDER_ICONS.water`, made at the taps, excluded from walk-in
+  `ORDER_TYPES`); delivering it takes 2 drinks off (gone → drunk) with the
+  `sobered` exchange instead of the thank-you. `waterOrdered` exchange from
+  Gerald.
+- The round: every 90–150 s when none of the three is mid-order,
+  `tryCallRound` gives all three an order with 32 s patience; all three
+  served inside 20 s pays `ROUND_BONUS` 25 (`noteRoundDelivery`), else
+  `roundMissed`. Exchanges `roundCalled`/`roundDone`.
+- Debug: `getSpills`, `getRound`, `callRound`, `startNazimWander`. Smoke
+  covers double tip, water owed → ordered → sobers, wander out and back to
+  the seat, and a full round. 6/6 runs pass; Edge clean.
+- Next: batch D — shifts with a last-call rush and a tally board.
+
 ### 18:40 — batch B (hunter) done: states, A*, door arrival, buy him a pint
 
 - `updateHunter()` state machine replaces the inline pursuit: `arriving`

@@ -345,6 +345,45 @@ function run() {
   if (debug.getHunterState().state === 'drinking') throw new Error('Hunter should finish his pint.');
   debug.resetGame();
 
+  // Nazim's night: gone, he tips double, Gerald orders him a water, and the
+  // water sobers him a stage. The round pays once all three land in time.
+  debug.resetGame();
+  debug.setHunterState('arriving', 999);
+  const nazim = debug.regulars.find(r => r.id === 'nazim');
+  const deliverTo = r => { debug.player.tray.length = 0; r.beingCarried = true; debug.player.tray.push({ type: r.orderType, customer: r }); debug.player.x = r.x; debug.player.y = r.y + 6; debug.handleInteract(); };
+  debug.setNazimDrinks(4);
+  debug.forceRegularOrder('nazim', 'beer-blond');
+  nazim.sitTimer = nazim.patienceDuration;   // fresh: base tip 20
+  const beforeNazim = debug.getScore();
+  deliverTo(nazim);
+  if (nazim.stage.id !== 'gone') throw new Error('Fifth drink should make Nazim gone, got ' + nazim.stage.id);
+  if (debug.getScore() - beforeNazim < 40) throw new Error('Drunk Nazim should tip double, got +' + (debug.getScore() - beforeNazim));
+  if (!nazim.waterOwed) throw new Error('Reaching gone should owe a water.');
+  nazim.orderCooldown = 0;
+  debug.update(0.05);
+  if (nazim.orderType !== 'water') throw new Error('Next order should be the water, got ' + nazim.orderType);
+  standAt(segFor('taps'));
+  debug.player.tray.length = 0;
+  debug.handleInteract();
+  if (!debug.player.tray.some(i => i.type === 'water')) throw new Error('Water should come from the taps.');
+  deliverTo(nazim);
+  if (nazim.stage.id !== 'drunk' || nazim.drinks !== 3) throw new Error('Water should take him back to drunk/3, got ' + nazim.stage.id + '/' + nazim.drinks);
+  // Up on his feet and back down again.
+  debug.setNazimDrinks(5);
+  debug.startNazimWander();
+  if (!nazim.wander) throw new Error('Gone Nazim should get up.');
+  runUntil(() => debug.update(0.05), () => !nazim.wander, 1200, () => 'Nazim never sat back down; at ' + nazim.x + ',' + nazim.y);
+  if (Math.abs(nazim.x - nazim.seat.x) > 0.5 || Math.abs(nazim.y - nazim.seat.y) > 0.5) throw new Error('Nazim should end his wander in his seat.');
+  // The round.
+  for (const r of debug.regulars) { r.orderType = null; r.orderCooldown = 99; }
+  if (!debug.callRound()) throw new Error('Round should be callable with nobody mid-order.');
+  if (debug.regulars.some(r => !r.orderType)) throw new Error('A round should give all three an order.');
+  const beforeRound = debug.getScore();
+  for (const r of debug.regulars) deliverTo(r);
+  if (debug.getRound() !== null) throw new Error('Round should close once all three are served.');
+  if (debug.getScore() - beforeRound < 25 + 30) throw new Error('Round should pay the three tips plus the bonus.');
+  debug.resetGame();
+
   // Every UI board the game can show: the HUD at a real score and partial
   // life, the level-done board, the caught board with the name field open,
   // and the ledger after a name is filed. All of them are pure canvas
@@ -365,7 +404,7 @@ function run() {
   debug.render();
 
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, and render pass with HUD, level and caught boards.`);
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, and render pass with HUD, level and caught boards.`);
 }
 
 run();

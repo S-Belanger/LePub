@@ -202,7 +202,7 @@ function getTableSeats(table) {
 // choice — which station is nearer, whose patience is reddest, is the hunter
 // between me and the taps. Remapping a station is a one-word edit here.
 const BAR_STATIONS = {
-  taps: { label: 'TAPS', types: ['beer-dark', 'beer-red', 'beer-blond'] },
+  taps: { label: 'TAPS', types: ['beer-dark', 'beer-red', 'beer-blond', 'water'] },
   shelf: { label: 'SHELF', types: ['wine', 'cocktail'] },
   hatch: { label: 'KITCHEN', types: ['food'] },
 };
@@ -346,11 +346,21 @@ function getFootBox(e, x, y) {
   return { x: x - w / 2, y: y - h, w, h };
 }
 
+// Bodies that block movement for a while without being furniture: Nazim on
+// his feet, staggering about the booth lane. Routes ignore them (they are
+// computed once, and he isn't there for long); per-step collision slides
+// everyone else around him.
+const dynamicBlockers = [];
+
 function collidesAt(e, x, y, exclude) {
   const box = getFootBox(e, x, y);
   for (const f of FURNITURE) {
     if (f === exclude) continue;
     if (rectsOverlap(box, f.collider)) return true;
+  }
+  for (const b of dynamicBlockers) {
+    if (b === e) continue;
+    if (rectsOverlap(box, getFootBox(b, b.x, b.y))) return true;
   }
   return false;
 }
@@ -864,6 +874,32 @@ function updateCustomer(c, dt) {
   return null;
 }
 
+// ---- Spills: a pint Nazim knocked over. A wet patch on the boards that slows
+// whoever walks through it — player and hunter alike — until it dries. -------
+const spills = [];
+const SPILL_TTL = 25;
+const SPILL_RADIUS = 9;
+const SPILL_SLOW = 0.6;
+
+function addSpill(x, y) {
+  spills.push({ x, y, ttl: SPILL_TTL, seed: Math.random() * 1000 });
+  Sound.play('spill');
+}
+
+function spillSlowAt(x, y) {
+  for (const sp of spills) {
+    if (Math.hypot(sp.x - x, sp.y - y) < SPILL_RADIUS) return SPILL_SLOW;
+  }
+  return 1;
+}
+
+function updateSpills(dt) {
+  for (let i = spills.length - 1; i >= 0; i--) {
+    spills[i].ttl -= dt;
+    if (spills[i].ttl <= 0) spills.splice(i, 1);
+  }
+}
+
 // ---- Ghost: a purely aesthetic apparition. Every few minutes it drifts in
 // a straight line across the pub, through walls and furniture alike (no
 // collision, no interaction with score/hunter/player), and vanishes off the
@@ -1171,6 +1207,11 @@ function resetRegular(r) {
   r.pose = 'idle';
   r.dialogueCooldown = 0;
   r.recentLines = [];
+  // Nazim only: a water Gerald has ordered for him, and his time on his feet.
+  r.waterOwed = false;
+  r.wander = null;          // { path, index, pauseTimer, returning } while up
+  r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
+  r.moving = false;
   r.palette = r.id === 'nazim' ? NAZIM_STAGE_PALETTES.sober : null;
 }
 
@@ -1194,8 +1235,25 @@ function recalcIntoxication(r) {
   return true;
 }
 
+// What Nazim's night costs and pays. Drunk and gone he orders faster and
+// tips double; gone he knocks pints over and Gerald orders him a water.
+const NAZIM_FAST_ORDER = 0.6;
+const NAZIM_TIP_MULT = 2;
+const NAZIM_SPILL_CHANCE = 0.5;
+const NAZIM_WATER_SOBERS = 2;    // drinks taken off by a water
+const NAZIM_WANDER_INTERVAL = [12, 20];
+const NAZIM_WANDER_SPEED = 14;
+
+function nazimIsFarGone(r) { return r.id === 'nazim' && (r.stage.id === 'drunk' || r.stage.id === 'gone'); }
+
 function regularPlaceOrder(r) {
-  r.orderType = pickWeightedOrderType(r.cfg.orderWeights);
+  if (r.id === 'nazim' && r.waterOwed) {
+    // Gerald's doing. It is still Nazim's order to receive.
+    r.waterOwed = false;
+    r.orderType = 'water';
+  } else {
+    r.orderType = pickWeightedOrderType(r.cfg.orderWeights);
+  }
   r.orderPlacedAt = gameTime;
   r.sitTimer = randomInRange(r.cfg.patience);
   r.patienceDuration = r.sitTimer;
@@ -1226,11 +1284,83 @@ function clearRegularOrder(r) {
   r.beingCarried = false;
   r.served = false;
   r.sitTimer = 0;
-  r.orderCooldown = randomInRange(r.cfg.orderDelay);
+  r.orderCooldown = randomInRange(r.cfg.orderDelay) * (nazimIsFarGone(r) ? NAZIM_FAST_ORDER : 1);
+}
+
+// Gone, Nazim gets up. He staggers to a spot near the booth, stands there a
+// moment, and staggers back — a moving blocker in the lane for as long as
+// he's up. No walk frames exist for him, so the lean pose plus his seated
+// sway does the staggering.
+function startNazimWander(r) {
+  let target = null;
+  for (let i = 0; i < 12 && !target; i++) {
+    const cand = {
+      x: r.seat.x + (Math.random() - 0.5) * 70,
+      y: r.seat.y + 14 + Math.random() * 36,
+    };
+    const p = reachablePoint(r, cand);
+    if (!collidesAt(r, p.x, p.y, r.seat.table) && Math.hypot(p.x - r.seat.x, p.y - r.seat.y) > 16) target = p;
+  }
+  if (!target) return;
+  r.wander = {
+    path: computeCustomerPath(r, target, r.seat.table),
+    index: 0,
+    pauseTimer: 0,
+    returning: false,
+  };
+  dynamicBlockers.push(r);
+  Dialogue.trigger('nazimUp', null);
+}
+
+function updateNazimWander(r, dt) {
+  const w = r.wander;
+  if (w.pauseTimer > 0) {
+    w.pauseTimer -= dt;
+    r.moving = false;
+    if (w.pauseTimer <= 0 && !w.returning) {
+      w.returning = true;
+      w.path = computeCustomerPath(r, { x: r.seat.x, y: r.seat.y }, r.seat.table);
+      w.index = 0;
+    }
+    return;
+  }
+  const target = w.path[w.index];
+  const dx = target.x - r.x;
+  const dy = target.y - r.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1.5) {
+    r.x = target.x;
+    r.y = target.y;
+    if (w.index < w.path.length - 1) { w.index++; return; }
+    if (!w.returning) { w.pauseTimer = 1.5 + Math.random() * 1.5; return; }
+    // Home.
+    r.x = r.seat.x;
+    r.y = r.seat.y;
+    r.wander = null;
+    r.moving = false;
+    r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
+    const at = dynamicBlockers.indexOf(r);
+    if (at >= 0) dynamicBlockers.splice(at, 1);
+    return;
+  }
+  const step = Math.min(dist, NAZIM_WANDER_SPEED * dt);
+  const nx = r.x + (dx / dist) * step;
+  const ny = r.y + (dy / dist) * step;
+  if (!collidesAt(r, nx, r.y, r.seat.table)) r.x = nx;
+  if (!collidesAt(r, r.x, ny, r.seat.table)) r.y = ny;
+  r.flip = dx < 0;
+  r.moving = true;
 }
 
 function updateRegulars(dt) {
   for (const r of regulars) {
+    if (r.id === 'nazim') {
+      if (r.wander) updateNazimWander(r, dt);
+      else if (r.stage.id === 'gone') {
+        r.wanderTimer -= dt;
+        if (r.wanderTimer <= 0) startNazimWander(r);
+      }
+    }
     // Ordering / patience.
     if (r.orderType === null) {
       r.orderCooldown -= dt;
@@ -1275,7 +1405,7 @@ function updateRegulars(dt) {
 // Pose priority: talking beats blinking beats the stage's resting pose.
 function regularPose(r, vis) {
   const set = SPRITES[r.cfg.spriteKey];
-  const base = vis ? vis.pose : 'idle';
+  const base = r.wander ? 'lean' : (vis ? vis.pose : 'idle');
   if (r.talkTimer > 0) {
     const talkKey = base === 'idle' ? 'talk' : base + 'Talk';
     if (set[talkKey]) return talkKey;
@@ -1315,7 +1445,8 @@ Dialogue.bind({
 
 function onRegularOrdered(r) {
   setRegularTalking(r, 0.6);
-  if (r.id === 'nazim' && r.orderType === 'food') Dialogue.trigger('nazimFood', { who: 'nazim' });
+  if (r.id === 'nazim' && r.orderType === 'water') Dialogue.trigger('waterOrdered', null);
+  else if (r.id === 'nazim' && r.orderType === 'food') Dialogue.trigger('nazimFood', { who: 'nazim' });
   else Dialogue.trigger('ordered', { who: r.id });
 }
 
@@ -1329,6 +1460,56 @@ function onRegularServed(r, type, stageChanged) {
   // A stage change is the bigger news, and outranks the thank-you.
   if (stageChanged) Dialogue.trigger('stageChanged', null);
   else Dialogue.trigger('served', { who: r.id });
+}
+
+// ---- The round: now and then the three of them order together, and landing
+// all three inside the window pays a bonus on top of the tips. --------------
+const ROUND_INTERVAL = [90, 150];
+const ROUND_WINDOW = 20;
+const ROUND_BONUS = 25;
+const ROUND_PATIENCE = 32;
+let roundTimer = 0;
+let round = null;   // { deadline, served }
+
+function tryCallRound() {
+  for (const r of regulars) if (r.orderType || r.wander) return false;
+  for (const r of regulars) {
+    r.orderCooldown = 0;
+    regularPlaceOrder(r);
+    r.sitTimer = ROUND_PATIENCE;
+    r.patienceDuration = ROUND_PATIENCE;
+  }
+  round = { deadline: gameTime + ROUND_WINDOW, served: 0 };
+  Dialogue.trigger('roundCalled', null);
+  return true;
+}
+
+function noteRoundDelivery(r) {
+  if (!round || !r.isRegular) return;
+  round.served++;
+  if (round.served >= regulars.length) {
+    score += ROUND_BONUS;
+    addFloatingText(REGULARS_TABLE.x, REGULARS_TABLE.y - 16, 'ROUND +' + ROUND_BONUS, PUB.amber);
+    Sound.play('levelUp');
+    Dialogue.trigger('roundDone', null);
+    round = null;
+    roundTimer = randomInRange(ROUND_INTERVAL);
+  }
+}
+
+function updateRound(dt) {
+  if (round) {
+    if (gameTime > round.deadline) {
+      round = null;
+      roundTimer = randomInRange(ROUND_INTERVAL);
+      Dialogue.trigger('roundMissed', null);
+    }
+    return;
+  }
+  roundTimer -= dt;
+  if (roundTimer <= 0) {
+    if (!tryCallRound()) roundTimer = 8;   // somebody's mid-order; try again shortly
+  }
 }
 
 // Edge/timing state for the triggers that aren't a single moment. All of it is
@@ -1538,6 +1719,10 @@ function resetGame() {
   // drink count — is wiped.
   if (!regulars.length) buildRegulars();
   else for (const r of regulars) resetRegular(r);
+  dynamicBlockers.length = 0;
+  spills.length = 0;
+  round = null;
+  roundTimer = randomInRange(ROUND_INTERVAL);
   Dialogue.reset();
   resetDialogueTriggers();
   if (hasPlayedBefore) {
@@ -1628,12 +1813,37 @@ function completeDelivery(target) {
   const type = target.orderType;
   target.mood = clampMood(target.mood + 0.35);
   let stageChanged = false;
-  if (target.id === 'nazim' && isAlcoholicOrder(type)) {
-    target.drinks += 1;
-    stageChanged = recalcIntoxication(target);
+  let sobered = false;
+  if (target.id === 'nazim') {
+    if (isAlcoholicOrder(type)) {
+      // Drunk money: he over-tips, and once he's gone the pint may not make
+      // it to the table.
+      if (nazimIsFarGone(target)) {
+        const extra = tip * (NAZIM_TIP_MULT - 1);
+        score += extra;
+        addFloatingText(target.x, target.y - target.h - 12, 'X' + NAZIM_TIP_MULT + ' +' + extra, PUB.amber);
+      }
+      if (target.stage.id === 'gone' && Math.random() < NAZIM_SPILL_CHANCE) {
+        addSpill(target.x + (Math.random() - 0.5) * 8, target.y + 12);
+        Dialogue.trigger('spill', null);
+      }
+      target.drinks += 1;
+      stageChanged = recalcIntoxication(target);
+      if (stageChanged && target.stage.id === 'gone') target.waterOwed = true;
+    } else if (type === 'water') {
+      target.drinks = Math.max(0, target.drinks - NAZIM_WATER_SOBERS);
+      stageChanged = recalcIntoxication(target);
+      sobered = true;
+    }
   }
+  noteRoundDelivery(target);
   clearRegularOrder(target);   // they'll want the next one after a cooldown
-  onRegularServed(target, type, stageChanged);
+  if (sobered) {
+    setRegularTalking(target, 1.0);
+    Dialogue.trigger('sobered', null);
+  } else {
+    onRegularServed(target, type, stageChanged);
+  }
 }
 
 // Counts an interact press that accomplished nothing, and lets the regulars
@@ -2182,7 +2392,7 @@ function updateHunter(dt) {
   tickOrderExit(hunter, dt);
 
   const lvl = hunterLevelSteps();
-  hunter.speed = Math.min(60, 40 + lvl * 2.5);
+  hunter.speed = Math.min(60, 40 + lvl * 2.5) * spillSlowAt(hunter.x, hunter.y);
 
   switch (hunterState) {
     case 'arriving': {
@@ -2335,7 +2545,7 @@ function update(dt) {
 
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
-  player.speed = player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED;
+  player.speed = (player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED) * spillSlowAt(player.x, player.y);
   player.moving = input.x !== 0 || input.y !== 0;
   if (input.x !== 0) player.flip = input.x < 0;
   const playerMove = tryMove(player, input.x * player.speed * dt, input.y * player.speed * dt);
@@ -2365,6 +2575,8 @@ function update(dt) {
   }
 
   updateRegulars(dt);
+  updateRound(dt);
+  updateSpills(dt);
   updateGhost(dt);
   updateWaiter(dt);
   updateDialogueTriggers(dt, input);
@@ -3869,6 +4081,25 @@ function drawOrderBubbleFor(e, camX, camY, frameColor) {
   }
 }
 
+// A knocked-over pint: a dark wet patch with a couple of lamp glints, drying
+// (shrinking) over its last seconds.
+function drawSpills(camX, camY) {
+  for (const sp of spills) {
+    const life = clamp(sp.ttl / SPILL_TTL, 0, 1);
+    const r = Math.round(SPILL_RADIUS * (0.6 + 0.4 * life));
+    const x = Math.round(sp.x - camX);
+    const y = Math.round(sp.y - camY);
+    ctx.fillStyle = 'rgba(20,10,6,0.45)';
+    ctx.fillRect(x - r, y - Math.round(r * 0.5), r * 2, r);
+    ctx.fillRect(x - r + 2, y - Math.round(r * 0.5) - 1, r * 2 - 4, r + 2);
+    ctx.fillStyle = 'rgba(232,161,58,0.28)';
+    ctx.fillRect(x - r + 3, y - 1, r, 1);
+    ctx.fillStyle = 'rgba(245,225,170,0.35)';
+    ctx.fillRect(x + Math.round(sp.seed % 5) - 2, y + 1, 2, 0.5);
+    ctx.fillRect(x - Math.round(sp.seed % 3), y - 2, 1.5, 0.5);
+  }
+}
+
 // ---- Dialogue bubbles -------------------------------------------------------
 // Drawn after the order bubbles, above the scene. Three rules shape the
 // layout: stay inside the camera, don't cover the speaker's own order bubble,
@@ -4205,6 +4436,7 @@ function render() {
   drawBackdrop();
   drawRoom(camX, camY);
   drawFloorLight(camX, camY);
+  drawSpills(camX, camY);
 
   // Furniture and characters share one y-sorted pass so nearer (lower) things
   // draw over farther ones. Table sortY is still the table top's own front
@@ -4321,6 +4553,10 @@ window.__debug = {
   setHunterState,
   hunterCanSeePlayer: () => hunterCanSeePlayer(hunterSightRange()),
   hunterWantsPint,
+  getSpills: () => spills,
+  getRound: () => round,
+  callRound: tryCallRound,
+  startNazimWander: () => startNazimWander(regularById.get('nazim')),
   getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
   getCamera,
   reservedSeats: () => SEATS.filter(s => s.reserved).map(s => ({ who: s.regularId, side: s.side, x: s.x, y: s.y })),
