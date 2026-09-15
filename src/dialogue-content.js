@@ -154,6 +154,25 @@ const DIALOGUE_LINES = [
   // Rare, understated decency — always immediately after the cruelty.
   { who: 'gerald', category: 'ambient', nazim: ['drunk', 'gone'], rare: true, text: "Idiot. ...Bring him a water, would you." },
   { who: 'gerald', category: 'ambient', nazim: ['gone'], rare: true, text: "He's insufferable. Don't let him walk home." },
+  // ---------------------------------------------------------- THE HUNTER
+  // He walks in, he looks around, he loses the thread, he gets bought a pint.
+  { who: 'gerald', category: 'hunterArrives', text: "Here he comes. Shake the rain off, mate." },
+  { who: 'sam', category: 'hunterArrives', text: "Door. Orange hat. That's your evening sorted." },
+  { who: 'nazim', category: 'hunterArrives', stage: ['sober', 'warm'], text: "He's back. He always comes back." },
+  { who: 'nazim', category: 'hunterArrives', stage: ['drunk', 'gone'], text: "Is that... he's got a hat on." },
+  { who: 'sam', category: 'hunterSpotted', text: "He's clocked you. Move." },
+  { who: 'gerald', category: 'hunterSpotted', text: "Eyes on. Stop admiring the floorboards." },
+  { who: 'nazim', category: 'hunterSpotted', stage: ['sober', 'warm', 'buzzed'], text: "Run. Politely, but run." },
+  { who: 'gerald', category: 'hunterLost', text: "He's looking at the coat rack. You're a coat now." },
+  { who: 'sam', category: 'hunterLost', text: "Lost him. Don't get cocky." },
+  { who: 'nazim', category: 'hunterLost', stage: ['drunk', 'gone'], text: "I lost him too. Where am I." },
+  { who: 'gerald', category: 'hunterOrdered', text: "The hunter wants a pint. Of course he does." },
+  { who: 'sam', category: 'hunterOrdered', text: "He's ordering. Bold of you to serve him." },
+  { who: 'nazim', category: 'hunterOrdered', stage: ['buzzed', 'drunk', 'gone'], text: "Put it on my tab. No. Don't." },
+  { who: 'sam', category: 'hunterServed', text: "You bought the man a pint. Stockholm, but a round." },
+  { who: 'gerald', category: 'hunterServed', text: "Bribery. Finally some proper hospitality." },
+  { who: 'nazim', category: 'hunterServed', stage: ['sober', 'warm'], text: "He drinks like a man with a plan." },
+  { who: 'nazim', category: 'hunterServed', stage: ['drunk', 'gone'], text: "Cheers, hunter. No. Not cheers." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------

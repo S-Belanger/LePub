@@ -30,6 +30,35 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:40 — batch B (hunter) done: states, A*, door arrival, buy him a pint
+
+- `updateHunter()` state machine replaces the inline pursuit: `arriving`
+  (hidden at the door 20 s first run / 8 s restart, then `hunterArrives`
+  dialogue) → `scanning` (half-speed prowl to random clear spots, pause-and-
+  look; sees the Doe inside a ±60° cone with clear LOS within 70+4/lvl px, or
+  within 24 px regardless) → `chase` ("!" placard, whistle; A* route to the
+  player recomputed every 1.5→0.8 s with half the old jitter on top; rub/
+  slide kept as the safety net; trail lost after 4+0.5/lvl s out of sight)
+  → `lost` ("?" 3 s) → scanning. Walking into him while he prowls counts as
+  being spotted. Catch detection is gated off while arriving/drinking.
+- Routing is footprint-aware: `footprintFor(kind, cell)`; `findBlockingObstacle`
+  / `pointBlocked` / `cellCenter` / `computeCustomerPath` take an optional
+  `fp`. `HUNTER_FOOTPRINT` uses a 4 px grid because the 8 px grid has no clear
+  centre in the 15 px lane beside the bar stem. Customers unchanged.
+- Serve the hunter: `hunter.isHunter`, shares the order shape; wants a
+  `beer-blond` every 45–75 s (patience 25 s, no penalty); in the queue
+  (`findOldestPendingOrder`), ticket framed tomato; `HUNTER_SERVE_RANGE` 26
+  (catch radius is ~15); `hunterServed()` pays tip + 20 "ON THE HOUSE" and
+  sits him out 8 s (`drinking`). `stillWantsOrder()` helper for retargeting.
+- New sound cues `whistle`/`lost`; dialogue categories hunterArrives/
+  hunterSpotted/hunterLost/hunterOrdered/hunterServed with lines for all
+  three regulars (Nazim's stage-gated). Near-miss trigger gated to chase.
+- Debug: `getHunterState`, `setHunterState`, `hunterCanSeePlayer`,
+  `hunterWantsPint`. Smoke covers arrival, cone/LOS, chase route clear of
+  furniture for his footprint, and the pint. 8/8 runs pass; Edge clean.
+- Next: batch C — Nazim's stages with consequences (double tips, wander,
+  spill, water from Gerald) and the round.
+
 ### 18:05 — batch A (loop) done: stations, tips, tray
 
 - `BAR_STATIONS` (taps/shelf/hatch → order types) and a `station` on each

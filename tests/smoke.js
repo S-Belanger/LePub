@@ -256,8 +256,17 @@ function run() {
   // the tray holds two, tips scale with patience, and the DOUBLE pays only
   // when both tray orders land.
   debug.resetGame();
+  // Seats well away from every bar station, so a press at a counter can
+  // never double as a delivery to a stool next to it.
+  const farSeats = debug.SEATS.filter(seat => !seat.reserved && !seat.occupied &&
+    debug.BAR_SEGMENTS.every(b => !(seat.x > b.collider.x - 40 && seat.x < b.collider.x + b.collider.w + 40 &&
+      seat.y > b.collider.y - 40 && seat.y < b.collider.y + b.collider.h + 40)));
+  if (farSeats.length < 2) throw new Error('Need two seats clear of the bar for the loop test.');
   const seatFor = (type, i) => {
+    for (const seat of debug.SEATS) seat.occupied = seat !== farSeats[i];
     debug.spawnCustomer();
+    for (const seat of debug.SEATS) seat.occupied = false;
+    farSeats[i].occupied = true;
     const c = debug.customers[debug.customers.length - 1];
     c.state = 'sitting'; c.x = c.seat.x; c.y = c.seat.y; c.path = null; c.pathIndex = 0;
     c.sitTimer = 40; c.patienceDuration = 40; c.orderType = type; c.orderPlacedAt = i; c.orderAppearAt = 0;
@@ -293,6 +302,49 @@ function run() {
   if (debug.player.speed !== 62) throw new Error('Empty tray should restore speed 62.');
   debug.resetGame();
 
+  // The hunter's rhythm: he arrives through the door after a delay, prowls,
+  // spots the Doe only in front of him with a clear line, chases on an A*
+  // route sized for his own body, and sits out a pint bought for him.
+  debug.resetGame();
+  if (debug.getHunterState().state !== 'arriving') throw new Error('A new run should start with the hunter arriving.');
+  debug.player.x = 40; debug.player.y = 300;
+  for (let i = 0; i < 24 * 20; i++) debug.update(0.05);
+  const afterArrival = debug.getHunterState().state;
+  if (afterArrival === 'arriving') throw new Error('Hunter never walked in.');
+  debug.setHunterState('scanning');
+  // He stands in the open lane between the wide tables and the right-hand
+  // tables, facing down it. Behind him, out of the cone: unseen.
+  debug.hunter.x = 135; debug.hunter.y = 240; debug.player.x = 135; debug.player.y = 200;
+  vm.runInContext("hunterFacing = { x: 0, y: 1 }", context);
+  if (debug.hunterCanSeePlayer()) throw new Error('Hunter should not see the Doe behind him.');
+  // In front of him down the open lane: seen.
+  debug.player.y = 290;
+  if (!debug.hunterCanSeePlayer()) throw new Error('Hunter should see the Doe in front of him.');
+  debug.update(0.05);
+  if (debug.getHunterState().state !== 'chase') throw new Error('Seeing the Doe should start a chase.');
+  if (!debug.getHunterState().alert || debug.getHunterState().alert.text !== '!') throw new Error('Spotting should raise the "!" placard.');
+  // A chase route across the room clears furniture for the hunter's footprint.
+  debug.player.x = 40; debug.player.y = 140;   // open floor under the taps
+  debug.update(0.05);
+  const chase = debug.getHunterState();
+  if (!chase.path || !chase.path.length) throw new Error('Chase should compute a route.');
+  assertPathClear(debug, debug.hunter, chase.path, null, 'Hunter chase route');
+  // Buy him a pint: pick up at the taps, hand it over at arm's length.
+  debug.hunterWantsPint();
+  if (debug.getHunterState().order !== 'beer-blond') throw new Error('Hunter should want a pint.');
+  debug.hunter.orderPlacedAt = -1;   // oldest in the queue, ahead of the seated crowd
+  standAt(segFor('taps'));
+  debug.handleInteract();
+  if (debug.player.tray.length !== 1 || debug.player.tray[0].customer !== debug.hunter) throw new Error('Taps should hand over the hunter pint.');
+  const before = debug.getScore();
+  debug.player.x = debug.hunter.x + 20; debug.player.y = debug.hunter.y;
+  debug.handleInteract();
+  if (debug.getHunterState().state !== 'drinking') throw new Error('Serving the hunter should sit him down.');
+  if (debug.getScore() - before < 30) throw new Error('Serving the hunter should pay the tip plus the house bonus.');
+  for (let i = 0; i < 9 * 20; i++) debug.update(0.05);
+  if (debug.getHunterState().state === 'drinking') throw new Error('Hunter should finish his pint.');
+  debug.resetGame();
+
   // Every UI board the game can show: the HUD at a real score and partial
   // life, the level-done board, the caught board with the name field open,
   // and the ledger after a name is filed. All of them are pure canvas
@@ -313,7 +365,7 @@ function run() {
   debug.render();
 
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, and render pass with HUD, level and caught boards.`);
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, and render pass with HUD, level and caught boards.`);
 }
 
 run();

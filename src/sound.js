@@ -108,6 +108,15 @@ const Sound = (function () {
         if (!allow(name, 0.12)) return;
         tone(115, 0.045, { type: 'square', volume: 0.035 });
         break;
+      case 'whistle':
+        // The hunter spotting you: two rising notes, like a finger whistle.
+        tone(880, 0.09, { to: 1320, type: 'sine', volume: 0.09 });
+        tone(1320, 0.14, { to: 1760, type: 'sine', volume: 0.07, delay: 0.1 });
+        break;
+      case 'lost':
+        // Lost the trail: a slow, puzzled slide down.
+        tone(520, 0.22, { to: 330, type: 'triangle', volume: 0.06 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });

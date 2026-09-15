@@ -387,6 +387,22 @@ const PATH_CELL = 8;
 const PATH_MARGIN = (ENTITY_HITBOXES.customer.w * 0.55) / 2;
 const PATH_FOOT_H = 7;
 
+// The search is body-size aware: a footprint carries the half-width of the
+// foot box (what furniture blocks) and the half extents of the hitbox (what
+// the world edge clamps). Customers are the default; the hunter's is wider,
+// which is exactly why some corridors a customer strolls through are walls
+// to him.
+function footprintFor(kind, cell) {
+  const hb = ENTITY_HITBOXES[kind];
+  return { margin: (hb.w * 0.55) / 2, halfW: hb.w / 2, halfH: hb.h / 2, cell: cell || PATH_CELL };
+}
+const CUSTOMER_FOOTPRINT = footprintFor('customer');
+// A wide body on an 8px grid finds no clear cell centre in a corridor it
+// physically fits through (the 15px lane beside the bar stem, for one), so
+// the hunter searches a 4px grid: four times the cells, still cheap for a
+// route recomputed every second or so.
+const HUNTER_FOOTPRINT = footprintFor('hunter', 4);
+
 // Exact line-segment/AABB test. Sampling a fixed number of points can skip a
 // thin chair collider on a long diagonal, which made the smoothing pass turn
 // an otherwise valid grid route into a path through furniture.
@@ -412,7 +428,8 @@ function segmentHitsRect(p1, p2, rect) {
   return true;
 }
 
-function findBlockingObstacle(p1, p2, exclude) {
+function findBlockingObstacle(p1, p2, exclude, fp) {
+  const margin = fp ? fp.margin : PATH_MARGIN;
   for (const f of FURNITURE) {
     if (f === exclude) continue;
     const r = f.collider;
@@ -420,9 +437,9 @@ function findBlockingObstacle(p1, p2, exclude) {
     // enter. The footprint is centered horizontally but extends upward from
     // the anchor, so the vertical padding is deliberately asymmetric.
     const inflated = {
-      x: r.x - PATH_MARGIN,
+      x: r.x - margin,
       y: r.y,
-      w: r.w + 2 * PATH_MARGIN,
+      w: r.w + 2 * margin,
       h: r.h + PATH_FOOT_H,
     };
     if (segmentHitsRect(p1, p2, inflated)) return f;
@@ -430,10 +447,11 @@ function findBlockingObstacle(p1, p2, exclude) {
   return null;
 }
 
-function pointBlocked(x, y, excludeTable) {
+function pointBlocked(x, y, excludeTable, fp) {
   // Mirrors getFootBox's feet-anchored shape (see collision section above)
   // so the grid agrees with the runtime collision check that walks it.
-  const box = { x: x - PATH_MARGIN, y: y - PATH_FOOT_H, w: PATH_MARGIN * 2, h: PATH_FOOT_H };
+  const margin = fp ? fp.margin : PATH_MARGIN;
+  const box = { x: x - margin, y: y - PATH_FOOT_H, w: margin * 2, h: PATH_FOOT_H };
   for (const f of FURNITURE) {
     if (f === excludeTable) continue;
     if (rectsOverlap(box, f.collider)) return true;
@@ -450,10 +468,13 @@ function cellFromKey(k, cols) {
 // the entity can never actually reach.
 const CUSTOMER_HALF_W = ENTITY_HITBOXES.customer.w / 2;
 const CUSTOMER_HALF_H = ENTITY_HITBOXES.customer.h / 2;
-function cellCenter(cx, cy) {
+function cellCenter(cx, cy, fp) {
+  const halfW = fp ? fp.halfW : CUSTOMER_HALF_W;
+  const halfH = fp ? fp.halfH : CUSTOMER_HALF_H;
+  const cell = fp ? fp.cell : PATH_CELL;
   return {
-    x: clamp(cx * PATH_CELL, CUSTOMER_HALF_W, WORLD_W - CUSTOMER_HALF_W),
-    y: clamp(cy * PATH_CELL, CUSTOMER_HALF_H, WORLD_H - CUSTOMER_HALF_H),
+    x: clamp(cx * cell, halfW, WORLD_W - halfW),
+    y: clamp(cy * cell, halfH, WORLD_H - halfH),
   };
 }
 
@@ -473,14 +494,15 @@ function reachablePoint(e, p) {
 // Full path computation: grid search for a walkable route, then collapse it
 // to the minimal set of waypoints a straight-line walk can follow without
 // clipping anything (skip ahead to the farthest point still in clear sight).
-function computeCustomerPath(from, to, excludeTable) {
-  if (!findBlockingObstacle(from, to, excludeTable)) return [to];
+function computeCustomerPath(from, to, excludeTable, fp) {
+  if (!findBlockingObstacle(from, to, excludeTable, fp)) return [to];
 
-  const cols = Math.ceil(WORLD_W / PATH_CELL);
-  const rows = Math.ceil(WORLD_H / PATH_CELL);
+  const cell = fp ? fp.cell : PATH_CELL;
+  const cols = Math.ceil(WORLD_W / cell);
+  const rows = Math.ceil(WORLD_H / cell);
   const toCell = p => ({
-    cx: clamp(Math.round(p.x / PATH_CELL), 0, cols - 1),
-    cy: clamp(Math.round(p.y / PATH_CELL), 0, rows - 1),
+    cx: clamp(Math.round(p.x / cell), 0, cols - 1),
+    cy: clamp(Math.round(p.y / cell), 0, rows - 1),
   });
   const key = (cx, cy) => cy * cols + cx;
 
@@ -488,8 +510,8 @@ function computeCustomerPath(from, to, excludeTable) {
   const isBlocked = (cx, cy) => {
     const k = key(cx, cy);
     if (!blocked.has(k)) {
-      const c = cellCenter(cx, cy);
-      blocked.set(k, pointBlocked(c.x, c.y, excludeTable));
+      const c = cellCenter(cx, cy, fp);
+      blocked.set(k, pointBlocked(c.x, c.y, excludeTable, fp));
     }
     return blocked.get(k);
   };
@@ -511,7 +533,7 @@ function computeCustomerPath(from, to, excludeTable) {
       for (let cy = minY; cy <= maxY; cy++) {
         for (let cx = minX; cx <= maxX; cx++) {
           if (Math.max(Math.abs(cx - origin.cx), Math.abs(cy - origin.cy)) !== radius) continue;
-          const center = cellCenter(cx, cy);
+          const center = cellCenter(cx, cy, fp);
           candidates.push({
             cx,
             cy,
@@ -523,7 +545,7 @@ function computeCustomerPath(from, to, excludeTable) {
       candidates.sort((a, b) => a.distance - b.distance);
       for (const candidate of candidates) {
         if (isBlocked(candidate.cx, candidate.cy)) continue;
-        if (!findBlockingObstacle(point, candidate.center, excludeTable)) {
+        if (!findBlockingObstacle(point, candidate.center, excludeTable, fp)) {
           return { cx: candidate.cx, cy: candidate.cy };
         }
       }
@@ -559,7 +581,7 @@ function computeCustomerPath(from, to, excludeTable) {
         // Endpoint occupancy alone can miss a narrow collider between two
         // neighboring centers. Keep every A* edge collision-free so the
         // unsmoothed path is always a valid fallback for string-pulling.
-        if (findBlockingObstacle(cellCenter(cur.cx, cur.cy), cellCenter(nx, ny), excludeTable)) continue;
+        if (findBlockingObstacle(cellCenter(cur.cx, cur.cy, fp), cellCenter(nx, ny, fp), excludeTable, fp)) continue;
         const g = cur.g + Math.hypot(dx, dy);
         const nk = key(nx, ny);
         if (gScore.has(nk) && g >= gScore.get(nk)) continue;
@@ -576,7 +598,7 @@ function computeCustomerPath(from, to, excludeTable) {
   let k = reached;
   while (true) {
     const { cx, cy } = cellFromKey(k, cols);
-    cellPoints.unshift(cellCenter(cx, cy));
+    cellPoints.unshift(cellCenter(cx, cy, fp));
     if (!cameFrom.has(k)) break;
     k = cameFrom.get(k);
   }
@@ -590,7 +612,7 @@ function computeCustomerPath(from, to, excludeTable) {
   while (i < cellPoints.length) {
     let farthest = i;
     for (let j = i; j < cellPoints.length; j++) {
-      if (!findBlockingObstacle(cursor, cellPoints[j], excludeTable)) farthest = j;
+      if (!findBlockingObstacle(cursor, cellPoints[j], excludeTable, fp)) farthest = j;
     }
     waypoints.push(cellPoints[farthest]);
     cursor = cellPoints[farthest];
@@ -634,6 +656,18 @@ function tickLegs(e, dt) {
 
 const player = makeEntity('doe', WORLD_W / 2, WORLD_H / 2);
 const hunter = makeEntity('hunter', WORLD_W / 2 + 60, WORLD_H / 2 - 90);
+// The hunter is a patron too. Every so often he wants a pint; hand it to him
+// and he sits it out for a while. He shares the order shape with everyone
+// else so pickup, tickets, and patience bars need no special path.
+hunter.isHunter = true;
+hunter.orderType = null;
+hunter.orderPlacedAt = 0;
+hunter.orderAppearAt = 0;
+hunter.orderExit = null;
+hunter.sitTimer = 0;
+hunter.patienceDuration = 1;
+hunter.served = false;
+hunter.beingCarried = false;
 
 let hunterDir = { x: 0, y: 0 };
 let hunterChangeTimer = 0;
@@ -1344,7 +1378,7 @@ function updateDialogueTriggers(dt, input) {
   if (nearMissCooldown > 0) nearMissCooldown -= dt;
   const catchDist = (player.w + hunter.w) / 2.4;
   const hunterDist = Math.hypot(player.x - hunter.x, player.y - hunter.y);
-  if (hunterDist < catchDist * 2.3 && nearMissCooldown <= 0) {
+  if (hunterState === 'chase' && hunterDist < catchDist * 2.3 && nearMissCooldown <= 0) {
     nearMissCooldown = 14;
     Dialogue.trigger('nearMiss', null);
   }
@@ -1459,13 +1493,24 @@ function resetGame() {
   const playerSpawn = pickClearSpawn(player);
   player.x = playerSpawn.x;
   player.y = playerSpawn.y;
-  const spawn = pickClearSpawn(hunter);
-  hunter.x = spawn.x;
-  hunter.y = spawn.y;
+  // He starts outside: at the door, unseen, until his arrival timer runs out.
+  const doorSpot = reachablePoint(hunter, DOOR);
+  hunter.x = doorSpot.x;
+  hunter.y = doorSpot.y;
   hunterDir = { x: 0, y: 0 };
   hunterChangeTimer = 0;
   hunterRubTimer = 0;
   hunterSlide = null;
+  hunterFacing = { x: 1, y: 0 };
+  hunterAlert = null;
+  hunterLastSeenTimer = 0;
+  hunterScanLookTimer = 0;
+  hunterOrderTimer = randomInRange(HUNTER_ORDER_INTERVAL);
+  hunter.orderType = null;
+  hunter.orderExit = null;
+  hunter.served = false;
+  hunter.beingCarried = false;
+  setHunterState('arriving', hasPlayedBefore ? HUNTER_ARRIVAL_RETRY : HUNTER_ARRIVAL_FIRST);
   caught = false;
   enteringName = false;
   nameInput = '';
@@ -1530,7 +1575,18 @@ function findOldestPendingOrder(types) {
     if (!r.orderType || r.served || r.beingCarried || !wants(r.orderType)) continue;
     if (!best || r.orderPlacedAt < best.orderPlacedAt) best = r;
   }
+  if (hunter.orderType && !hunter.served && !hunter.beingCarried && wants(hunter.orderType)) {
+    if (!best || hunter.orderPlacedAt < best.orderPlacedAt) best = hunter;
+  }
   return best;
+}
+
+// Whether `target` still wants an order of `type`. A walk-in has to be in
+// their seat; a regular's order can lapse while they stay put; the hunter is
+// wherever he is.
+function stillWantsOrder(target, type) {
+  if (!target || target.served || target.orderType !== type) return false;
+  return target === hunter || target.state === 'sitting';
 }
 
 function removeFromTray(target) {
@@ -1559,6 +1615,10 @@ function completeDelivery(target) {
     doubleArmed = false;
   }
 
+  if (target === hunter) {
+    hunterServed();
+    return;
+  }
   if (!target.isRegular) {
     noteOrderCleared(target);
     target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
@@ -1592,7 +1652,11 @@ function registerWhiff() {
 // table they're seated at — with several seats per side on the bigger tables,
 // walking all the way around to their exact chair isn't fair.
 function canDeliverTo(target) {
-  if (!target || target.state !== 'sitting' || target.served) return false;
+  if (!target || target.served) return false;
+  // The hunter is handed his pint at arm's length: the catch radius is about
+  // 15px, so an ordinary interact range would mean getting hit to serve him.
+  if (target === hunter) return Math.hypot(player.x - hunter.x, player.y - hunter.y) < HUNTER_SERVE_RANGE;
+  if (target.state !== 'sitting') return false;
   const nearCustomer = Math.hypot(player.x - target.x, player.y - target.y) < INTERACT_RANGE;
   const nearTheirTable = target.seat && target.seat.table &&
     nearRect(player.x, player.y, target.seat.table.collider, INTERACT_RANGE);
@@ -1928,27 +1992,293 @@ document.addEventListener('touchmove', (e) => {
 }, { passive: false });
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
-// ---- Hunter AI: mostly pursues the player -----------------------------------
-// Re-aims toward the player's current position on a short timer, with some
-// angle jitter so it's not a perfect aimbot and rarely pauses to feel alive.
-// Every level tightens the jitter, shortens the re-aim timer, and shrinks the
-// pause chance, so the hunter tracks noticeably better as the score climbs.
-function pickNewHunterDirection() {
-  const lvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1; // 0-based steps
+// ---- Hunter AI ----------------------------------------------------------------
+// The hunter has a rhythm rather than a constant bead on the player:
+//
+//   arriving — off-screen at the door for the first stretch of a run, so a
+//              new player learns the bar before the chase starts;
+//   scanning — a slow prowl between random spots, looking around; he only
+//              notices the Doe inside a cone in front of him with a clear
+//              line of sight, or right at his elbow;
+//   chase    — the pursuit: an A* route to the player, recomputed on a short
+//              timer, with the old angle jitter layered on top so it is not
+//              an aimbot; loses the trail after a while out of sight;
+//   lost     — stands scratching his head for a moment, then prowls again;
+//   drinking — bought a pint, sat out for a bit.
+//
+// Every level widens his sight, shortens the repath timer and lengthens how
+// long he keeps the trail, so the pressure still ramps.
+let hunterState = 'scanning';
+let hunterStateTimer = 0;        // time left in a timed state (arriving/lost/drinking)
+let hunterPath = null;           // waypoints for scanning/chase
+let hunterPathIndex = 0;
+let hunterRepathTimer = 0;
+let hunterLastSeenTimer = 0;     // seconds since the player was last in sight
+let hunterFacing = { x: 1, y: 0 };
+let hunterAlert = null;          // { text, timer } placard over his head
+let hunterOrderTimer = 0;        // until his next pint craving
+let hunterScanLookTimer = 0;     // scanning: pause-and-look cadence
+const HUNTER_ARRIVAL_FIRST = 20; // seconds before he walks in on a first run
+const HUNTER_ARRIVAL_RETRY = 8;  // ...and on a restart
+const HUNTER_LOST_TIME = 3;
+const HUNTER_DRINK_TIME = 8;
+const HUNTER_SERVE_RANGE = 26;
+const HUNTER_SERVE_BONUS = 20;
+const HUNTER_ORDER_INTERVAL = [45, 75];
+const HUNTER_ORDER_PATIENCE = 25;
+const HUNTER_HEAR_RANGE = 24;
+const HUNTER_SCAN_SPEED = 0.5;   // fraction of chase speed while prowling
+const HUNTER_CONE_COS = Math.cos(Math.PI / 3); // ±60° in front of him
 
+function hunterLevelSteps() { return Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1; }
+function hunterSightRange() { return 70 + hunterLevelSteps() * 4; }
+function hunterLoseTime() { return 4 + hunterLevelSteps() * 0.5; }
+function hunterRepathInterval() { return Math.max(0.8, 1.5 - hunterLevelSteps() * 0.07); }
+
+function setHunterState(next, seconds) {
+  hunterState = next;
+  hunterStateTimer = seconds || 0;
+  hunterPath = null;
+  hunterPathIndex = 0;
+  hunterRepathTimer = 0;
+  hunterSlide = null;
+  hunterRubTimer = 0;
+  if (next !== 'chase') hunterDir = { x: 0, y: 0 };
+}
+
+function showHunterAlert(text, seconds) {
+  hunterAlert = { text, timer: seconds };
+}
+
+function hunterRouteTo(point) {
+  hunterPath = computeCustomerPath(hunter, reachablePoint(hunter, point), null, HUNTER_FOOTPRINT);
+  hunterPathIndex = 0;
+}
+
+// Can he see the Doe from where he stands? Distance, then the cone in front
+// of him, then a clear line through the furniture. Standing at his elbow
+// counts regardless — he can hear a deer breathing.
+function hunterCanSeePlayer(range) {
+  const dx = player.x - hunter.x;
+  const dy = player.y - hunter.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < HUNTER_HEAR_RANGE) return true;
+  if (dist > range) return false;
+  const dot = (dx * hunterFacing.x + dy * hunterFacing.y) / dist;
+  if (dot < HUNTER_CONE_COS) return false;
+  return !findBlockingObstacle(hunter, player, null, HUNTER_FOOTPRINT);
+}
+
+function hunterNoticesPlayer() {
+  setHunterState('chase');
+  hunterLastSeenTimer = 0;
+  showHunterAlert('!', 0.9);
+  Sound.play('whistle');
+  Dialogue.trigger('hunterSpotted', null);
+}
+
+// Walks the current path; returns true while there is somewhere to go.
+function hunterFollowPath(speedScale) {
+  if (!hunterPath || hunterPathIndex >= hunterPath.length) return false;
+  const target = hunterPath[hunterPathIndex];
+  const dx = target.x - hunter.x;
+  const dy = target.y - hunter.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 3) {
+    hunterPathIndex++;
+    return hunterPathIndex < hunterPath.length;
+  }
+  hunterDir = { x: dx / dist, y: dy / dist };
+  hunterFacing = hunterDir;
+  const step = tryMove(hunter, hunterDir.x * hunter.speed * speedScale * dt_, hunterDir.y * hunter.speed * speedScale * dt_);
+  hunter.x = step.x;
+  hunter.y = step.y;
+  hunter.moving = true;
+  // A prowl route can be the straight-line fallback; if that scrapes for a
+  // while, the caller picks somewhere else to go.
+  hunterRubTimer = step.blockedX || step.blockedY ? hunterRubTimer + dt_ : 0;
+  if (hunterDir.x !== 0) hunter.flip = hunterDir.x < 0;
+  return true;
+}
+let dt_ = 0; // frame dt for the helpers above; set at the top of updateHunter
+
+// Chase aim: toward the next waypoint of a fresh route, with the level-scaled
+// jitter and pause chance the old pursuit had, so he still reads as a man
+// running rather than a homing missile.
+function pickNewHunterDirection() {
+  const lvl = hunterLevelSteps();
   const pauseChance = Math.max(0.01, 0.05 - lvl * 0.004);
+  let aimAt = player;
+  if (hunterPath && hunterPathIndex < hunterPath.length) {
+    const wp = hunterPath[hunterPathIndex];
+    if (Math.hypot(wp.x - hunter.x, wp.y - hunter.y) < 3) hunterPathIndex++;
+    if (hunterPathIndex < hunterPath.length) aimAt = hunterPath[hunterPathIndex];
+  }
   if (Math.random() < pauseChance) {
     hunterDir = { x: 0, y: 0 };
   } else {
-    const jitterMax = Math.max(Math.PI / 12, Math.PI / 3 - lvl * (Math.PI / 36)); // 60deg -> 15deg
-    const baseAngle = Math.atan2(player.y - hunter.y, player.x - hunter.x);
+    // Half the old jitter when following a route: the waypoints already
+    // carry the "not quite straight" feel, and too much slop walks him into
+    // the very corner the route was going round.
+    const jitterMax = Math.max(Math.PI / 24, Math.PI / 6 - lvl * (Math.PI / 72));
+    const baseAngle = Math.atan2(aimAt.y - hunter.y, aimAt.x - hunter.x);
     const jitter = (Math.random() - 0.5) * jitterMax;
     hunterDir = { x: Math.cos(baseAngle + jitter), y: Math.sin(baseAngle + jitter) };
+    hunterFacing = hunterDir;
   }
-
   const timerMin = Math.max(0.15, 0.3 - lvl * 0.015);
   const timerRange = Math.max(0.15, 0.4 - lvl * 0.02);
   hunterChangeTimer = timerMin + Math.random() * timerRange;
+}
+
+function hunterWantsPint() {
+  hunter.orderType = 'beer-blond';
+  hunter.orderPlacedAt = gameTime;
+  hunter.sitTimer = HUNTER_ORDER_PATIENCE;
+  hunter.patienceDuration = HUNTER_ORDER_PATIENCE;
+  hunter.served = false;
+  hunter.beingCarried = false;
+  noteOrderPlaced(hunter);
+  Sound.play('regularOrder');
+  Dialogue.trigger('hunterOrdered', null);
+}
+
+function clearHunterOrder() {
+  noteOrderCleared(hunter);
+  hunter.orderType = null;
+  hunter.beingCarried = false;
+  hunter.served = false;
+  hunterOrderTimer = randomInRange(HUNTER_ORDER_INTERVAL);
+}
+
+// Bought him a pint. He sits it out, and the room notices.
+function hunterServed() {
+  score += HUNTER_SERVE_BONUS;
+  addFloatingText(hunter.x, hunter.y - hunter.h - 12, 'ON THE HOUSE +' + HUNTER_SERVE_BONUS, PUB.amber);
+  clearHunterOrder();
+  setHunterState('drinking', HUNTER_DRINK_TIME);
+  showHunterAlert('...', 1.2);
+  Dialogue.trigger('hunterServed', null);
+}
+
+function updateHunter(dt) {
+  dt_ = dt;
+  hunter.moving = false;
+  if (hunterAlert) {
+    hunterAlert.timer -= dt;
+    if (hunterAlert.timer <= 0) hunterAlert = null;
+  }
+
+  // His pint craving runs whenever he's on the floor.
+  if (hunterState !== 'arriving' && hunterState !== 'drinking') {
+    if (hunter.orderType === null) {
+      hunterOrderTimer -= dt;
+      if (hunterOrderTimer <= 0) hunterWantsPint();
+    } else if (!hunter.served) {
+      hunter.sitTimer -= dt;
+      if (hunter.sitTimer <= 0) clearHunterOrder();   // no penalty: he isn't paying
+    }
+  }
+  tickOrderExit(hunter, dt);
+
+  const lvl = hunterLevelSteps();
+  hunter.speed = Math.min(60, 40 + lvl * 2.5);
+
+  switch (hunterState) {
+    case 'arriving': {
+      hunterStateTimer -= dt;
+      if (hunterStateTimer <= 0) {
+        setHunterState('scanning');
+        hunterRouteTo({ x: WORLD_W / 2, y: WORLD_H - 60 });
+        Dialogue.trigger('hunterArrives', null);
+      }
+      return;
+    }
+    case 'drinking': {
+      hunterStateTimer -= dt;
+      if (hunterStateTimer <= 0) setHunterState('scanning');
+      return;
+    }
+    case 'lost': {
+      hunterStateTimer -= dt;
+      // Looks left and right while he wonders.
+      hunter.flip = Math.floor(hunterStateTimer * 2) % 2 === 0;
+      if (hunterStateTimer <= 0) setHunterState('scanning');
+      return;
+    }
+    case 'scanning': {
+      if (hunterCanSeePlayer(hunterSightRange())) { hunterNoticesPlayer(); return; }
+      hunterScanLookTimer -= dt;
+      if (hunterScanLookTimer > 0 && hunterScanLookTimer < 0.8) {
+        // The pause-and-look: turn on the spot.
+        hunter.flip = Math.floor(hunterScanLookTimer * 4) % 2 === 0;
+        hunterFacing = { x: hunter.flip ? -1 : 1, y: 0 };
+        return;
+      }
+      if (!hunterFollowPath(HUNTER_SCAN_SPEED) || hunterRubTimer > 1) {
+        hunterRubTimer = 0;
+        hunterRouteTo(pickClearSpawn(hunter));
+        hunterScanLookTimer = 2.5 + Math.random() * 3;
+      }
+      return;
+    }
+    case 'chase': {
+      // Keep or lose the trail.
+      if (hunterCanSeePlayer(hunterSightRange() * 1.5)) hunterLastSeenTimer = 0;
+      else hunterLastSeenTimer += dt;
+      if (hunterLastSeenTimer > hunterLoseTime()) {
+        setHunterState('lost', HUNTER_LOST_TIME);
+        showHunterAlert('?', HUNTER_LOST_TIME);
+        Sound.play('lost');
+        Dialogue.trigger('hunterLost', null);
+        return;
+      }
+      hunterRepathTimer -= dt;
+      if (hunterRepathTimer <= 0 || !hunterPath) {
+        hunterRepathTimer = hunterRepathInterval();
+        hunterRouteTo(player);
+      }
+      hunterChangeTimer -= dt;
+      if (hunterSlide) {
+        hunterSlide.timer -= dt;
+        // Held one way this long without getting clear: try round the other end.
+        if (hunterSlide.timer <= 0) {
+          hunterSlide.sign *= -1;
+          hunterSlide.timer = HUNTER_SLIDE_TIME;
+        }
+        hunterDir = hunterSlideVector();
+      } else if (hunterChangeTimer <= 0) {
+        pickNewHunterDirection();
+      }
+
+      hunter.moving = hunterDir.x !== 0 || hunterDir.y !== 0;
+      if (hunterDir.x !== 0) hunter.flip = hunterDir.x < 0;
+
+      const hunterMove = tryMove(hunter, hunterDir.x * hunter.speed * dt, hunterDir.y * hunter.speed * dt);
+      hunter.x = hunterMove.x;
+      hunter.y = hunterMove.y;
+      if (hunterMove.blockedX && hunterMove.blockedY) {
+        // Wedged in a corner — a chase-biased direction would just re-wedge it,
+        // so bail out with a fully random burst, then resume pursuit.
+        hunterRubTimer = 0;
+        hunterSlide = null;
+        pickEscapeDirection();
+      } else if (hunterMove.blockedX || hunterMove.blockedY) {
+        // Scraping along something. tryMove already slid it down the open axis;
+        // re-aim sooner at first, and commit to one side if it keeps happening.
+        hunterRubTimer += dt;
+        if (!hunterSlide) {
+          if (hunterRubTimer >= HUNTER_RUB_TIME) startHunterSlide(hunterMove.blockedX ? 'y' : 'x');
+          else hunterChangeTimer = Math.min(hunterChangeTimer, 0.15);
+        }
+      } else {
+        // Clear of everything — whatever it was going round is behind it now.
+        hunterRubTimer = 0;
+        hunterSlide = null;
+      }
+      return;
+    }
+  }
 }
 
 // Fully random short burst used only to break free when stuck in a corner —
@@ -2012,50 +2342,10 @@ function update(dt) {
   player.x = playerMove.x;
   player.y = playerMove.y;
 
-  // Hunter: pursues the player, re-aiming on a short timer. Speed creeps up
-  // with level too, capped just under the player's own speed (62) so a
-  // straight-line escape is always possible, if barely at high levels.
-  const hunterLvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1;
-  hunter.speed = Math.min(60, 40 + hunterLvl * 2.5);
-
-  hunterChangeTimer -= dt;
-  if (hunterSlide) {
-    hunterSlide.timer -= dt;
-    // Held one way this long without getting clear: try round the other end.
-    if (hunterSlide.timer <= 0) {
-      hunterSlide.sign *= -1;
-      hunterSlide.timer = HUNTER_SLIDE_TIME;
-    }
-    hunterDir = hunterSlideVector();
-  } else if (hunterChangeTimer <= 0) {
-    pickNewHunterDirection();
-  }
-
-  hunter.moving = hunterDir.x !== 0 || hunterDir.y !== 0;
-  if (hunterDir.x !== 0) hunter.flip = hunterDir.x < 0;
-
-  const hunterMove = tryMove(hunter, hunterDir.x * hunter.speed * dt, hunterDir.y * hunter.speed * dt);
-  hunter.x = hunterMove.x;
-  hunter.y = hunterMove.y;
-  if (hunterMove.blockedX && hunterMove.blockedY) {
-    // Wedged in a corner — a chase-biased direction would just re-wedge it,
-    // so bail out with a fully random burst, then resume pursuit.
-    hunterRubTimer = 0;
-    hunterSlide = null;
-    pickEscapeDirection();
-  } else if (hunterMove.blockedX || hunterMove.blockedY) {
-    // Scraping along something. tryMove already slid it down the open axis;
-    // re-aim sooner at first, and commit to one side if it keeps happening.
-    hunterRubTimer += dt;
-    if (!hunterSlide) {
-      if (hunterRubTimer >= HUNTER_RUB_TIME) startHunterSlide(hunterMove.blockedX ? 'y' : 'x');
-      else hunterChangeTimer = Math.min(hunterChangeTimer, 0.15);
-    }
-  } else {
-    // Clear of everything — whatever it was going round is behind it now.
-    hunterRubTimer = 0;
-    hunterSlide = null;
-  }
+  // Hunter: state machine in updateHunter (arriving / scanning / chase / lost /
+  // drinking). Speed creeps up with level, capped just under the player's own
+  // 62 so a straight-line escape is always possible, if barely at high levels.
+  updateHunter(dt);
 
   // Customers: trickle in, sit at a free table, then leave. Both the seating
   // cap and how fast new customers arrive ramp up with level.
@@ -2091,9 +2381,7 @@ function update(dt) {
     const target = item.customer;
     // `orderType` is also checked because a regular's order can lapse while
     // they stay in their seat — for a walk-in, leaving is the only way out.
-    const stillWanted = target && target.state === 'sitting' && !target.served &&
-      target.orderType === item.type;
-    if (!stillWanted) {
+    if (!stillWantsOrder(target, item.type)) {
       // Deliberately only walk-ins: silently re-pointing a drink at a
       // different *named* regular would make "whose pint is this" ambiguous,
       // and Gerald being handed Nazim's beer is a bug, not a feature. A
@@ -2140,7 +2428,9 @@ function update(dt) {
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
+  const hunterCanCatch = hunterState !== 'arriving' && hunterState !== 'drinking';
+  if (hunterCanCatch && hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
+    if (hunterState !== 'chase') hunterNoticesPlayer();   // walked into him: that counts
     life = Math.max(0, life - LIFE_HIT_FRACTION);
     hitInvulnTimer = LIFE_HIT_INVULN;
     regenDelayTimer = LIFE_REGEN_DELAY;
@@ -3467,6 +3757,21 @@ function drawBrassRule(x, y, w) {
 const BUBBLE_FRAME_DEFAULT = PUB.ink;
 const BUBBLE_FRAME_REGULAR = PUB.amberDim; // a named regular is waiting
 const BUBBLE_FRAME_CARRIED = PUB.greenLit; // this is the order you're carrying
+const BUBBLE_FRAME_HUNTER = PUB.tomato;    // the hunter wants a pint
+
+// "!" when he spots you, "?" while he's lost the trail, "..." over a pint.
+function drawHunterAlert(camX, camY) {
+  if (!hunterAlert || hunterState === 'arriving') return;
+  const scale = hunterAlert.text.length === 1 ? 2 : 1;
+  const tw = fontTextWidth(hunterAlert.text) * scale;
+  const bw = tw + 6;
+  const bh = FONT_H * scale + 4;
+  const bx = clamp(Math.round(hunter.x - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
+  const by = clamp(Math.round(entityHeadTop(hunter) - camY - bh - 3), 2, Math.max(2, viewH - bh - 2));
+  const accent = hunterAlert.text === '!' ? PUB.tomato : UI.brassDark;
+  drawParchmentPlate(bx, by, bw, bh, accent);
+  fontDrawText(ctx, hunterAlert.text, bx + 3, by + 2, hunterAlert.text === '!' ? PUB.tomato : UI.ink, scale);
+}
 const placedOrderBubbles = [];
 
 function orderBubbleSpotFree(rect) {
@@ -3554,7 +3859,7 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
 // only in which frame colour they get, and in that a walk-in has to be seated
 // to show one at all.
 function drawOrderBubbleFor(e, camX, camY, frameColor) {
-  if (e.orderType && !e.served && (e.isRegular || e.state === 'sitting')) {
+  if (e.orderType && !e.served && (e.isRegular || e.isHunter || e.state === 'sitting')) {
     const patience = clamp(e.sitTimer / e.patienceDuration, 0, 1);
     const grow = (gameTime - e.orderAppearAt) / BUBBLE_APPEAR_TIME;
     drawOrderBubble(e.x, entityHeadTop(e), camX, camY, e.orderType, e.beingCarried, patience, frameColor, grow);
@@ -3909,7 +4214,7 @@ function render() {
   drawPoolIdx = 0;
   for (const f of FURNITURE) pushDrawable(f.sortY, 'furniture', f);
   pushDrawable(player.y, 'entity', player);
-  pushDrawable(hunter.y, 'entity', hunter);
+  if (hunterState !== 'arriving') pushDrawable(hunter.y, 'entity', hunter);
   for (const c of customers) pushDrawable(c.y, 'entity', c);
   for (const r of regulars) pushDrawable(r.y, 'entity', r);
   // Floats above the floor with no ground shadow and no collision — it should
@@ -3936,6 +4241,8 @@ function render() {
   placedOrderBubbles.push({ x: measuredHud.x, y: measuredHud.y, w: measuredHud.w, h: measuredHud.h });
   for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
   for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
+  if (hunterState !== 'arriving') drawOrderBubbleFor(hunter, camX, camY, BUBBLE_FRAME_HUNTER);
+  drawHunterAlert(camX, camY);
   for (const item of player.tray) {
     const carriedFor = item.customer;
     const carriedPatience = carriedFor ? clamp(carriedFor.sitTimer / carriedFor.patienceDuration, 0, 1) : null;
@@ -4010,6 +4317,10 @@ window.__debug = {
   getLife: () => life,
   setLife: (v) => { life = clamp(v, 0, LIFE_MAX); },
   getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
+  getHunterState: () => ({ state: hunterState, timer: +hunterStateTimer.toFixed(2), order: hunter.orderType, path: hunterPath, alert: hunterAlert }),
+  setHunterState,
+  hunterCanSeePlayer: () => hunterCanSeePlayer(hunterSightRange()),
+  hunterWantsPint,
   getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
   getCamera,
   reservedSeats: () => SEATS.filter(s => s.reserved).map(s => ({ who: s.regularId, side: s.side, x: s.x, y: s.y })),
