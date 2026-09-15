@@ -30,6 +30,31 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 17:26 — why PR #3 gets no Vercel check (blocked on repo owner)
+
+- Diagnosis: Vercel project `lepub` (`prj_6vjBFT18p2WKio9SJNGZiIpEtU3M`, team
+  `maisoncastros-projects`, Hobby) has **no Git connection**. It was created
+  by a CLI `vercel deploy`, and `get_git_deployment_context` lists every
+  linked project on the team — all `maisoncastro/*` repos — and `lepub` is
+  not among them. So Vercel never sees pushes/PRs on `S-Belanger/LePub`.
+- `vercel git connect --yes` fails: "Failed to connect S-Belanger/LePub to
+  project". The repo is owned by the personal account `S-Belanger`;
+  `maisoncastro` has push but not admin. The Vercel GitHub App must be
+  installed on the repo owner's account with access to LePub, which only
+  S-Belanger can do.
+- Unblock: S-Belanger installs <https://github.com/apps/vercel> on their
+  account, granting access to `LePub`; then run `vercel git connect` from
+  this checkout (linked `.vercel/project.json` already points at `lepub`).
+  After that every push/PR gets the native Vercel check + preview.
+- Caveat on Hobby: commits authored by S-Belanger will be skipped with
+  "Git author must have access to the project on Vercel" unless the project
+  moves to a team they're a member of (Pro). maisoncastro's commits deploy.
+- Fallback if they'd rather not install the app: a GitHub Actions workflow
+  running `vercel deploy` needs `VERCEL_TOKEN` as a repo secret — also
+  admin-only, so it's the same ask.
+- Until then, previews are made manually with `vercel deploy --yes` and the
+  URL posted on the PR (see 17:18).
+
 ### 17:18 — committed, pushed, new preview deployed
 
 - Committed the whole tree (Codex renderer milestone + UI rehaul) as
