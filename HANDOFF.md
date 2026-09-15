@@ -30,6 +30,21 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 20:25 — art plan committed; user closing laptop
+
+- `docs/ART-PLAN.md`: the asset-pipeline plan (loader + JSON frames, 640×360
+  internal resolution with a one-place `WORLD_SCALE`, painted room over the
+  architectural plan, camera stays three-quarter top-down), the full art spec
+  (palette table, 64×64 character frames at 48 px, furniture sizes, tiles),
+  three production routes (commission / AI with style reference + Aseprite
+  clean-up / hand trace), tools (Midjourney --sref/--cref, ChatGPT image,
+  PixelLab, Retro Diffusion, Scenario, Aseprite), the reusable prompt with
+  per-subject lines, acceptance checks, order of work.
+- Posted as a PR #3 comment with a link to the file.
+- Nothing else in flight. Next session: if the user says go — write
+  `assets/art-direction/lepub.gpl`, then `src/assets.js` loader + resolution
+  change; keep procedural art as fallback so every sheet is optional.
+
 ### 20:10 — light toned down ("relatively blinding")
 
 - Pools 0.55→0.26, hot core 0.5→0.16, streaks 0.42→0.2, cones 0.045→0.018,
