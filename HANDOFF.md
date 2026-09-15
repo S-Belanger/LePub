@@ -30,6 +30,31 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 19:15 — batch D (shifts) done: timed shifts, last call, tally board
+
+- Level is no longer derived from score: `getLevel()` returns `shift`, so
+  losing tips never eases the room. A shift ends when `shiftTips` reaches
+  `shiftTarget(n)` = 100 + 40(n−1), or — for shifts 1–5 (`SHIFT_TIMED_COUNT`)
+  — when its 180 s clock runs out. Final 15 s = last call: bar bell (`bell`
+  cue), `lastCall` lines, no new walk-ins, patience drains ×1.5
+  (`patienceRate()`), HUD clock turns red and blinks under 5 s.
+- `endShift()` snapshots `shiftTally` (tips/target/total/stats) and freezes
+  the floor; `drawShiftTallyOverlay` replaces the level splash (title DONE
+  or OVER, rows for served/forgotten/clutch/doubles/rounds/hits/best shift,
+  "SPACE FOR SHIFT n" / "TAP FOR SHIFT n"). Space/E or the touch action
+  calls `startNextShift()`. Shifts ≥ 6 are untimed (target only).
+- All tips flow through `earnTips`/`loseTips` so `shiftStats` stays true;
+  the HUD shows "TIPS shift/target" on the top line and "TOTAL n  m:ss" by
+  the pints. `LEVEL_UP_SCORE`/`levelSplashTimer`/`splashLevel`/
+  `highestLevelReached` are gone; `LevelDone.png` now backs the tally.
+- Debug: `getShift`, `setShift`, `setShiftClock`, `endShift`,
+  `startNextShift`. Smoke covers last-call arming and spawn gate, clock
+  close, frozen floor, next shift's fresh target, and target close on an
+  untimed shift. 6/6 runs pass; Edge clean (HUD at last call, tally).
+- Next: batch E (juice) — off-camera hunter vignette pulse + footsteps,
+  hit-stop + HUD pint knock, ghost shudders the hunter; then docs, push,
+  redeploy.
+
 ### 18:55 — batch C (regulars) done: Nazim's night has consequences, the round
 
 - Drunk/gone Nazim: order cooldown ×0.6 (`NAZIM_FAST_ORDER`), alcohol tips

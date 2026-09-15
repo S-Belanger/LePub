@@ -717,22 +717,85 @@ const LIFE_REGEN_DURATION = 20; // seconds for a fully-drained bar to refill
 let hitInvulnTimer = 0;
 let regenDelayTimer = 0;
 
-// ---- Levels: every LEVEL_UP_SCORE points ramps up difficulty (more
-// customers, a hungrier hunter). Level is derived from score rather than
-// tracked separately, so a restart resets it for free. Scaling is capped at
-// EFFECTIVE_LEVEL_CAP so the game plateaus instead of becoming impossible —
-// the displayed level keeps climbing past that as a badge of endurance.
-const LEVEL_UP_SCORE = 100;
+// ---- Shifts: the run is a sequence of shifts, and difficulty (more
+// customers, a hungrier hunter) follows the shift number rather than the
+// score, so losing tips never makes the room easier. A shift ends when its
+// tips target is met or, for the first SHIFT_TIMED_COUNT shifts, when its
+// clock runs out — with a last-call rush in the final seconds. Every shift
+// closes on a tally board that waits for a press, which is the run's natural
+// stopping point. Scaling is capped at EFFECTIVE_LEVEL_CAP so the game
+// plateaus instead of becoming impossible; the shift number keeps climbing
+// past that as a badge of endurance.
 const EFFECTIVE_LEVEL_CAP = 10;
-function getLevel() { return Math.floor(score / LEVEL_UP_SCORE) + 1; }
+const SHIFT_LENGTH = 180;          // seconds, timed shifts only
+const SHIFT_TIMED_COUNT = 5;       // after this, shifts end on the target alone
+const LAST_CALL_TIME = 15;         // final seconds of a timed shift
+const LAST_CALL_PATIENCE = 1.5;    // patience drains this much faster at last call
+function shiftTarget(n) { return 100 + (n - 1) * 40; }
 
-// Completing a level earns a short full-screen breather. The simulation is
-// frozen while the splash counts down, but the frame loop keeps rendering so
-// the transition remains responsive through a resize or orientation change.
-const LEVEL_SPLASH_DURATION = 2.5;
-let highestLevelReached = 1;
-let levelSplashTimer = 0;
-let splashLevel = null;
+let shift = 1;
+let shiftClock = 0;
+let shiftTips = 0;
+let lastCallArmed = false;
+let shiftTally = null;              // the closed shift's numbers while the board is up
+let bestShiftTips = 0;
+const shiftStats = { deliveries: 0, forgotten: 0, clutch: 0, doubles: 0, rounds: 0, hits: 0 };
+
+function getLevel() { return shift; }
+function shiftIsTimed() { return shift <= SHIFT_TIMED_COUNT; }
+function shiftTimeLeft() { return shiftIsTimed() ? Math.max(0, SHIFT_LENGTH - shiftClock) : Infinity; }
+function isLastCall() { return shiftIsTimed() && shiftTimeLeft() <= LAST_CALL_TIME; }
+function patienceRate() { return isLastCall() ? LAST_CALL_PATIENCE : 1; }
+
+function resetShiftStats() {
+  for (const k in shiftStats) shiftStats[k] = 0;
+}
+
+// Every tip earned or lost goes through here so the shift ledger stays true.
+function earnTips(n) {
+  score += n;
+  shiftTips += n;
+}
+function loseTips(n) {
+  score = Math.max(0, score - n);
+  shiftTips = Math.max(0, shiftTips - n);
+  shiftStats.forgotten++;
+}
+
+function endShift() {
+  shiftTally = {
+    shift,
+    tips: shiftTips,
+    total: score,
+    target: shiftTarget(shift),
+    madeTarget: shiftTips >= shiftTarget(shift),
+    stats: Object.assign({}, shiftStats),
+  };
+  bestShiftTips = Math.max(bestShiftTips, shiftTips);
+  Sound.play('levelUp');
+  clearHeldInputs();
+}
+
+function startNextShift() {
+  if (!shiftTally) return;
+  shiftTally = null;
+  shift++;
+  shiftClock = 0;
+  shiftTips = 0;
+  lastCallArmed = false;
+  resetShiftStats();
+  lastTime = performance.now();
+}
+
+function updateShift(dt) {
+  shiftClock += dt;
+  if (shiftIsTimed() && !lastCallArmed && isLastCall()) {
+    lastCallArmed = true;
+    Sound.play('bell');
+    Dialogue.trigger('lastCall', null);
+  }
+  if (shiftTips >= shiftTarget(shift) || (shiftIsTimed() && shiftTimeLeft() <= 0)) endShift();
+}
 
 // ---- Order-bubble lifecycle -------------------------------------------------
 // An order bubble grows in when it appears and shrinks out when it's dealt
@@ -856,11 +919,11 @@ function updateCustomer(c, dt) {
         Sound.play('order');
       }
     }
-    c.sitTimer -= dt;
+    c.sitTimer -= dt * patienceRate();
     if (c.sitTimer <= 0) {
       c.seat.occupied = false;
       if (!c.served && c.orderType) {
-        score = Math.max(0, score - FORGOTTEN_PENALTY);
+        loseTips(FORGOTTEN_PENALTY);
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
         noteOrderCleared(c);
         Sound.play('penalty');
@@ -1267,7 +1330,7 @@ function regularPlaceOrder(r) {
 // Their order lapsed unserved. Same penalty a walk-in costs, plus a mood hit —
 // they don't leave, they just remember.
 function regularGiveUp(r) {
-  score = Math.max(0, score - FORGOTTEN_PENALTY);
+  loseTips(FORGOTTEN_PENALTY);
   addFloatingText(r.x, r.y - r.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
   r.mood = clampMood(r.mood - 0.45);
   const lapsed = r.orderType;
@@ -1366,7 +1429,7 @@ function updateRegulars(dt) {
       r.orderCooldown -= dt;
       if (r.orderCooldown <= 0) regularPlaceOrder(r);
     } else if (!r.served) {
-      r.sitTimer -= dt;
+      r.sitTimer -= dt * patienceRate();
       if (r.sitTimer <= 0) regularGiveUp(r);
     }
 
@@ -1488,7 +1551,8 @@ function noteRoundDelivery(r) {
   if (!round || !r.isRegular) return;
   round.served++;
   if (round.served >= regulars.length) {
-    score += ROUND_BONUS;
+    earnTips(ROUND_BONUS);
+    shiftStats.rounds++;
     addFloatingText(REGULARS_TABLE.x, REGULARS_TABLE.y - 16, 'ROUND +' + ROUND_BONUS, PUB.amber);
     Sound.play('levelUp');
     Dialogue.trigger('roundDone', null);
@@ -1698,9 +1762,13 @@ function resetGame() {
   life = LIFE_MAX;
   hitInvulnTimer = 0;
   regenDelayTimer = 0;
-  highestLevelReached = 1;
-  levelSplashTimer = 0;
-  splashLevel = null;
+  shift = 1;
+  shiftClock = 0;
+  shiftTips = 0;
+  lastCallArmed = false;
+  shiftTally = null;
+  bestShiftTips = 0;
+  resetShiftStats();
   score = 0;
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
@@ -1788,13 +1856,16 @@ function completeDelivery(target) {
   target.beingCarried = false;
   removeFromTray(target);
   const { tip, clutch } = deliveryTip(target);
-  score += tip;
+  earnTips(tip);
+  shiftStats.deliveries++;
+  if (clutch) shiftStats.clutch++;
   Sound.play('deliver');
   addFloatingText(target.x, target.y - target.h - 4, '+' + tip + (clutch ? ' CLUTCH' : ''), clutch ? PUB.amber : '#3ddc61');
   // Both tray orders landed with no hit in between: the tray bet paid off.
   if (doubleArmed && player.tray.length === 0) {
     if (doubleHitFree) {
-      score += DOUBLE_BONUS;
+      earnTips(DOUBLE_BONUS);
+      shiftStats.doubles++;
       addFloatingText(player.x, player.y - player.h - 12, 'DOUBLE +' + DOUBLE_BONUS, PUB.amber);
     }
     doubleArmed = false;
@@ -1820,7 +1891,7 @@ function completeDelivery(target) {
       // it to the table.
       if (nazimIsFarGone(target)) {
         const extra = tip * (NAZIM_TIP_MULT - 1);
-        score += extra;
+        earnTips(extra);
         addFloatingText(target.x, target.y - target.h - 12, 'X' + NAZIM_TIP_MULT + ' +' + extra, PUB.amber);
       }
       if (target.stage.id === 'gone' && Math.random() < NAZIM_SPILL_CHANCE) {
@@ -1971,6 +2042,11 @@ window.addEventListener('keydown', (e) => {
   if (!e.repeat && k === 'm') { toggleSound(); return; }
   if (caught && e.key === ' ') { resetGame(); return; }
   if (paused) return;
+  if (shiftTally) {
+    if (!e.repeat && (k === 'e' || e.key === ' ')) startNextShift();
+    if (e.key === ' ') e.preventDefault();
+    return;
+  }
   // E is the primary interact key; Space is the same action (and stays the
   // restart key on the caught screen) so a one-handed grip works too.
   if (!e.repeat && (k === 'e' || e.key === ' ')) handleInteract();
@@ -2175,6 +2251,7 @@ if (touchEl.action) {
   touchEl.action.addEventListener('pointerdown', (e) => {
     touchEl.action.classList.add('active');
     if (caught) resetGame();
+    else if (shiftTally) startNextShift();
     else if (!paused) handleInteract();
     e.preventDefault();
   });
@@ -2363,7 +2440,7 @@ function clearHunterOrder() {
 
 // Bought him a pint. He sits it out, and the room notices.
 function hunterServed() {
-  score += HUNTER_SERVE_BONUS;
+  earnTips(HUNTER_SERVE_BONUS);
   addFloatingText(hunter.x, hunter.y - hunter.h - 12, 'ON THE HOUSE +' + HUNTER_SERVE_BONUS, PUB.amber);
   clearHunterOrder();
   setHunterState('drinking', HUNTER_DRINK_TIME);
@@ -2536,12 +2613,8 @@ function update(dt) {
   if (caught) return;
   gameTime += dt;
 
-  // Freeze gameplay for the level-done splash's duration; it counts itself
-  // down and clears on its own, no key press needed.
-  if (levelSplashTimer > 0) {
-    levelSplashTimer -= dt;
-    return;
-  }
+  // The tally board freezes the floor until the player starts the next shift.
+  if (shiftTally) return;
 
   // Player movement (slides along furniture/walls via per-axis collision).
   const input = getInputVector();
@@ -2566,7 +2639,7 @@ function update(dt) {
     const spawnMin = Math.max(1, 2.5 - customerLvl * 0.15);
     const spawnRange = Math.max(1, 3 - customerLvl * 0.2);
     customerSpawnTimer = spawnMin + Math.random() * spawnRange;
-    if (customers.length < maxCustomers) spawnCustomer();
+    if (customers.length < maxCustomers && !isLastCall()) spawnCustomer();
   }
   for (let i = customers.length - 1; i >= 0; i--) {
     const c = customers[i];
@@ -2647,6 +2720,7 @@ function update(dt) {
     hitInvulnTimer = LIFE_HIT_INVULN;
     regenDelayTimer = LIFE_REGEN_DELAY;
     doubleHitFree = false;
+    shiftStats.hits++;
 
     if (life <= 1e-9) {
       caught = true;
@@ -2666,15 +2740,10 @@ function update(dt) {
     }
   }
 
-  // Level-done splash: fires once per level-up, checked last so it catches
-  // every way score could have changed this frame (delivery, forgotten
-  // penalty). Freezes gameplay on the next frame via the guard above.
-  const level = getLevel();
-  if (level > highestLevelReached) {
-    splashLevel = level - 1;
-    levelSplashTimer = LEVEL_SPLASH_DURATION;
-    highestLevelReached = level;
-  }
+  // Shift clock and target, checked last so it catches every way tips could
+  // have changed this frame. Freezes gameplay on the next frame via the guard
+  // above.
+  updateShift(dt);
 }
 
 // ---- Render -----------------------------------------------------------------
@@ -4135,13 +4204,22 @@ function lifeBarWidth() {
 }
 
 function hudLabels() {
-  return { shift: 'SHIFT ' + getLevel(), tips: 'TIPS ' + score };
+  const left = shiftTimeLeft();
+  const clock = left === Infinity ? null
+    : Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0');
+  return {
+    shift: 'SHIFT ' + getLevel(),
+    tips: 'TIPS ' + shiftTips + '/' + shiftTarget(shift),
+    total: 'TOTAL ' + score,
+    clock,
+  };
 }
 
 function measureHud() {
   const labels = hudLabels();
   const textW = fontTextWidth(labels.shift) + 6 + fontTextWidth(labels.tips);
-  hudRect.w = Math.max(textW, lifeBarWidth()) + HUD_PAD_X * 2;
+  const rowTwoW = lifeBarWidth() + 6 + fontTextWidth(labels.total) + (labels.clock ? 6 + fontTextWidth(labels.clock) : 0);
+  hudRect.w = Math.max(textW, rowTwoW) + HUD_PAD_X * 2;
   hudRect.h = HUD_CHAIN_H + 4 + FONT_H + 3 + PINT_H + 4;
   return hudRect;
 }
@@ -4287,7 +4365,7 @@ function drawHud() {
   fontDrawTextShadow(ctx, String(getLevel()), tx + fontTextWidth('SHIFT ') , textY, PUB.cream, UI.walnutDark);
   tx += fontTextWidth(labels.shift) + 6;
   fontDrawTextShadow(ctx, 'TIPS', tx, textY, PUB.creamDim, UI.walnutDark);
-  fontDrawTextShadow(ctx, String(score), tx + fontTextWidth('TIPS '), textY, PUB.amber, UI.walnutDark);
+  fontDrawTextShadow(ctx, labels.tips.slice(5), tx + fontTextWidth('TIPS '), textY, PUB.amber, UI.walnutDark);
 
   const pintY = textY + FONT_H + 3;
   for (let i = 0; i < LIFE_SEGMENT_COUNT; i++) {
@@ -4296,6 +4374,16 @@ function drawHud() {
   }
   // Brass coaster rail under the pints so they sit on something.
   drawBrassRule(hud.x + HUD_PAD_X - 1, pintY + PINT_H, lifeBarWidth() + 2);
+  // Running total beside the pints, and the shift clock — red once it's
+  // last call, blinking through the final five seconds.
+  let rx = hud.x + HUD_PAD_X + lifeBarWidth() + 6;
+  fontDrawTextShadow(ctx, labels.total, rx, pintY + 1, PUB.creamDim, UI.walnutDark);
+  if (labels.clock) {
+    rx += fontTextWidth(labels.total) + 6;
+    const left = shiftTimeLeft();
+    const blink = left <= 5 && Math.floor(gameTime * 4) % 2 === 0;
+    if (!blink) fontDrawTextShadow(ctx, labels.clock, rx, pintY + 1, isLastCall() ? PUB.tomato : PUB.cream, UI.walnutDark);
+  }
 }
 
 // Cover-fits a splash image into the internal resolution and drops a tint
@@ -4409,23 +4497,39 @@ function drawCaughtOverlay() {
   }
 }
 
-function drawLevelSplashOverlay() {
+// The end-of-shift tally: what the shift paid, what it cost, and a prompt
+// for the next one. This is the run's natural pause, so it waits for a press.
+function drawShiftTallyOverlay() {
   drawSplashImage(levelDoneImage, 'rgba(7,12,18,0.34)');
-
-  const title = 'SHIFT ' + splashLevel + ' DONE';
-  const next = 'LAST CALL - SHIFT ' + (splashLevel + 1) + ' STARTS NOW';
+  const t = shiftTally;
+  const st = t.stats;
+  const title = 'SHIFT ' + t.shift + (t.madeTarget ? ' DONE' : ' OVER');
+  const rows = [
+    { text: 'TIPS ' + t.tips + ' OF ' + t.target + '   TOTAL ' + t.total, color: PUB.amber },
+    { text: 'SERVED ' + st.deliveries + '   FORGOTTEN ' + st.forgotten, color: PUB.cream },
+    { text: 'CLUTCH ' + st.clutch + '   DOUBLES ' + st.doubles + '   ROUNDS ' + st.rounds, color: PUB.cream },
+    { text: 'HITS TAKEN ' + st.hits + '   BEST SHIFT ' + bestShiftTips, color: PUB.creamDim },
+    { text: canTypeName() ? 'SPACE FOR SHIFT ' + (t.shift + 1) : 'TAP FOR SHIFT ' + (t.shift + 1), color: PUB.amber, gap: 3 },
+  ];
   const titleScale = 2;
-  const boardW = clamp(Math.max(fontTextWidth(title) * titleScale, fontTextWidth(next)) + 20, 100, viewW - 8);
-  const boardH = 6 + FONT_H * titleScale + 4 + 2 + 4 + FONT_H + 6;
+  let boardW = fontTextWidth(title) * titleScale;
+  for (const row of rows) boardW = Math.max(boardW, fontTextWidth(row.text));
+  boardW = clamp(boardW + 20, 100, viewW - 8);
+  let boardH = 6 + FONT_H * titleScale + 4 + 2 + 4 + 6;
+  for (const row of rows) boardH += BOARD_ROW_H + (row.gap || 0);
   const bx = Math.round((viewW - boardW) / 2);
-  const by = Math.round(viewH / 2 - boardH / 2);
+  const by = Math.round(clamp(viewH / 2 - boardH / 2, 2, Math.max(2, viewH - boardH - 2)));
   drawWalnutPlate(bx, by, boardW, boardH, { rail: true });
   let y = by + 6;
-  drawCenteredText(title, y, PUB.cream, titleScale);
+  drawCenteredText(title, y, t.madeTarget ? PUB.cream : PUB.tomato, titleScale);
   y += FONT_H * titleScale + 4;
   drawBrassRule(bx + 6, y, boardW - 12);
   y += 2 + 4;
-  drawCenteredText(next, y, PUB.amber);
+  for (const row of rows) {
+    y += row.gap || 0;
+    drawCenteredText(row.text, y, row.color);
+    y += BOARD_ROW_H;
+  }
 }
 
 function render() {
@@ -4494,7 +4598,7 @@ function render() {
   drawHud();
 
   if (caught) drawCaughtOverlay();
-  else if (levelSplashTimer > 0) drawLevelSplashOverlay();
+  else if (shiftTally) drawShiftTallyOverlay();
 }
 
 // ---- Main loop ----------------------------------------------------------------
@@ -4545,10 +4649,14 @@ window.__debug = {
   SPRITES, DOE_PALETTE, HUNTER_PALETTE, drawSprite, ctx, floatingTexts,
   getScore: () => score,
   getLevel,
-  setScore: (v) => { score = v; },              // level is derived from score
+  setScore: (v) => { score = v; },
+  setShift: (n) => { shift = Math.max(1, n | 0); },
   getLife: () => life,
   setLife: (v) => { life = clamp(v, 0, LIFE_MAX); },
-  getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
+  getShift: () => ({ shift, clock: +shiftClock.toFixed(1), tips: shiftTips, target: shiftTarget(shift), lastCall: isLastCall(), tally: shiftTally, stats: Object.assign({}, shiftStats) }),
+  setShiftClock: (t) => { shiftClock = t; },
+  endShift,
+  startNextShift,
   getHunterState: () => ({ state: hunterState, timer: +hunterStateTimer.toFixed(2), order: hunter.orderType, path: hunterPath, alert: hunterAlert }),
   setHunterState,
   hunterCanSeePlayer: () => hunterCanSeePlayer(hunterSightRange()),

@@ -384,14 +384,44 @@ function run() {
   if (debug.getScore() - beforeRound < 25 + 30) throw new Error('Round should pay the three tips plus the bonus.');
   debug.resetGame();
 
+  // Shifts: the clock runs, last call arms in the final seconds and stops
+  // new walk-ins, the tally board freezes the floor until a press, and the
+  // next shift starts from zero with the target raised.
+  debug.resetGame();
+  debug.setShiftClock(180 - 14);
+  debug.update(0.05);
+  if (!debug.getShift().lastCall) throw new Error('Last call should be on with 14 s left.');
+  const crowd = debug.customers.length;
+  for (let i = 0; i < 60; i++) debug.update(0.05);
+  if (debug.customers.length > crowd) throw new Error('No new walk-ins should arrive during last call.');
+  debug.setShiftClock(181);
+  debug.update(0.05);
+  const closed = debug.getShift();
+  if (!closed.tally || closed.tally.shift !== 1) throw new Error('Shift 1 should close when its clock runs out.');
+  const frozenX = debug.player.x;
+  debug.keys.add('d');
+  debug.update(0.05);
+  debug.keys.delete('d');
+  if (debug.player.x !== frozenX) throw new Error('The floor should be frozen under the tally board.');
+  debug.setLife(0.5);
+  debug.render();
+  debug.startNextShift();
+  const next = debug.getShift();
+  if (next.shift !== 2 || next.tips !== 0 || next.target <= closed.tally.target) throw new Error('Shift 2 should start fresh with a higher target.');
+  // Meeting the target closes a shift too.
+  debug.setShift(7);   // untimed
+  vm.runInContext("shiftTips = shiftTarget(shift)", context);
+  debug.update(0.05);
+  if (!debug.getShift().tally || debug.getShift().tally.shift !== 7) throw new Error('Meeting the target should close the shift.');
+  debug.startNextShift();
+
   // Every UI board the game can show: the HUD at a real score and partial
-  // life, the level-done board, the caught board with the name field open,
-  // and the ledger after a name is filed. All of them are pure canvas
-  // painting, so a thrown error here is a broken frame in the real game.
+  // life, the caught board with the name field open, and the ledger after a
+  // name is filed. All of them are pure canvas painting, so a thrown error
+  // here is a broken frame in the real game.
   debug.setScore(240);
   debug.setLife(0.5);
   debug.update(0.05);
-  if (debug.getLevelSplash().timer <= 0) throw new Error('Level-done splash did not fire at score 240.');
   debug.render();
   debug.forceCaught();
   if (!debug.getNameEntry().entering) throw new Error('Caught with a score should open the name field.');
@@ -404,7 +434,7 @@ function run() {
   debug.render();
 
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, and render pass with HUD, level and caught boards.`);
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, shifts, and render pass with HUD, tally and caught boards.`);
 }
 
 run();

@@ -182,6 +182,11 @@ const DIALOGUE_LINES = [
   { who: 'nazim', category: 'nazimUp', stage: ['gone'], text: "Just stretching. Legs. Both." },
   { who: 'gerald', category: 'roundMissed', text: "That wasn't a round. That was three drinks." },
   { who: 'sam', category: 'roundMissed', text: "Staggered arrivals. Like a bad wedding." },
+  // ------------------------------------------------------------- LAST CALL
+  { who: 'gerald', category: 'lastCall', text: "Last call. Don't make it weird." },
+  { who: 'sam', category: 'lastCall', text: "Bell's gone. Everybody wants everything now." },
+  { who: 'nazim', category: 'lastCall', stage: ['sober', 'warm', 'buzzed'], text: "Already? The night was just getting good." },
+  { who: 'nazim', category: 'lastCall', stage: ['drunk', 'gone'], text: "Last call is a state of mind." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------

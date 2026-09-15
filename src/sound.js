@@ -108,6 +108,13 @@ const Sound = (function () {
         if (!allow(name, 0.12)) return;
         tone(115, 0.045, { type: 'square', volume: 0.035 });
         break;
+      case 'bell':
+        // Last call: the bar bell, twice.
+        tone(1760, 0.18, { type: 'triangle', volume: 0.09 });
+        tone(2200, 0.12, { type: 'sine', volume: 0.05 });
+        tone(1760, 0.22, { type: 'triangle', volume: 0.09, delay: 0.28 });
+        tone(2200, 0.14, { type: 'sine', volume: 0.05, delay: 0.28 });
+        break;
       case 'spill':
         // Glass over, liquid out: a clink and a wet thud.
         tone(1400, 0.05, { type: 'triangle', volume: 0.07 });

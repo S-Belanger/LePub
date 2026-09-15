@@ -22,6 +22,7 @@ const Dialogue = (function () {
     nazimFood: 3,
     restart: 3,
     hunterNear: 2,
+    lastCall: 3,
     waterOrdered: 3,
     sobered: 3,
     roundCalled: 3,
