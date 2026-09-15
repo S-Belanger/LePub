@@ -30,6 +30,22 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 18:20 — honest art-direction review published
+
+- Branch already in sync with origin at the ledger commit; nothing new to
+  push. Review page (reference vs current frame, 4x crops, six gaps, ranked
+  next pass): <https://claude.ai/code/artifact/39030cca-bc0a-4f34-b45e-380df32ca476>
+- Verdict: UI matches the reference's material language; room lighting,
+  character resolution, furniture fronts, perimeter props and ticket weight
+  do not. Proposed order: (1) lighting overhaul — darken the baked room,
+  additive pendant cones/pools, specular streaks, lit bar/bottles, rim on
+  leads; (2) Doe + hunter re-authored at 36–40 backing px with faces;
+  (3) regulars + walk-ins likewise; (4) furniture front faces + back-bar
+  (after the user's plan arrives); (5) perimeter props + fireplace;
+  (6) compact tickets at rest.
+- Capture tooling for review frames: scratchpad `capture-review.js`.
+- Waiting on: user's go-ahead on that order, and the bar plan.
+
 ### 18:03 (wall clock; earlier stamps in this session were estimates) — pushed and previewed
 
 - Branch at `302047f`, in sync with upstream, 11 commits ahead of
