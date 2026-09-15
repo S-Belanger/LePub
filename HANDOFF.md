@@ -30,6 +30,15 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 20:40 — floor plan for the art prompts
+
+- `assets/art-direction/floor-plan.png` + `.json`: the room as the game
+  plays it, rendered from `BAR_SEGMENTS`/`TABLES`/`BENCHES`/`SEATS`/lamps
+  by scratchpad `render-plan.js` (re-run it after any layout edit).
+  `docs/ART-PLAN.md` §2b: piece table with positions and art sizes at
+  640×360, the GPT room prompt (attach reference + plan), the character
+  sheet prompt guidance. User is generating sprites with GPT.
+
 ### 20:25 — art plan committed; user closing laptop
 
 - `docs/ART-PLAN.md`: the asset-pipeline plan (loader + JSON frames, 640×360

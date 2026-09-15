@@ -89,6 +89,70 @@ plus rug tiles; walls as three tiles (rear, side, front) plus corners. Or one
 painting of the whole room at 400×720 traced over the architectural plan —
 either works with the loader; tiles are easier to change when the plan does.
 
+## 2b. The architectural plan (attach this to every room prompt)
+
+`assets/art-direction/floor-plan.png` is the plan of the room **as the game
+actually plays it**, rendered from the game's own furniture data — every
+counter, table, chair, seat, lamp, the door, the windows, the fireplace, at
+their true positions. `floor-plan.json` is the same data as numbers.
+(`assets/planFloor.png` is the original hand sketch the layout was traced
+from; keep it for history, use the rendered one for art.)
+
+Room: **200 × 360 units**, 1 unit = 1 game pixel today (= 2 art pixels, and
+4 at the proposed 640×360 resolution). Walls: rear 16, front 12, sides 7.
+
+| Piece | Position (x, y, w, h in units) | Art size at 640×360 (px) |
+|---|---|---|
+| TAPS counter | 1, 67, 71×22 | 284×88 + front face |
+| SHELF counter (stem) | 91, 109, 27×90 | 108×360 + front face |
+| KITCHEN hatch counter | 1, 177, 87×23 | 348×92 + front face |
+| Booth (regulars) | centre 62, 40 · 40×22 · Sam W, Gerald E, Nazim S | 160×88 |
+| Table 1 (long) | centre 152, 68 · 22×65 · 4 chairs W | 88×260 |
+| Table 2 | centre 180, 210 · 38×32 · chairs N, S | 152×128 |
+| Table 3 | centre 180, 269 · 37×33 · chairs N, S | 148×132 |
+| Table 4 (wide) | centre 58, 258 · 114×29 · 4 chairs N, 4 S | 456×116 |
+| Table 5 (wide) | centre 58, 315 · 114×29 · 4 chairs N, 4 S | 456×116 |
+| Wall bench, left | centre 8, 43 · 6×55 · 3 seats | 24×220 |
+| Wall bench, rear right | centre 163, 13 · 60×8 · 3 seats | 240×32 |
+| Wall bench, right | centre 191, 68 · 6×71 · 4 seats | 24×284 |
+| Stools, stem side | centre 152, 151 · 3 stools W | 24×32 each |
+| Stools, hatch side | centre 51, 222 · 3 stools N | 24×32 each |
+| Door | bottom centre, 22 wide | 88×48 |
+| Windows | rear wall at x 22 (31 wide) and 128 (35 wide) | 124×52, 140×52 |
+| Fireplace | left wall, y 116–150 | 56×136 |
+| Pendant lamps (pool point) | (40,44) (150,96) (42,150) (78,128) (150,236) (60,296) (150,322) | 32×64 each |
+| Stag trophy | rear wall, x 116 | 36×52 |
+| Coat stand · barrel | bottom-left corner · bottom-right corner | 40×88 · 48×92 |
+
+### Prompting GPT for the room (attach BOTH the reference and floor-plan.png)
+
+> Using the attached floor plan exactly — same proportions, every counter,
+> table, chair and lamp where the plan puts them — paint the whole pub as
+> pixel art in the exact style of the attached reference image: dark walnut
+> floorboards, warm amber pendant lamps hanging over the marked lamp points,
+> a bar with brass rail and glowing bottle shelves along the SHELF counter,
+> beer taps on the TAPS counter, a kitchen hatch on the KITCHEN counter, a
+> stone fireplace on the left wall where marked, rainy city windows on the
+> rear wall, burgundy leather booth and benches, red-cushioned stools, rugs
+> under the seating. Three-quarter top-down camera (fronts of furniture
+> visible), portrait orientation, **no people**, no text, no labels. Output
+> 800×1440 pixels (4 px per plan unit), crisp pixels, no anti-aliasing.
+
+Then ask for the same room **without furniture** ("just the floor, walls,
+windows, door and fireplace") — that becomes the ground layer, and each piece
+of furniture as its own transparent PNG at the sizes in the table, so the
+game can keep moving them when the plan changes.
+
+### Prompting GPT for characters (attach the reference)
+
+Use the prompt in section 3 with one subject per request, and ask for the
+**frames in one row, left to right, on a transparent background, 64×64 each,
+feet on the same baseline**: e.g. "6 frames: idle, idle-blink, walk 1, walk
+2, walk 3, walk 4". GPT will drift between requests; keep the first approved
+Doe image attached to every later character prompt as the second reference
+so the cast stays one family. Expect to clean every sheet in Aseprite (steps
+in section 3) — GPT's pixels are never on a clean grid.
+
 ## 3. How to make them (the honest answer on "1:1")
 
 No generator produces a game-ready sheet that is pixel-identical to a

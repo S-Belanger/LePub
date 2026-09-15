@@ -21,6 +21,9 @@ Translate its visual language into the game rather than copying its camera:
   dimensions;
 - favor crisp authored pixels and stepped light over smooth filters.
 
+`floor-plan.png` / `floor-plan.json` are the room as the game plays it,
+rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
+
 ## Status (2026-09-15)
 
 Implemented: night base with additive pendant pools and cones, varnish
