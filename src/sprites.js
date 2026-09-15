@@ -28,35 +28,41 @@ function buildSprite(rows) {
 // with a cream chest patch. ------------------------------------------------
 const DOE_PALETTE = {
   '.': null,
+  i: '#24170f', // warm outline
   n: '#a9764f', // antler
+  N: '#d3a26b', // antler catchlight
   f: '#f2e8da', // hood ear fluff
   h: '#c9a86a', // hair
+  H: '#936f3f', // hair shade
   k: '#f0c090', // skin
+  K: '#c9855e', // skin shade
   g: '#141414', // glasses
   e: '#5a4030', // beard
   d: '#6b4a30', // onesie
+  D: '#49301f', // onesie shade
   c: '#e8ddc0', // chest patch
+  C: '#c9b98f', // chest patch shade
   s: '#2a2018', // feet
 };
 
 const DOE_IDLE = buildSprite([
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler tips (taller rack)
-  R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler base
-  R('.', 3, 'f', 2, '.', 6, 'f', 2, '.', 3),
-  R('.', 4, 'h', 8, '.', 4),
-  R('.', 3, 'h', 1, 'k', 8, 'h', 1, '.', 3),
-  R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'e', 8, '.', 4),
-  R('.', 5, 'e', 6, '.', 5),
-  R('.', 2, 'd', 4, 'c', 4, 'd', 4, '.', 2),
-  R('.', 1, 'd', 4, 'c', 6, 'd', 4, '.', 1),
-  R('.', 1, 'd', 5, 'c', 4, 'd', 5, '.', 1),
-  R('.', 2, 'd', 12, '.', 2),
-  R('.', 3, 'd', 10, '.', 3),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
-  R('.', 4, 'd', 3, '.', 2, 'd', 3, '.', 4),
+  R('.', 4, 'n', 1, 'N', 1, '.', 4, 'N', 1, 'n', 1, '.', 4),
+  R('.', 3, 'n', 1, '.', 1, 'n', 1, '.', 4, 'n', 1, '.', 1, 'n', 1, '.', 3),
+  R('.', 3, 'i', 1, 'f', 2, '.', 4, 'f', 2, 'i', 1, '.', 3),
+  R('.', 3, 'i', 1, 'H', 2, 'h', 4, 'H', 2, 'i', 1, '.', 3),
+  R('.', 2, 'i', 1, 'H', 1, 'k', 8, 'H', 1, 'i', 1, '.', 2),
+  R('.', 3, 'i', 1, 'g', 3, 'k', 2, 'g', 3, 'i', 1, '.', 3),
+  R('.', 3, 'i', 1, 'K', 1, 'k', 6, 'K', 1, 'i', 1, '.', 3),
+  R('.', 3, 'i', 1, 'e', 8, 'i', 1, '.', 3),
+  R('.', 4, 'i', 1, 'e', 6, 'i', 1, '.', 4),
+  R('.', 2, 'i', 1, 'D', 2, 'd', 1, 'c', 4, 'd', 1, 'D', 2, 'i', 1, '.', 2),
+  R('.', 1, 'i', 1, 'D', 3, 'd', 1, 'c', 4, 'd', 1, 'D', 3, 'i', 1, '.', 1),
+  R('.', 1, 'i', 1, 'D', 2, 'd', 2, 'C', 4, 'd', 2, 'D', 2, 'i', 1, '.', 1),
+  R('.', 2, 'i', 1, 'D', 2, 'd', 6, 'D', 2, 'i', 1, '.', 2),
+  R('.', 3, 'i', 1, 'D', 2, 'd', 4, 'D', 2, 'i', 1, '.', 3),
+  R('.', 4, 'D', 3, '.', 2, 'd', 3, '.', 4),
+  R('.', 4, 'd', 3, '.', 2, 'D', 3, '.', 4),
+  R('.', 4, 'D', 3, '.', 2, 'd', 3, '.', 4),
   R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
 ]);
 
@@ -72,37 +78,43 @@ const DOE_WALK = buildSprite([
 // shotgun barrel jutting out at shoulder height. ---------------------------
 const HUNTER_PALETTE = {
   '.': null,
+  i: '#171511', // warm outline
   o: '#5c5a3e', // fedora crown
+  O: '#7d7750', // fedora highlight
   r: '#454330', // fedora brim
   k: '#f0c090', // skin
+  K: '#c9845d', // skin shade
   g: '#141414', // glasses
   w: '#e8e4d8', // collar
   f: '#8a2020', // flannel red
+  F: '#b53d32', // flannel highlight
   x: '#1c1c1c', // flannel black check
   p: '#4a4630', // pants
+  P: '#666044', // pants highlight
   s: '#1a1512', // shoes
   u: '#3a2f22', // shotgun
+  U: '#8d7552', // gun-metal catchlight
 };
 
 const HUNTER_IDLE = buildSprite([
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 2, 'r', 12, '.', 2),
-  R('.', 4, 'o', 8, '.', 4),
-  R('.', 4, 'k', 8, '.', 4),
+  R('.', 4, 'r', 1, 'o', 6, 'O', 1, '.', 4),
+  R('.', 2, 'i', 1, 'r', 10, 'i', 1, '.', 2),
+  R('.', 4, 'i', 1, 'o', 6, 'i', 1, '.', 4),
+  R('.', 4, 'K', 1, 'k', 6, 'K', 1, '.', 4),
   R('.', 4, 'g', 3, 'k', 2, 'g', 3, '.', 4), // round lenses + skin bridge, not a bar
-  R('.', 4, 'k', 8, '.', 4),
-  R('.', 4, 'w', 8, '.', 4),
+  R('.', 4, 'K', 1, 'k', 6, 'K', 1, '.', 4),
+  R('.', 4, 'i', 1, 'w', 6, 'i', 1, '.', 4),
   // Buffalo-check plaid runs the full torso (not just the shoulders), two
   // alternating 2x2 blocks per row so it reads as a checked flannel.
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'x', 2, 'f', 2, 'x', 2, 'f', 2, 'w', 2, '.', 2, 'u', 5),
-  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2),
-  R('.', 2, 'x', 10, '.', 2),
-  R('.', 3, 'x', 10, '.', 3),
-  R('.', 3, 'p', 10, '.', 3),
-  R('.', 4, 'p', 8, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
+  R('.', 2, 'w', 2, 'F', 2, 'x', 2, 'f', 2, 'x', 2, 'w', 2, '.', 2, 'U', 1, 'u', 4),
+  R('.', 2, 'w', 2, 'x', 2, 'f', 2, 'x', 2, 'F', 2, 'w', 2, '.', 2, 'U', 1, 'u', 4),
+  R('.', 2, 'w', 2, 'f', 2, 'x', 2, 'F', 2, 'x', 2, 'w', 2, '.', 2),
+  R('.', 2, 'i', 1, 'x', 8, 'i', 1, '.', 2),
+  R('.', 3, 'i', 1, 'x', 8, 'i', 1, '.', 3),
+  R('.', 3, 'P', 2, 'p', 6, 'P', 2, '.', 3),
+  R('.', 4, 'P', 2, 'p', 4, 'P', 2, '.', 4),
+  R('.', 4, 'P', 2, '.', 2, 'p', 2, '.', 4),
+  R('.', 4, 'p', 2, '.', 2, 'P', 2, '.', 4),
   R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
   R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
 ]);
@@ -118,17 +130,17 @@ const HUNTER_WALK = buildSprite([
 // --- Customer: plain pub patron. Geometry is shared; each customer gets
 // its own palette instance so shirt color varies. ---------------------------
 const CUSTOMER_IDLE = buildSprite([
-  R('.', 5, 'h', 4, '.', 5),
-  R('.', 4, 'h', 6, '.', 4),
+  R('.', 5, 'q', 2, 'h', 2, '.', 5),
+  R('.', 4, 'q', 2, 'h', 4, '.', 4),
   R('.', 3, 'h', 1, 'k', 6, 'h', 1, '.', 3),
-  R('.', 4, 'k', 6, '.', 4),
-  R('.', 4, 'm', 6, '.', 4),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 2, 'm', 10, '.', 2),
-  R('.', 3, 'm', 8, '.', 3),
-  R('.', 3, 'p', 8, '.', 3),
-  R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
+  R('.', 4, 'K', 1, 'k', 4, 'K', 1, '.', 4),
+  R('.', 4, 'l', 6, '.', 4),
+  R('.', 3, 'l', 1, 'm', 6, 'l', 1, '.', 3),
+  R('.', 2, 'v', 1, 'm', 8, 'v', 1, '.', 2),
+  R('.', 2, 'v', 1, 'm', 8, 'v', 1, '.', 2),
+  R('.', 3, 'v', 8, '.', 3),
+  R('.', 3, 'P', 2, 'p', 4, 'P', 2, '.', 3),
+  R('.', 4, 'P', 2, '.', 2, 'p', 2, '.', 4),
   R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
   R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
 ]);
@@ -140,15 +152,28 @@ const CUSTOMER_WALK = buildSprite([
   R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
 ]);
 
-const CUSTOMER_SHIRT_COLORS = ['#4a6fa5', '#8a4a9e', '#4a9e6a', '#c9a227', '#c9622f', '#5a7d8a'];
+const CUSTOMER_SHIRT_COLORS = [
+  { base: '#47728e', light: '#6f9cb4', dark: '#31566e' },
+  { base: '#8e3733', light: '#c05748', dark: '#632725' },
+  { base: '#315f48', light: '#5b896c', dark: '#214535' },
+  { base: '#b87524', light: '#dda248', dark: '#805019' },
+  { base: '#c94f3d', light: '#e9785e', dark: '#8e342b' },
+  { base: '#4c6868', light: '#769393', dark: '#344c4c' },
+];
 
 function makeCustomerPalette() {
+  const shirt = CUSTOMER_SHIRT_COLORS[Math.floor(Math.random() * CUSTOMER_SHIRT_COLORS.length)];
   return {
     '.': null,
     h: '#3a2a1a',
+    q: '#76502c',
     k: '#f0c090',
-    m: CUSTOMER_SHIRT_COLORS[Math.floor(Math.random() * CUSTOMER_SHIRT_COLORS.length)],
+    K: '#c9855e',
+    l: shirt.light,
+    m: shirt.base,
+    v: shirt.dark,
     p: '#2a2418',
+    P: '#4b4331',
     s: '#1a1512',
   };
 }

@@ -8,7 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and eight plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
 
-There is no `package.json`, no test suite, and no linter configured. Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for the game-over and completed-level splashes; `assets/planFloor.png` is the retained floor-plan reference the current layout is traced from. `assets/cover.png` and `assets/gameplay.png` are not loaded by the game — the first is a leftover from a canvas title screen that the HTML start overlay replaced, the second is for the README.
+There is no `package.json` or linter. `node tests/smoke.js` is a dependency-free
+runtime smoke test for script loading, customer/waiter routing, and rendering.
+Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for
+the game-over and completed-level splashes; `assets/planFloor.png` is the
+retained floor-plan reference the current layout is traced from.
+`assets/cover.png` and `assets/gameplay.png` are not loaded by the game — the
+first is a leftover from a canvas title screen that the HTML start overlay
+replaced, the second is for the README.
 
 ## Running it
 
@@ -19,6 +26,16 @@ There is no build command. To run the game, either:
 `.claude/launch.json` defines the one run config used here: `python -m http.server 8917`. A static server is preferred over `file://` so `assets/caught.jpg` loads reliably. Any static server works — the scripts are classic (non-module) `<script>` tags on purpose, precisely so `file://` keeps working and no server-side MIME configuration is needed.
 
 Any change to the JS/HTML/CSS takes effect on a page reload — no compilation step.
+
+## Art-direction guardrails
+
+`assets/art-direction/warm-overhead-pub-reference.png` is the primary room-art
+reference. Borrow its honeyed wood, forest-green shadows, burgundy seating,
+amber light, rainy windows, rugs, plants, and crowded edge detail, but keep the
+game's straight-overhead camera. The reference's isometric composition is not
+a layout target. Preserve furniture colliders while the visual language is
+being established, and keep main walk lanes calmer than the bar and seating
+clusters so orders, characters, and chase routes stay readable.
 
 ## Files and load order
 
@@ -90,7 +107,7 @@ Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), f
 
 **`spawnCustomer()` only considers seats that are neither occupied nor `reserved`.** A walk-in can never take a regular's chair.
 
-**Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath`.
+**Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. Exact segment/AABB checks use the same asymmetric, feet-anchored footprint as runtime collision; endpoint grid anchors are chosen only when the real endpoint can see them. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath` or run `node tests/smoke.js`.
 
 **The ghost** (`updateGhost`) is purely decorative: every 35–80s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
 

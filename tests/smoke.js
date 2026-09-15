@@ -1,0 +1,258 @@
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const ROOT = path.resolve(__dirname, '..');
+const SCRIPT_FILES = [
+  'src/pixelfont.js',
+  'src/scenery.js',
+  'src/sprites.js',
+  'src/dialogue-content.js',
+  'src/dialogue.js',
+  'src/regulars.js',
+  'src/sound.js',
+  'game.js',
+];
+
+class ClassList {
+  constructor() { this.values = new Set(); }
+  add(...names) { names.forEach(name => this.values.add(name)); }
+  remove(...names) { names.forEach(name => this.values.delete(name)); }
+  contains(name) { return this.values.has(name); }
+  toggle(name, force) {
+    const enabled = force === undefined ? !this.values.has(name) : force;
+    if (enabled) this.values.add(name);
+    else this.values.delete(name);
+    return enabled;
+  }
+}
+
+class Element {
+  constructor(id = '') {
+    this.id = id;
+    this.classList = new ClassList();
+    this.style = {};
+    this.textContent = '';
+  }
+  addEventListener() {}
+  setAttribute() {}
+  blur() {}
+  setPointerCapture() {}
+  getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 100 }; }
+}
+
+function makeCanvasContext() {
+  return {
+    imageSmoothingEnabled: false,
+    fillStyle: '',
+    font: '',
+    textAlign: '',
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    fillRect() {},
+    fillText() {},
+    drawImage() {},
+    putImageData() {},
+    createImageData(width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+  };
+}
+
+class Canvas extends Element {
+  constructor(id = '') {
+    super(id);
+    this.width = 320;
+    this.height = 180;
+    this.context = makeCanvasContext();
+  }
+  getContext() { return this.context; }
+}
+
+function createRuntime() {
+  const elements = new Map();
+  const ids = [
+    'stage', 'top-bar', 'btn-help', 'btn-sound', 'btn-fullscreen', 'overlay',
+    'btn-start', 'caught-actions', 'btn-restart', 'touch', 'stick', 'btn-action',
+  ];
+  for (const id of ids) elements.set(id, new Element(id));
+  elements.set('game', new Canvas('game'));
+  elements.set('stick-knob', new Element('stick-knob'));
+
+  const storage = new Map();
+  const localStorage = {
+    getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+    setItem(key, value) { storage.set(key, String(value)); },
+    removeItem(key) { storage.delete(key); },
+  };
+  const document = {
+    hidden: false,
+    fullscreenEnabled: false,
+    fullscreenElement: null,
+    webkitFullscreenElement: null,
+    body: new Element('body'),
+    documentElement: new Element('html'),
+    getElementById(id) { return elements.get(id) || null; },
+    querySelector(selector) {
+      return selector === '#stick .stick-knob' ? elements.get('stick-knob') : null;
+    },
+    createElement(tag) { return tag === 'canvas' ? new Canvas() : new Element(); },
+    addEventListener() {},
+  };
+  const window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    visualViewport: null,
+    localStorage,
+    addEventListener() {},
+    matchMedia() { return { matches: false, addEventListener() {} }; },
+  };
+  class MockImage {
+    constructor() {
+      this.complete = false;
+      this.naturalWidth = 0;
+      this.naturalHeight = 0;
+      this.src = '';
+    }
+  }
+
+  const context = vm.createContext({
+    console,
+    document,
+    window,
+    localStorage,
+    navigator: { maxTouchPoints: 0 },
+    Image: MockImage,
+    performance: { now: () => 1000 },
+    requestAnimationFrame: () => 1,
+    cancelAnimationFrame() {},
+    setTimeout,
+    clearTimeout,
+    Uint8ClampedArray,
+    Map,
+    Set,
+    WeakMap,
+    Math,
+    JSON,
+  });
+
+  for (const file of SCRIPT_FILES) {
+    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    vm.runInContext(source, context, { filename: file });
+  }
+  return { context, debug: window.__debug };
+}
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function runUntil(step, done, maxTicks, failureMessage) {
+  for (let tick = 0; tick < maxTicks; tick++) {
+    if (done()) return;
+    step();
+  }
+  throw new Error(failureMessage());
+}
+
+function assertPathClear(debug, start, waypoints, exclude, label) {
+  let from = start;
+  for (const to of waypoints) {
+    const distance = Math.hypot(to.x - from.x, to.y - from.y);
+    const samples = Math.max(1, Math.ceil(distance * 2));
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+      assert(!debug.pointBlocked(x, y, exclude),
+        `${label} crosses furniture at ${x.toFixed(1)},${y.toFixed(1)}.`);
+    }
+    from = to;
+  }
+}
+
+function assertSpritePalettes(context) {
+  vm.runInContext(`
+    for (const [kind, set] of Object.entries(SPRITES)) {
+      const palette = kind === 'customer' ? makeCustomerPalette() : set.palette;
+      for (const [pose, sprite] of Object.entries(set)) {
+        if (!sprite || !sprite.rows) continue;
+        for (const row of sprite.rows) {
+          for (const key of row) {
+            if (key !== '.' && !palette[key]) {
+              throw new Error(kind + '/' + pose + ' is missing palette key "' + key + '".');
+            }
+          }
+        }
+      }
+    }
+  `, context);
+}
+
+function run() {
+  const { context, debug } = createRuntime();
+  assert(debug, 'The debug API was not created.');
+  assertSpritePalettes(context);
+  assert(debug.reservedSeats().length === 3, 'Expected exactly three reserved regular seats.');
+  assert(debug.regularState().length === 3, 'Expected exactly three named regulars.');
+
+  const freeSeats = debug.freeGenericSeats();
+  for (let i = 0; i < freeSeats; i++) debug.spawnCustomer();
+  assert(debug.customers.length === freeSeats,
+    `Expected ${freeSeats} customers, received ${debug.customers.length}.`);
+
+  for (const customer of debug.customers) {
+    assertPathClear(debug, debug.DOOR, customer.path, customer.seat.table,
+      `Route to ${customer.seat.side} seat at ${customer.seat.x},${customer.seat.y}`);
+    runUntil(
+      () => debug.updateCustomer(customer, 0.05),
+      () => customer.state === 'sitting',
+      2400,
+      () => `Customer could not reach ${customer.seat.side} seat at ` +
+        `${customer.seat.x},${customer.seat.y}; stopped at ${customer.x},${customer.y}.`,
+    );
+  }
+
+  for (const customer of debug.customers) {
+    customer.orderType = null;
+    customer.sitTimer = 0;
+    debug.updateCustomer(customer, 0.05);
+    assertPathClear(debug, customer, customer.path, customer.seat.table,
+      `Exit route from ${customer.seat.side} seat at ${customer.seat.x},${customer.seat.y} ` +
+        `(${JSON.stringify(customer.path)})`);
+    let removed = false;
+    runUntil(
+      () => { removed = debug.updateCustomer(customer, 0.05) === 'remove'; },
+      () => removed,
+      2400,
+      () => `Customer from ${customer.seat.side} seat at ` +
+        `${customer.seat.x},${customer.seat.y} could not leave; stopped at ${customer.x},${customer.y}.`,
+    );
+  }
+
+  debug.render();
+  debug.spawnGhost();
+  debug.spawnWaiter();
+  const arrivingWaiter = debug.getWaiter();
+  assertPathClear(debug, arrivingWaiter, arrivingWaiter.path, null, 'Waiter arrival route');
+  debug.render();
+  let waiterTick = 0;
+  runUntil(
+    () => {
+      vm.runInContext('updateWaiter(0.05)', context);
+      if (++waiterTick % 10 === 0) debug.render();
+    },
+    () => !debug.getWaiter(),
+    2400,
+    () => {
+      const waiter = debug.getWaiter();
+      return `Waiter could not complete the visit; state=${waiter.state}, ` +
+        `position=${waiter.x},${waiter.y}, waypoint=${waiter.pathIndex}/${waiter.path.length}.`;
+    },
+  );
+
+  console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
+    `${debug.regularState().length} regulars, waiter visit, and render pass.`);
+}
+
+run();

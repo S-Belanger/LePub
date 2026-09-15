@@ -332,24 +332,46 @@ function tryMove(e, dx, dy) {
 // waypoints so movement still reads as a straight walk, not grid-snapping.
 const PATH_CELL = 8;
 const PATH_MARGIN = (SPRITES.customer.idle.w * 0.55) / 2;
+const PATH_FOOT_H = 7;
 
-function segmentHitsRect(p1, p2, rect, steps = 24) {
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = p1.x + (p2.x - p1.x) * t;
-    const y = p1.y + (p2.y - p1.y) * t;
-    if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) return true;
+// Exact line-segment/AABB test. Sampling a fixed number of points can skip a
+// thin chair collider on a long diagonal, which made the smoothing pass turn
+// an otherwise valid grid route into a path through furniture.
+function segmentHitsRect(p1, p2, rect) {
+  let tMin = 0;
+  let tMax = 1;
+  for (const [axis, size] of [['x', 'w'], ['y', 'h']]) {
+    const start = p1[axis];
+    const delta = p2[axis] - start;
+    const min = rect[axis];
+    const max = min + rect[size];
+    if (Math.abs(delta) < 1e-9) {
+      if (start < min || start > max) return false;
+      continue;
+    }
+    let near = (min - start) / delta;
+    let far = (max - start) / delta;
+    if (near > far) [near, far] = [far, near];
+    tMin = Math.max(tMin, near);
+    tMax = Math.min(tMax, far);
+    if (tMin > tMax) return false;
   }
-  return false;
+  return true;
 }
 
 function findBlockingObstacle(p1, p2, exclude) {
   for (const f of FURNITURE) {
     if (f === exclude) continue;
     const r = f.collider;
-    // Inflate by the customer's footprint so a "clear" line leaves room for
-    // their actual collision box, not just their center point.
-    const inflated = { x: r.x - PATH_MARGIN, y: r.y - PATH_MARGIN, w: r.w + 2 * PATH_MARGIN, h: r.h + 2 * PATH_MARGIN };
+    // Convert the furniture collider into the region a feet anchor cannot
+    // enter. The footprint is centered horizontally but extends upward from
+    // the anchor, so the vertical padding is deliberately asymmetric.
+    const inflated = {
+      x: r.x - PATH_MARGIN,
+      y: r.y,
+      w: r.w + 2 * PATH_MARGIN,
+      h: r.h + PATH_FOOT_H,
+    };
     if (segmentHitsRect(p1, p2, inflated)) return f;
   }
   return null;
@@ -358,8 +380,7 @@ function findBlockingObstacle(p1, p2, exclude) {
 function pointBlocked(x, y, excludeTable) {
   // Mirrors getFootBox's feet-anchored shape (see collision section above)
   // so the grid agrees with the runtime collision check that walks it.
-  const footH = 7;
-  const box = { x: x - PATH_MARGIN, y: y - footH, w: PATH_MARGIN * 2, h: footH };
+  const box = { x: x - PATH_MARGIN, y: y - PATH_FOOT_H, w: PATH_MARGIN * 2, h: PATH_FOOT_H };
   for (const f of FURNITURE) {
     if (f === excludeTable) continue;
     if (rectsOverlap(box, f.collider)) return true;
@@ -409,8 +430,6 @@ function computeCustomerPath(from, to, excludeTable) {
     cy: clamp(Math.round(p.y / PATH_CELL), 0, rows - 1),
   });
   const key = (cx, cy) => cy * cols + cx;
-  const start = toCell(from);
-  const goal = toCell(to);
 
   const blocked = new Map();
   const isBlocked = (cx, cy) => {
@@ -421,6 +440,46 @@ function computeCustomerPath(from, to, excludeTable) {
     }
     return blocked.get(k);
   };
+
+  // The entity usually starts between grid centers. Rounding that position
+  // can put the nominal start cell on the far side of a furniture corner,
+  // even though both the real start and the cell center are individually
+  // clear. Anchor each endpoint to the nearest grid center it can actually
+  // see so the first and last short hops are valid too.
+  const nearestVisibleCell = point => {
+    const origin = toCell(point);
+    const maxRadius = Math.max(cols, rows);
+    for (let radius = 0; radius < maxRadius; radius++) {
+      const candidates = [];
+      const minX = Math.max(0, origin.cx - radius);
+      const maxX = Math.min(cols - 1, origin.cx + radius);
+      const minY = Math.max(0, origin.cy - radius);
+      const maxY = Math.min(rows - 1, origin.cy + radius);
+      for (let cy = minY; cy <= maxY; cy++) {
+        for (let cx = minX; cx <= maxX; cx++) {
+          if (Math.max(Math.abs(cx - origin.cx), Math.abs(cy - origin.cy)) !== radius) continue;
+          const center = cellCenter(cx, cy);
+          candidates.push({
+            cx,
+            cy,
+            center,
+            distance: (center.x - point.x) ** 2 + (center.y - point.y) ** 2,
+          });
+        }
+      }
+      candidates.sort((a, b) => a.distance - b.distance);
+      for (const candidate of candidates) {
+        if (isBlocked(candidate.cx, candidate.cy)) continue;
+        if (!findBlockingObstacle(point, candidate.center, excludeTable)) {
+          return { cx: candidate.cx, cy: candidate.cy };
+        }
+      }
+    }
+    return origin;
+  };
+
+  const start = nearestVisibleCell(from);
+  const goal = nearestVisibleCell(to);
 
   const open = [{ cx: start.cx, cy: start.cy, g: 0, f: 0 }];
   const cameFrom = new Map();
@@ -444,6 +503,10 @@ function computeCustomerPath(from, to, excludeTable) {
         if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
         if (isBlocked(nx, ny)) continue;
         if (dx !== 0 && dy !== 0 && (isBlocked(cur.cx + dx, cur.cy) || isBlocked(cur.cx, cur.cy + dy))) continue;
+        // Endpoint occupancy alone can miss a narrow collider between two
+        // neighboring centers. Keep every A* edge collision-free so the
+        // unsmoothed path is always a valid fallback for string-pulling.
+        if (findBlockingObstacle(cellCenter(cur.cx, cur.cy), cellCenter(nx, ny), excludeTable)) continue;
         const g = cur.g + Math.hypot(dx, dy);
         const nk = key(nx, ny);
         if (gScore.has(nk) && g >= gScore.get(nk)) continue;
@@ -458,9 +521,10 @@ function computeCustomerPath(from, to, excludeTable) {
 
   const cellPoints = [];
   let k = reached;
-  while (cameFrom.has(k)) {
+  while (true) {
     const { cx, cy } = cellFromKey(k, cols);
     cellPoints.unshift(cellCenter(cx, cy));
+    if (!cameFrom.has(k)) break;
     k = cameFrom.get(k);
   }
   cellPoints.push(to);
@@ -2017,6 +2081,17 @@ function buildDecor() {
     });
   }
 
+  // Patterned rugs give each seating cluster a visual home without changing
+  // its collider. Their borders stay under chairs and tables, so the player
+  // still reads the furniture footprint before the decoration.
+  const rugs = [
+    { x: 27, y: 17, w: 70, h: 50, base: PUB.rugRed, accent: PUB.rugGold, motif: 0 },
+    { x: 126, y: 25, w: 53, h: 88, base: PUB.rugGreen, accent: PUB.rugGold, motif: 1 },
+    { x: 157, y: 183, w: 42, h: 113, base: PUB.rugRed, accent: PUB.paper, motif: 2 },
+    { x: 4, y: 234, w: 111, h: 47, base: PUB.rugGreen, accent: PUB.rugGold, motif: 1 },
+    { x: 4, y: 291, w: 111, h: 48, base: PUB.rugRed, accent: PUB.rugGold, motif: 0 },
+  ];
+
   // Table clutter, stored as offsets from the table centre so it can never
   // drift away from the table it belongs to.
   const clutter = new Map();
@@ -2071,12 +2146,21 @@ function buildDecor() {
   ];
 
   const posters = [
-    { x: 68, w: 14, h: 6, ink: PUB.cream, paper: PUB.burgundy },
+    { x: 68, w: 14, h: 6, ink: PUB.cream, paper: PUB.tomato },
     { x: 96, w: 10, h: 7, ink: PUB.amber, paper: PUB.wallDark },
     { x: 172, w: 12, h: 6, ink: PUB.coolPale, paper: PUB.green },
   ];
 
-  return { stains, clutter, barProps, lamps, windows, posters };
+  // Small hanging plants keep the greenery on the wall plane, where it can
+  // add the reference image's lived-in density without becoming fake,
+  // non-colliding furniture on the playable floor.
+  const wallPlants = [
+    { x: 15, y: 3, drop: 12 },
+    { x: 119, y: 2, drop: 15 },
+    { x: 190, y: 4, drop: 18 },
+  ];
+
+  return { stains, rugs, clutter, barProps, lamps, windows, posters, wallPlants };
 }
 
 // Prebaked lighting. One canvas per lamp radius, plus the cool spills.
@@ -2091,14 +2175,14 @@ function glowFor(radius, rgb, alpha) {
   return g;
 }
 
-const WARM_RGB = [255, 186, 96];
-const COOL_RGB = [120, 168, 226];
+const WARM_RGB = [255, 190, 92];
+const COOL_RGB = [91, 166, 201];
 
 // Rebuilt only when the viewport changes size.
 let vignetteCanvas = null;
 function ensureVignette() {
   if (vignetteCanvas && vignetteCanvas.width === viewW && vignetteCanvas.height === viewH) return;
-  vignetteCanvas = makeVignetteCanvas(viewW, viewH, 0.42);
+  vignetteCanvas = makeVignetteCanvas(viewW, viewH, 0.34);
 }
 
 function drawGlow(glow, worldX, worldY, alpha, camX, camY) {
@@ -2154,7 +2238,7 @@ function lampIntensity(lamp) {
 
 // ---- Pass 1: backdrop -------------------------------------------------------
 function drawBackdrop() {
-  ctx.fillStyle = '#100a14';
+  ctx.fillStyle = '#071512';
   ctx.fillRect(0, 0, viewW, viewH);
 }
 
@@ -2165,6 +2249,56 @@ function drawBackdrop() {
 // whole map rather than the camera's slice. The `ctx` parameter deliberately
 // shadows the screen context: these two functions are only ever called against
 // the offscreen room canvas.
+function drawRug(ctx, rug) {
+  const { x, y, w, h } = rug;
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(x + 1, y + 2, w, h);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = rug.accent;
+  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.fillStyle = rug.base;
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+  // A restrained kilim-like border: enough pattern to feel authored while
+  // leaving the rug centre calm behind moving silhouettes.
+  ctx.fillStyle = rug.accent;
+  for (let px = x + 4; px < x + w - 3; px += 6) {
+    ctx.fillRect(px, y + 3, 2, 1);
+    ctx.fillRect(px + 2, y + h - 4, 2, 1);
+  }
+  for (let py = y + 6; py < y + h - 5; py += 7) {
+    ctx.fillRect(x + 3, py, 1, 2);
+    ctx.fillRect(x + w - 4, py + 1, 1, 2);
+  }
+
+  const cx = Math.round(x + w / 2);
+  const cy = Math.round(y + h / 2);
+  if (rug.motif === 0) {
+    ctx.fillRect(cx - 5, cy, 11, 1);
+    ctx.fillRect(cx, cy - 4, 1, 9);
+    ctx.fillRect(cx - 3, cy - 2, 7, 5);
+    ctx.fillStyle = rug.base;
+    ctx.fillRect(cx - 2, cy - 1, 5, 3);
+  } else if (rug.motif === 1) {
+    ctx.fillRect(cx - 6, cy - 1, 13, 3);
+    ctx.fillStyle = rug.base;
+    ctx.fillRect(cx - 4, cy, 9, 1);
+  } else {
+    for (let py = y + 8; py < y + h - 7; py += 10) {
+      ctx.fillRect(cx - 4, py, 9, 1);
+      ctx.fillRect(cx, py - 2, 1, 5);
+    }
+  }
+
+  // Short fringe on the ends, kept inside the rug footprint.
+  ctx.fillStyle = PUB.creamDim;
+  for (let px = x + 3; px < x + w - 2; px += 4) {
+    ctx.fillRect(px, y, 1, 1);
+    ctx.fillRect(px + 1, y + h - 1, 1, 1);
+  }
+}
+
 function drawGround(ctx) {
   const tilesX = Math.ceil(WORLD_W / TILE);
   const tilesY = Math.ceil(WORLD_H / TILE);
@@ -2198,6 +2332,8 @@ function drawGround(ctx) {
     }
   }
 
+  for (const rug of DECOR.rugs) drawRug(ctx, rug);
+
   ctx.fillStyle = PUB.floorStain;
   for (const s of DECOR.stains) {
     ctx.fillRect(s.x, s.y, s.w, s.h);
@@ -2219,6 +2355,11 @@ function drawArchitecture(ctx) {
   ctx.fillRect(left, top, WORLD_W, WALL_TOP_H);
   ctx.fillStyle = PUB.wallLit;
   ctx.fillRect(left, top, WORLD_W, 2);
+  // Narrow timber panels suggest the raised wall face seen from overhead.
+  ctx.fillStyle = PUB.wallDark;
+  for (let x = 9; x < WORLD_W; x += 17) ctx.fillRect(x, top + 2, 1, WALL_TOP_H - 4);
+  ctx.fillStyle = PUB.wainscotLit;
+  ctx.fillRect(left, top + 2, WORLD_W, 1);
   // Dithered falloff down the wall face.
   ctx.fillStyle = PUB.wallDark;
   for (let x = 0; x < WORLD_W; x++) {
@@ -2237,15 +2378,19 @@ function drawArchitecture(ctx) {
     ctx.fillRect(wx - 1, top, w.w + 2, 7);
     ctx.fillStyle = PUB.midnight;
     ctx.fillRect(wx, top, w.w, 6);
+    // Tiny skyline blocks and warm windows beyond rain-streaked glass.
     ctx.fillStyle = PUB.cool;
-    for (let x = 0; x < w.w; x++) {
-      for (let y = 0; y < 6; y++) {
-        if (((x + y) & 1) === 0) ctx.fillRect(wx + x, top + y, 1, 1);
-      }
+    for (let x = 1; x < w.w - 1; x += 4) {
+      const buildingH = 2 + ((x + w.x) % 3);
+      ctx.fillRect(wx + x, top + 6 - buildingH, 3, buildingH);
+      ctx.fillStyle = ((x + w.x) & 1) ? PUB.amber : PUB.coolPale;
+      ctx.fillRect(wx + x + 1, top + 5 - (buildingH & 1), 1, 1);
+      ctx.fillStyle = PUB.cool;
     }
     ctx.fillStyle = PUB.coolPale;
     ctx.fillRect(wx + Math.floor(w.w / 2), top, 1, 6);
     ctx.fillRect(wx, top + 3, w.w, 1);
+    for (let x = 3; x < w.w; x += 7) ctx.fillRect(wx + x, top, 1, 2 + ((x + w.x) & 1));
   }
 
   for (const p of DECOR.posters) {
@@ -2258,6 +2403,20 @@ function drawArchitecture(ctx) {
     ctx.fillStyle = p.ink;
     ctx.fillRect(px + 2, py + 2, p.w - 4, 1);
     ctx.fillRect(px + 2, py + 4, Math.max(1, p.w - 6), 1);
+  }
+
+  for (const plant of DECOR.wallPlants) {
+    ctx.fillStyle = PUB.paper;
+    ctx.fillRect(plant.x - 2, plant.y, 5, 2);
+    ctx.fillStyle = PUB.green;
+    ctx.fillRect(plant.x, plant.y + 2, 1, plant.drop);
+    for (let py = plant.y + 3; py < plant.y + plant.drop; py += 3) {
+      const side = ((py + plant.x) & 1) ? -1 : 1;
+      ctx.fillRect(plant.x + side, py, 2, 2);
+      ctx.fillStyle = PUB.greenLit;
+      ctx.fillRect(plant.x + side, py, 1, 1);
+      ctx.fillStyle = PUB.green;
+    }
   }
 
   // Side walls.
@@ -2329,6 +2488,9 @@ function drawFloorLight(camX, camY) {
   for (const w of DECOR.windows) {
     drawGlow(glowFor(22, COOL_RGB, 0.16), w.x + w.w / 2, 8, 1, camX, camY);
   }
+  // A low, warm readability halo follows the player. It is deliberately much
+  // dimmer than a lamp pool: visible as separation, never as a spotlight.
+  drawGlow(glowFor(18, WARM_RGB, 0.11), player.x, player.y - 2, 0.75, camX, camY);
   // The door brightens while someone is coming in or going out.
   let doorBusy = 0;
   for (const c of customers) {
@@ -2350,8 +2512,10 @@ function drawBar(bar, camX, camY) {
   ctx.fillStyle = PUB.tableShadow;
   ctx.fillRect(x + 1, y + c.h, c.w, 2);
 
-  ctx.fillStyle = PUB.barFront;
+  ctx.fillStyle = PUB.ink;
   ctx.fillRect(x, y, c.w, c.h);
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(x + 1, y + 1, c.w - 2, c.h - 2);
   ctx.fillStyle = PUB.barTop;
   ctx.fillRect(x, y, c.w, Math.min(c.h, Math.max(4, Math.round(c.h * 0.42))));
   ctx.fillStyle = PUB.barTopLit;
@@ -2363,9 +2527,13 @@ function drawBar(bar, camX, camY) {
   ctx.fillStyle = PUB.barFrontDark;
   for (let sx = 3; sx < c.w - 2; sx += 5) ctx.fillRect(x + sx, y + c.h - 5, 1, 4);
   ctx.fillRect(x, y + c.h - 1, c.w, 1);
+  // Short grain marks stop the broad counter from reading as one flat slab.
+  for (let sx = 5; sx < c.w - 4; sx += 11) {
+    ctx.fillRect(x + sx, y + 4, Math.min(5, c.w - sx - 2), 1);
+  }
   ctx.fillStyle = PUB.barFrontLit;
   ctx.fillRect(x, y + c.h - 6, c.w, 1);
-  ctx.fillStyle = PUB.amberDim;
+  ctx.fillStyle = PUB.brass;
   for (let rx = 1; rx < c.w - 1; rx += 2) ctx.fillRect(x + rx, y + c.h - 3, 1, 1);
 
   for (const prop of DECOR.barProps) {
@@ -2405,15 +2573,25 @@ function drawBarProp(prop, camX, camY) {
 // One chair per seat point, so the chairs can never drift away from where
 // getTableSeats actually puts people. Shared by tables and stool benches.
 function drawSeatChairs(table, camX, camY) {
-  for (const seat of getTableSeats(table)) {
+  const seats = getTableSeats(table);
+  for (let i = 0; i < seats.length; i++) {
+    const seat = seats[i];
     const cx = Math.round(seat.x - camX - CHAIR_SIZE / 2);
     const cy = Math.round(seat.y - camY - CHAIR_SIZE / 2);
+    const alternate = (Math.round(table.x + table.y) + i * 3) % 7 < 2;
+    const base = alternate ? PUB.chairAlt : PUB.chair;
+    const lit = alternate ? PUB.chairAltLit : PUB.chairLit;
     ctx.fillStyle = PUB.tableShadow;
     ctx.fillRect(cx + 1, cy + CHAIR_SIZE - 1, CHAIR_SIZE, 2);
-    ctx.fillStyle = PUB.chair;
+    ctx.fillStyle = PUB.ink;
     ctx.fillRect(cx, cy, CHAIR_SIZE, CHAIR_SIZE);
-    ctx.fillStyle = PUB.chairLit;
+    ctx.fillStyle = base;
+    ctx.fillRect(cx + 1, cy + 1, CHAIR_SIZE - 2, CHAIR_SIZE - 2);
+    ctx.fillStyle = lit;
     ctx.fillRect(cx + 1, cy + 1, CHAIR_SIZE - 2, 1);
+    // One dark inset pixel reads as a tuft/button at this scale.
+    ctx.fillStyle = base;
+    ctx.fillRect(cx + Math.floor(CHAIR_SIZE / 2), cy + Math.floor(CHAIR_SIZE / 2), 1, 1);
   }
 }
 
@@ -2429,12 +2607,15 @@ function drawBench(bench, camX, camY) {
   const y = Math.round(bench.y - bench.h / 2 - camY);
   ctx.fillStyle = PUB.tableShadow;
   ctx.fillRect(x + 1, y + bench.h, bench.w, 2);
-  ctx.fillStyle = PUB.chair;
+  ctx.fillStyle = PUB.ink;
   ctx.fillRect(x, y, bench.w, bench.h);
+  ctx.fillStyle = PUB.chair;
+  ctx.fillRect(x + 1, y + 1, bench.w - 2, bench.h - 2);
   ctx.fillStyle = PUB.chairLit;
-  ctx.fillRect(x + 1, y + 1, bench.w - 2, 1);
+  ctx.fillRect(x + 2, y + 1, bench.w - 4, 1);
   ctx.fillStyle = PUB.tableEdge;
   ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1);
+  for (let px = x + 5; px < x + bench.w - 3; px += 9) ctx.fillRect(px, y + Math.floor(bench.h / 2), 1, 1);
 }
 
 // A table: contact shadow, dark edge, lit top, a highlight along the back
@@ -2458,6 +2639,12 @@ function drawTable(table, camX, camY) {
   ctx.fillRect(sx - halfW + 2, sy - halfH + 2, table.w - 4, table.h - 4);
   ctx.fillStyle = PUB.tableTopHi;
   ctx.fillRect(sx - halfW + 3, sy - halfH + 2, table.w - 6, 1);
+  ctx.fillStyle = PUB.tableTop;
+  for (let gy = sy - halfH + 6; gy < sy + halfH - 2; gy += 7) {
+    ctx.fillRect(sx - halfW + 3, gy, Math.max(1, table.w - 7), 1);
+  }
+  ctx.fillStyle = PUB.tableEdge;
+  ctx.fillRect(sx - halfW + 1, sy + halfH - 2, table.w - 2, 1);
 
   const items = DECOR.clutter.get(table);
   if (items) for (const it of items) drawTableProp(it, sx, sy, camX, camY);
@@ -2479,9 +2666,9 @@ function drawTableProp(item, tableSX, tableSY, camX, camY) {
     ctx.fillStyle = PUB.cream;
     ctx.fillRect(x - 1, y - 3, 1, 2);
   } else {
-    ctx.fillStyle = PUB.cream;
+    ctx.fillStyle = PUB.paper;
     ctx.fillRect(x - 2, y - 1, 5, 3);
-    ctx.fillStyle = PUB.burgundy;
+    ctx.fillStyle = PUB.tomato;
     ctx.fillRect(x - 1, y, 3, 1);
   }
 }
@@ -2529,7 +2716,7 @@ function drawForeground(camX, camY) {
 // resets for free along with the score.
 function drawGrade() {
   const lvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP);
-  const nightAlpha = Math.min(0.30, 0.08 + (lvl - 1) * 0.026);
+  const nightAlpha = Math.min(0.27, 0.05 + (lvl - 1) * 0.024);
   ctx.globalAlpha = nightAlpha;
   ctx.fillStyle = PUB.midnight;
   ctx.fillRect(0, 0, viewW, viewH);
@@ -2564,9 +2751,23 @@ function drawEntity(e, camX, camY) {
     : set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
   const sx = e.x - camX - sprite.w / 2 + (e.swayOffset || 0);
   const sy = e.y - camY - sprite.h;
+  const footX = Math.round(e.x - camX);
+  const footY = Math.round(e.y - camY);
+  // Tiny broken rings make the two gameplay roles instantly readable in a
+  // crowded room without turning the pub into a neon arena. They sit under
+  // the feet, preserve the authored silhouette, and survive the night grade.
+  if (e === player || e === hunter) {
+    ctx.globalAlpha = e === player ? 0.92 : 0.72;
+    ctx.fillStyle = e === player ? PUB.amber : PUB.tomato;
+    ctx.fillRect(footX - 6, footY, 4, 1);
+    ctx.fillRect(footX + 3, footY, 4, 1);
+    ctx.fillRect(footX - 7, footY - 2, 1, 2);
+    ctx.fillRect(footX + 7, footY - 2, 1, 2);
+    ctx.globalAlpha = 1;
+  }
   // A small contact shadow so nobody looks pasted onto the floor.
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(Math.round(e.x - camX - 4), Math.round(e.y - camY - 1), 8, 2);
+  ctx.fillRect(footX - 4, footY - 1, 8, 2);
   // Flicker the player after a hit so the temporary invulnerability is visible
   // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
@@ -2624,47 +2825,100 @@ function sortByY(a, b) { return a.sortY - b.sortY; }
 // bar above the bubble — green/yellow/red as the customer's patience runs
 // down toward giving up.
 function patienceBarColor(frac) {
-  if (frac > 0.5) return '#3ddc61';
-  if (frac > 0.2) return '#e8c547';
-  return '#e84c3d';
+  if (frac > 0.5) return PUB.greenLit;
+  if (frac > 0.2) return PUB.amber;
+  return PUB.tomato;
 }
 
-const BUBBLE_FRAME_DEFAULT = '#141414';
-const BUBBLE_FRAME_REGULAR = '#c98a2a';  // a named regular is waiting
-const BUBBLE_FRAME_CARRIED = '#2e8b45';  // this is the order you're carrying
+const BUBBLE_FRAME_DEFAULT = PUB.ink;
+const BUBBLE_FRAME_REGULAR = PUB.amberDim; // a named regular is waiting
+const BUBBLE_FRAME_CARRIED = PUB.greenLit; // this is the order you're carrying
+const placedOrderBubbles = [];
+
+function orderBubbleSpotFree(rect) {
+  if (rect.x < 2 || rect.y < 2 || rect.x + rect.w > viewW - 2 || rect.y + rect.h > viewH - 2) return false;
+  for (const other of placedOrderBubbles) {
+    if (rectsTouch(rect, other)) return false;
+  }
+  return true;
+}
 
 // `grow` (0-1) drives a three-step pop: a stub, a short frame, then the full
 // bubble with its icon and patience bar. Stepping it keeps the animation on
 // whole pixels instead of easing through fractional sizes.
 function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor, grow) {
   const icon = ORDER_ICONS[orderType];
-  const pad = 2;
+  const pad = 3;
   const bw = icon.sprite.w + pad * 2;
   const full = icon.sprite.h + pad * 2;
   const step = grow == null || grow >= 1 ? 3 : Math.max(1, Math.ceil(grow * 3));
   const bh = step === 3 ? full : (step === 2 ? full - 4 : 3);
-  const sx = Math.round(worldX - camX - bw / 2);
-  const sy = Math.round(headTopY - camY - bh - 4);
+  const reserveTop = patienceFraction != null && step === 3 ? 3 : 0;
+  let bx = clamp(Math.round(worldX - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
+  let by = clamp(
+    Math.round(headTopY - camY - bh - 4) - reserveTop,
+    2,
+    Math.max(2, viewH - (reserveTop + bh + 3) - 2),
+  );
+  const bounds = { x: bx, y: by, w: bw + 1, h: reserveTop + bh + 3 };
+
+  // Orders at the rear booth used to disappear behind the top edge or the
+  // score plate. Keep them camera-safe and try the open side of an occupied
+  // bubble before dropping down over a character.
+  if (!orderBubbleSpotFree(bounds)) {
+    const candidates = [];
+    for (const other of placedOrderBubbles) {
+      candidates.push(
+        { x: other.x + other.w + 2, y: by },
+        { x: other.x - bounds.w - 2, y: by },
+        { x: bx, y: other.y + other.h + 2 },
+        { x: bx, y: other.y - bounds.h - 2 },
+      );
+    }
+    for (const candidate of candidates) {
+      const test = { x: candidate.x, y: candidate.y, w: bounds.w, h: bounds.h };
+      if (!orderBubbleSpotFree(test)) continue;
+      bounds.x = test.x;
+      bounds.y = test.y;
+      break;
+    }
+  }
+  placedOrderBubbles.push(bounds);
+  bx = bounds.x;
+  by = bounds.y;
+  const sx = bx;
+  const sy = by + reserveTop;
   const border = highlighted ? BUBBLE_FRAME_CARRIED : (frameColor || BUBBLE_FRAME_DEFAULT);
 
+  // One-pixel shadow, clipped paper corners, and a coloured top stitch give
+  // this the same hand-built material language as the room furniture.
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(sx + 1, sy + 2, bw, bh);
   ctx.fillStyle = border;
-  ctx.fillRect(sx, sy, bw, bh);
-  ctx.fillStyle = '#f5f5f5';
-  ctx.fillRect(sx + 1, sy + 1, bw - 2, bh - 2);
+  ctx.fillRect(sx + 1, sy, bw - 2, bh);
+  ctx.fillRect(sx, sy + 1, bw, bh - 2);
+  ctx.fillStyle = PUB.paper;
+  ctx.fillRect(sx + 2, sy + 1, bw - 4, bh - 2);
+  ctx.fillRect(sx + 1, sy + 2, bw - 2, bh - 4);
+  if (bh >= 7) {
+    ctx.fillStyle = highlighted ? PUB.greenLit : PUB.cream;
+    ctx.fillRect(sx + 3, sy + 1, bw - 6, 1);
+  }
   ctx.fillStyle = border;
-  ctx.fillRect(sx + bw / 2 - 2, sy + bh, 4, 2);
-  ctx.fillStyle = '#f5f5f5';
-  ctx.fillRect(sx + bw / 2 - 1, sy + bh, 2, 1);
+  const tailX = clamp(Math.round(worldX - camX) - 1, sx + 2, sx + bw - 4);
+  ctx.fillRect(tailX, sy + bh, 3, 2);
+  ctx.fillStyle = PUB.paper;
+  ctx.fillRect(tailX + 1, sy + bh, 1, 1);
 
   if (step < 3) return;   // mid-pop: frame only, no icon and no patience bar
   drawSprite(icon.sprite, icon.palette, sx + pad, sy + pad, false);
 
   if (patienceFraction != null) {
     const barY = sy - 3;
-    ctx.fillStyle = '#1a1a1a';
+    ctx.fillStyle = PUB.ink;
     ctx.fillRect(sx, barY, bw, 2);
     ctx.fillStyle = patienceBarColor(patienceFraction);
-    ctx.fillRect(sx, barY, Math.round(bw * clamp(patienceFraction, 0, 1)), 2);
+    ctx.fillRect(sx + 1, barY, Math.round((bw - 2) * clamp(patienceFraction, 0, 1)), 1);
   }
 }
 
@@ -2690,8 +2944,8 @@ function drawOrderBubbleFor(e, camX, camY, frameColor) {
 const DIALOGUE_MAX_W = 92;
 const DIALOGUE_PAD = 2;
 const DIALOGUE_LINE_GAP = 1;
-const DIALOGUE_BG = '#f3ead6';
-const DIALOGUE_INK = '#241c18';
+const DIALOGUE_BG = PUB.paper;
+const DIALOGUE_INK = PUB.ink;
 
 // Reused across frames so the bubble pass allocates nothing per frame.
 const placedBubbles = [];
@@ -2722,6 +2976,7 @@ function drawDialogueBubbles(camX, camY) {
   if (!lines.length) return;
   placedBubbles.length = 0;
   placedBubbles.push(measureHud());
+  for (const bubble of placedOrderBubbles) placedBubbles.push(bubble);
 
   for (const item of lines) {
     const r = regularById.get(item.who);
@@ -2786,12 +3041,22 @@ function drawDialogueBubbles(camX, camY) {
     if (rect.y < 2) rect.y = 2;
     placedBubbles.push(rect);
 
-    // Frame, fill, and a tail pointing back at whoever is talking.
+    // Frame, clipped paper corners, top stitch, and a tail pointing back at
+    // whoever is talking. The offset dark plate keeps text readable over the
+    // patterned rugs without resorting to a modern rounded card.
     const accent = r.cfg.accent || '#141414';
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(rect.x + 1, rect.y + 2, bw, bh);
     ctx.fillStyle = accent;
-    ctx.fillRect(rect.x, rect.y, bw, bh);
+    ctx.fillRect(rect.x + 1, rect.y, bw - 2, bh);
+    ctx.fillRect(rect.x, rect.y + 1, bw, bh - 2);
     ctx.fillStyle = DIALOGUE_BG;
-    ctx.fillRect(rect.x + 1, rect.y + 1, bw - 2, bh - 2);
+    ctx.fillRect(rect.x + 2, rect.y + 1, bw - 4, bh - 2);
+    ctx.fillRect(rect.x + 1, rect.y + 2, bw - 2, bh - 4);
+    if (bw > 7) {
+      ctx.fillStyle = PUB.cream;
+      ctx.fillRect(rect.x + 3, rect.y + 1, bw - 6, 1);
+    }
 
     const tailX = clamp(Math.round(r.x - camX) - 1, rect.x + 2, rect.x + bw - 4);
     ctx.fillStyle = accent;
@@ -2830,10 +3095,19 @@ function getCamera() {
 function drawHud() {
   const text = 'LEVEL ' + getLevel() + '  SCORE ' + score;
   const hud = measureHud();
-  ctx.fillStyle = 'rgba(12,8,16,0.74)';
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(hud.x + 2, hud.y + 2, hud.w, hud.h);
+  ctx.fillStyle = PUB.ink;
   ctx.fillRect(hud.x, hud.y, hud.w, hud.h);
-  ctx.fillStyle = PUB.amberDim;
-  ctx.fillRect(hud.x, hud.y, hud.w, 1);
+  ctx.fillStyle = 'rgba(24,49,47,0.94)';
+  ctx.fillRect(hud.x + 1, hud.y + 1, hud.w - 2, hud.h - 2);
+  ctx.fillStyle = PUB.amber;
+  ctx.fillRect(hud.x + 2, hud.y + 1, hud.w - 4, 1);
+  ctx.fillStyle = PUB.greenLit;
+  ctx.fillRect(hud.x + 2, hud.y + hud.h - 2, hud.w - 4, 1);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(hud.x + 2, hud.y + 3, 1, 1);
+  ctx.fillRect(hud.x + hud.w - 3, hud.y + 3, 1, 1);
   fontDrawText(ctx, text, 5, 5, PUB.cream);
 
   const barY = hud.y + FONT_H + 6;
@@ -2841,12 +3115,14 @@ function drawHud() {
     const x = hud.x + 3 + i * (LIFE_SEG_W + LIFE_SEG_GAP);
     ctx.fillStyle = PUB.ink;
     ctx.fillRect(x - 1, barY - 1, LIFE_SEG_W + 2, LIFE_SEG_H + 2);
-    ctx.fillStyle = PUB.burgundy;
+    ctx.fillStyle = PUB.wallDark;
     ctx.fillRect(x, barY, LIFE_SEG_W, LIFE_SEG_H);
     const fill = clamp(life * LIFE_SEGMENT_COUNT - i, 0, 1);
     if (fill > 0) {
-      ctx.fillStyle = fill > 0.5 ? '#c74b3c' : '#e8620c';
+      ctx.fillStyle = fill > 0.5 ? PUB.tomato : PUB.amber;
       ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), LIFE_SEG_H);
+      ctx.fillStyle = fill > 0.5 ? '#e9785e' : PUB.cream;
+      ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), 1);
     }
   }
 }
@@ -2995,6 +3271,9 @@ function render() {
 
   // Order bubbles float above the scene and above the grade, so a patience bar
   // is never dimmed by the lighting.
+  placedOrderBubbles.length = 0;
+  const measuredHud = measureHud();
+  placedOrderBubbles.push({ x: measuredHud.x, y: measuredHud.y, w: measuredHud.w, h: measuredHud.h });
   for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
   for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
   if (player.carrying) {

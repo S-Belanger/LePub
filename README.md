@@ -10,6 +10,12 @@ A compact pixel-art serving game where a waiter in a deer onesie works a crowded
 
 Four visual redesign concepts live in [`concepts/`](concepts/). They use the same cast and gameplay scenario to compare cinematic, neon-noir, character-led, and arcade-first approaches without changing the playable build.
 
+The selected direction is documented in
+[`assets/art-direction/`](assets/art-direction/): a warm, crowded night pub
+translated into the existing straight-overhead, gameplay-first camera. The
+reference controls palette, materials, lighting, and decorative density—not
+the room projection or collision layout.
+
 With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
 
 ## Play the game
@@ -101,13 +107,22 @@ Static room art and lighting textures are baked into offscreen canvases. Sprite 
 
 Edit the HTML, CSS, or JavaScript and refresh the browser. There is no compilation or generated bundle.
 
-There is currently no automated test suite. A quick syntax check from PowerShell is:
+Active work is checkpointed in [`HANDOFF.md`](HANDOFF.md). Repository-level
+continuity rules in [`AGENTS.md`](AGENTS.md) require updating that handoff after
+each meaningful milestone, so an interrupted session can resume safely.
+
+There is no build step or linter. Run the syntax and smoke checks from PowerShell:
 
 ```powershell
 node --check game.js
 Get-ChildItem src -Filter *.js | ForEach-Object { node --check $_.FullName }
+node tests/smoke.js
 git diff --check
 ```
+
+The dependency-free smoke test loads the production scripts in their real
+order, runs every customer seat route in and out, completes a waiter visit,
+and exercises the render pass against a lightweight canvas/DOM stand-in.
 
 For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and crossing a 100-point level boundary.
 
