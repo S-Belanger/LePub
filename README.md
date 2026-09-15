@@ -16,6 +16,10 @@ translated into the existing straight-overhead, gameplay-first camera. The
 reference controls palette, materials, lighting, and decorative density—not
 the room projection or collision layout.
 
+The renderer uses a 2x internal art grid over the unchanged logical world, so
+fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
+light, and wood grain remain crisp without changing movement or collision.
+
 With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
 
 ## Play the game
@@ -60,7 +64,9 @@ Life begins regenerating after three hit-free seconds. A fully empty bar takes 2
 | Restart after being caught | `Space` | On-screen restart/action button |
 | Fullscreen | Fullscreen button | Fullscreen button, where supported |
 
-The canvas adapts to landscape and portrait screens using integer pixel scaling, so the artwork remains crisp instead of being stretched across fractional pixels.
+The canvas adapts to landscape and portrait screens using integer CSS scaling
+over a 2x art backing store, so the finer pixel work remains crisp instead of
+being stretched across fractional pixels.
 
 ## The corner-table regulars
 
@@ -101,7 +107,10 @@ The game uses classic scripts that share one global scope. Their order in `index
 | `src/sound.js` | Lazy Web Audio initialization and synthesized sound cues |
 | `assets/` | Gameplay screenshot, game-over art, level-completion art, and the floor-plan reference |
 
-Static room art and lighting textures are baked into offscreen canvases. Sprite renders are cached by sprite, palette, and facing, while furniture and characters share one pooled y-sorted render pass.
+Static room art and lighting textures are baked into 2x offscreen canvases.
+Sprite renders are cached by sprite, palette, and facing; collision dimensions
+remain separate from visual sheets, while furniture and characters share one
+pooled y-sorted render pass.
 
 ## Development
 

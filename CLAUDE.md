@@ -37,15 +37,20 @@ a layout target. Preserve furniture colliders while the visual language is
 being established, and keep main walk lanes calmer than the bar and seating
 clusters so orders, characters, and chase routes stay readable.
 
+Palette swaps alone do not satisfy this direction. The accepted renderer uses
+a 2x art backing grid, fine floorboards, dimensional furniture, dense readable
+props, localized light/reflections, varied patrons, and coherent walnut/brass/
+parchment UI. `assets/art-direction/README.md` is the concrete acceptance list.
+
 ## Files and load order
 
 Script order in `index.html` matters: each file only uses things defined in the ones before it, and they share one global scope (top-level `const`/`function` in a classic script is visible to later scripts).
 
 | File | Contains |
 | --- | --- |
-| `src/pixelfont.js` | 3×5 bitmap font: glyphs, `fontTextWidth`, `fontDrawText`, `fontDrawTextShadow`, `fontWrapText`. Pure data + helpers. |
+| `src/pixelfont.js` | 3×5 bitmap font: glyphs, `fontTextWidth`, `fontDrawText`, `fontDrawTextShadow`, `fontWrapText`. `fontDrawText`/`fontDrawTextShadow` take an optional integer `scale` for headlines. Pure data + helpers. |
 | `src/scenery.js` | The `PUB` palette, `makeSeededRandom`, and the `makeGlowCanvas`/`makeVignetteCanvas` lighting bakers. No game state. |
-| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`), every sprite and palette (doe, hunter, customers, the three regulars, the waiter, order icons) and the `SPRITES` set map. No canvas, no game state. |
+| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`, `composeSprite`, `detailSprite`), every sprite and palette (doe, hunter, customers, the three regulars, the waiter, order icons) and the `SPRITES` set map. No canvas, no game state. |
 | `src/dialogue-content.js` | `DIALOGUE_LINES` and `DIALOGUE_EXCHANGES` — authored text only. |
 | `src/dialogue.js` | The `Dialogue` module: selection, weighting, cooldowns, queueing, repetition control. |
 | `src/regulars.js` | `REGULARS` config, `INTOX_STAGES`, `NAZIM_STAGE_VISUALS`, order weighting, mood constants. Data and pure functions. |
@@ -63,6 +68,12 @@ The canvas fills the browser viewport. `applyViewport()` recomputes three things
 - `pixelScale` — an **integer** css-pixels-per-game-pixel factor, so art is never resampled onto fractional pixels.
 - `viewW` / `viewH` — the internal (game-pixel) resolution, sized so `viewW*scale × viewH*scale` covers as much of the viewport as possible.
 
+`ART_SCALE` is separate from both: the canvas backing store is
+`viewW*ART_SCALE × viewH*ART_SCALE` (currently 2x), while CSS size and all
+simulation/camera coordinates remain in logical units. The context transform
+maps logical drawing calls to that denser store. Half-unit scenery strokes and
+`pixelSize: 0.5` sprite sheets therefore resolve to one real backing pixel.
+
 Landscape leans on a 320×180 base, portrait on 180×320 (the world is portrait, so a phone gets a portrait internal resolution instead of a squashed 16:9 letterbox). Both are clamped by `VIEW_MIN`/`VIEW_MAX` so an ultrawide monitor can't reveal empty space outside the pub — the leftover viewport is painted as a dark surround by CSS instead.
 
 **`viewW`/`viewH` are `let`, not constants.** Everything downstream — camera, HUD, bubbles, overlays, the vignette — reads the current values, so a resize or rotation mid-run is just a re-derivation and never touches game state. Resizes are coalesced into the next frame via `viewportDirty`, and layout is read once per resize, never per frame. Setting `canvas.width` resets 2D context state, so `imageSmoothingEnabled = false` is restored there.
@@ -71,7 +82,9 @@ Landscape leans on a 320×180 base, portrait on 180×320 (the world is portrait,
 
 ### 2. World and furniture: hand-placed, not procedural
 
-`WORLD_W` 200 × `WORLD_H` 360, portrait. `TILE` (16) is only the floor-rendering grid — not a collision or layout grid.
+`WORLD_W` 200 × `WORLD_H` 360, portrait. The floor renderer uses deterministic
+6-unit walnut plank rows with varied lengths; this is visual texture only, not
+a collision or layout grid.
 
 `BAR_SEGMENTS` is three rectangles forming an L; `TABLES` and `BENCHES` are literal arrays of `makeTable(cx, cy, opts)` calls, all traced from `assets/planFloor.png`. `makeTable` takes `{w, h, seats: {n, s, e, w}, type, seatStyle}` where each side's count is how many chairs are spaced evenly along that edge (default 1, `0` = none). `getTableSeats()` derives those points and is used for **both** gameplay seat positions and chair sprite placement, so the two can't drift apart; each returned seat also carries the `side` it sits on.
 
@@ -89,7 +102,7 @@ A collider is padded by `CHAIR_GAP + CHAIR_SIZE` **only on sides that actually h
 
 ### 3. Sprite authoring and rendering
 
-All visuals are rows-of-palette-characters: `R(char, count, ...)` builds a row string, `buildSprite(rows)` wraps rows into `{rows, w, h}`, and a palette object maps each character to a hex colour (or `null` for transparent). The regulars are authored as literal 14-wide strings instead of `R()` runs because their shapes are irregular enough that the runs would be less readable than the picture.
+All visuals are rows-of-palette-characters: `R(char, count, ...)` builds a row string, `buildSprite(rows)` wraps rows into `{rows, w, h}`, and a palette object maps each character to a hex colour (or `null` for transparent). The regulars are authored as literal 14-wide strings instead of `R()` runs because their shapes are irregular enough that the runs would be less readable than the picture. `detailSprite()` refines those silhouettes onto the 2x grid with half-unit pixels, finer corners, and material ramps. `composeSprite()` adds wider prop poses while retaining a custom feet anchor; the Doe's `carry`/`carryWalk` sheets use it for the outstretched pint.
 
 `drawSprite()` is still the single renderer for the format, but it no longer paints pixel by pixel every frame: it **bakes** each `(sprite, palette, facing)` combination into an offscreen canvas the first time it's needed and blits it afterwards. The cache is nested `WeakMap`s keyed by object identity, so a customer's one-off palette is collected along with the customer.
 
@@ -97,7 +110,7 @@ A sprite set is keyed by pose name. Movers use `idle`/`walk` driven by `legFrame
 
 ### 4. Entities and movement
 
-`makeEntity(kind, x, y)` creates the shared shape used by the player, hunter, customers **and regulars**. **An entity's `(x, y)` is its feet/anchor point, not top-left** — sprites draw upward from `y - sprite.h`, and this underlies collision boxes (`getFootBox`), z-sorting and bubble placement everywhere.
+`makeEntity(kind, x, y)` creates the shared shape used by the player, hunter, customers **and regulars**. **An entity's `(x, y)` is its feet/anchor point, not top-left.** `ENTITY_HITBOXES` preserves the original physics dimensions; visual width/height and optional `anchorX` come from the selected sheet. Never derive collision from refined sprite dimensions or a wider prop pose.
 
 `tryMove(e, dx, dy)` resolves X and Y independently against `FURNITURE` colliders so movement slides along walls/tables instead of stopping dead, returning `{x, y, blockedX, blockedY}`. `collidesAt(e, x, y, exclude)` takes an optional piece of furniture to ignore — that is what lets a customer walk *into* their own table's padded collider to reach the chair inside it. Base speeds: player **62**, customer 38, hunter 54 (recomputed every frame from the level), waiter 46, ghost 16.
 
@@ -183,16 +196,20 @@ Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`,
 4. **y-sorted scene** — furniture and every character in one pass sorted by `sortY`. The table's `sortY` intentionally uses the table top's own front edge, not the chair-inclusive footprint, so a customer on the south chair draws *in front of* their table (see the comment in `makeTable`). Entries come from a reused pool, so a busy frame allocates nothing.
 5. **foreground** — the lamp fixtures themselves, then dust motes.
 6. **grade** — a level-scaled midnight tint plus a dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes).
-7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
+7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. Both are parchment cards painted by `drawParchmentPlate()`; the frame colour stays semantic (regular, carried, speaker accent) and the patience gauge is brass-capped. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
 8. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
-9. **HUD** — a compact pixel-font plate with level, score and the three-segment regenerating life bar.
-10. **state overlay** — either `assets/caught.jpg` with the final score/reaction plus the high-score table (or the name field, while one is being filed), or `assets/LevelDone.png` with the completed and incoming levels, cover-fit to the live internal resolution. The caught plate is sized from the rows it has to hold, so the table and the name field fit without overflowing it.
+9. **HUD** — a walnut pub sign hung on two brass chains from the top of the frame (`drawWalnutPlate` with `chains`): `SHIFT n` and `TIPS n` on the top line, and life as three pint glasses (`drawPint`) that drain from the top and refill. `hudRect` starts at (3, 0) and includes the chains, because it doubles as the bubble-layout obstacle.
+10. **state overlay** — either `assets/caught.jpg` with the final score/reaction plus the high-score ledger (or the name field, while one is being filed), or `assets/LevelDone.png` with the completed and incoming shifts, cover-fit to the live internal resolution (`drawSplashImage`). Both boards are `drawWalnutPlate` with brass rails and pixel-font headlines at `scale` 3 / 2 — there is no `ctx.fillText` anywhere in the game. The caught board is sized from the rows it has to hold, so the ledger, the ink-on-parchment name field and the speaker's quip note fit without overflowing it.
+
+All of that interface is built from one **material kit** (`UI` palette plus `fillClipped`, `drawRivet`, `drawWalnutPlate`, `drawParchmentPlate`, `drawPlateTail`, `drawBrassRule`, `drawCenteredText` in `game.js`): walnut, brass, parchment, clipped corners, no rounded cards. New UI should go through those painters rather than fresh `fillRect` styling, and `style.css` mirrors the same hexes so the DOM shell matches the canvas.
 
 Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and sway) is skipped entirely when `prefersReducedMotion` is set. `imageSmoothingEnabled = false` and pixelated CSS rendering are preserved throughout.
 
 ### 13. Page shell, input and touch
 
-`index.html` is a fullscreen shell: the canvas is the page, and the title, subtitle and key list live in a start/help overlay (`#overlay`, toggled by the `?` chip and `Escape`) rather than permanently consuming layout. `style.css` uses `100dvh` with a `100vh` fallback, blocks document scrolling and overscroll, honours safe-area insets, and paints the letterbox area as a deliberate dark surround.
+`index.html` is a fullscreen shell: the canvas is the page, and the title, subtitle and key list live in a start/help overlay (`#overlay`, toggled by the `?` chip and `Escape`) rather than permanently consuming layout. `style.css` uses `100dvh` with a `100vh` fallback, blocks document scrolling and overscroll, honours safe-area insets, and paints the letterbox area as the pub's own dark wainscoting under one amber lamp.
+
+The shell uses the same materials as the canvas UI: `.board` is a walnut plank (bevels, grain, ink outline) and `.riveted` adds brass corner rivets as backgrounds; the corner chips are `chip board` plaques with brass lettering (the fullscreen icon is four gradient-drawn brackets, not a glyph); the start panel is a `panel board riveted` sign with brass rails, chains drawn by its `::before`/`::after` (which is why its content scrolls inside `.panel-scroll` rather than the panel clipping itself), a parchment `.keys` menu card with brass `kbd` keycaps, and burgundy-leather `.primary` buttons. The touch stick is a beer mat with a brass knob and the action button a leather-and-brass bell. `#top-bar` sits above the overlay so sound and fullscreen stay reachable while paused.
 
 - **Keyboard**: WASD/arrows to move, `E` *or* `Space` to grab and deliver, `Space` to restart on the caught screen, `Escape` for the overlay.
 - **Touch**: a DOM overlay (`#touch`), not canvas-painted — a constrained virtual stick bottom-left and a large action button bottom-right, both on Pointer Events with per-widget pointer capture so movement and interaction work simultaneously. The stick's centre is cached on `pointerdown` so dragging never reads layout. Targets are ≥44 CSS px and only appear on a coarse pointer/touchscreen (or the first `touchstart`).

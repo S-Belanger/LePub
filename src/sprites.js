@@ -24,6 +24,84 @@ function buildSprite(rows) {
   return { rows, w, h };
 }
 
+function composeSprite(base, width, offsetX, additions) {
+  const rows = Array.from({ length: base.h }, (_, y) => {
+    const row = Array(width).fill('.');
+    const source = base.rows[y] || '';
+    for (let x = 0; x < source.length; x++) row[offsetX + x] = source[x];
+    return row;
+  });
+  for (const addition of additions) {
+    for (let y = 0; y < addition.rows.length; y++) {
+      const patch = addition.rows[y];
+      const target = rows[addition.y + y];
+      if (!target) continue;
+      for (let x = 0; x < patch.length; x++) {
+        if (patch[x] !== '.' && addition.x + x < width) target[addition.x + x] = patch[x];
+      }
+    }
+  }
+  return { rows: rows.map(row => row.join('')), w: width, h: base.h, anchorX: offsetX + base.w / 2 };
+}
+
+// Refine a coarse authored silhouette onto a 2x denser pixel grid while it
+// keeps the same logical on-screen footprint. Edge corners become true
+// one-backing-pixel diagonals and material ramps add tiny highlights/shadows
+// inside each original pixel. This is not a CSS scale: the returned sheet has
+// genuinely different pixels, rendered at half a logical unit per pixel by
+// game.js's 2x art backing store.
+function detailSprite(sprite, ramps = {}) {
+  const source = sprite.rows.map(row => row.padEnd(sprite.w, '.'));
+  const out = Array.from({ length: sprite.h * 2 }, () => Array(sprite.w * 2).fill('.'));
+  const at = (x, y) => x < 0 || y < 0 || x >= sprite.w || y >= sprite.h ? '.' : source[y][x];
+
+  for (let y = 0; y < sprite.h; y++) {
+    for (let x = 0; x < sprite.w; x++) {
+      const key = at(x, y);
+      if (key === '.') continue;
+      const ramp = ramps[key] || [key, key];
+      const hi = ramp[0] || key;
+      const lo = ramp[1] || key;
+      const block = [[key, key], [key, key]];
+      const openN = at(x, y - 1) === '.';
+      const openS = at(x, y + 1) === '.';
+      const openW = at(x - 1, y) === '.';
+      const openE = at(x + 1, y) === '.';
+
+      if (openN) { block[0][0] = hi; block[0][1] = hi; }
+      if (openW) block[1][0] = hi;
+      if (openS) { block[1][0] = lo; block[1][1] = lo; }
+      if (openE) block[1][1] = lo;
+
+      // Trim only fully exposed corners. This replaces square stairsteps with
+      // a finer diagonal without eroding single-pixel facial details.
+      if (openN && openW && at(x - 1, y - 1) === '.') block[0][0] = '.';
+      if (openN && openE && at(x + 1, y - 1) === '.') block[0][1] = '.';
+      if (openS && openW && at(x - 1, y + 1) === '.') block[1][0] = '.';
+      if (openS && openE && at(x + 1, y + 1) === '.') block[1][1] = '.';
+
+      // A restrained alternating weave inside broad cloth/hair regions.
+      if (!openN && !openS && !openW && !openE && ramps[key] && ((x + y) & 1) === 0) {
+        block[0][0] = hi;
+        block[1][1] = lo;
+      }
+
+      out[y * 2][x * 2] = block[0][0];
+      out[y * 2][x * 2 + 1] = block[0][1];
+      out[y * 2 + 1][x * 2] = block[1][0];
+      out[y * 2 + 1][x * 2 + 1] = block[1][1];
+    }
+  }
+
+  return {
+    rows: out.map(row => row.join('')),
+    w: sprite.w * 2,
+    h: sprite.h * 2,
+    pixelSize: 0.5,
+    anchorX: sprite.anchorX,
+  };
+}
+
 // --- Doe: antler headband, blonde hair, glasses, beard, brown deer onesie
 // with a cream chest patch. ------------------------------------------------
 const DOE_PALETTE = {
@@ -43,6 +121,9 @@ const DOE_PALETTE = {
   c: '#e8ddc0', // chest patch
   C: '#c9b98f', // chest patch shade
   s: '#2a2018', // feet
+  u: '#271913', // carried mug outline
+  q: '#fff0ca', // carried mug foam
+  b: '#d7902f', // carried beer
 };
 
 const DOE_IDLE = buildSprite([
@@ -119,6 +200,19 @@ const HUNTER_IDLE = buildSprite([
   R('.', 3, 's', 3, '.', 2, 's', 3, '.', 3),
 ]);
 
+// Carry pose: a real outstretched arm and foaming pint, echoing the supplied
+// hero reference instead of representing the drink only as a UI bubble. The
+// custom anchor keeps the body on the physics position while the mug extends
+// to either side when the sheet flips.
+const DOE_CARRY = composeSprite(DOE_IDLE, 26, 2, [
+  { x: 16, y: 9, rows: ['dddkkk', 'dddkkk', '..dkk.'] },
+  { x: 20, y: 7, rows: ['.uuu..', 'uqqqu.', 'ubbbuu', 'ubbbuu', 'ubbbuu', 'uuuuu.'] },
+]);
+const DOE_CARRY_WALK = composeSprite(DOE_WALK, 26, 2, [
+  { x: 16, y: 9, rows: ['dddkkk', 'dddkkk', '..dkk.'] },
+  { x: 20, y: 7, rows: ['.uuu..', 'uqqqu.', 'ubbbuu', 'ubbbuu', 'ubbbuu', 'uuuuu.'] },
+]);
+
 const HUNTER_WALK = buildSprite([
   ...HUNTER_IDLE.rows.slice(0, 14),
   R('.', 4, 'p', 2, '.', 2, 'p', 2, '.', 4),
@@ -152,28 +246,28 @@ const CUSTOMER_WALK = buildSprite([
   R('.', 1, 's', 3, '.', 8, 's', 3, '.', 1),
 ]);
 
-const CUSTOMER_SHIRT_COLORS = [
-  { base: '#47728e', light: '#6f9cb4', dark: '#31566e' },
-  { base: '#8e3733', light: '#c05748', dark: '#632725' },
-  { base: '#315f48', light: '#5b896c', dark: '#214535' },
-  { base: '#b87524', light: '#dda248', dark: '#805019' },
-  { base: '#c94f3d', light: '#e9785e', dark: '#8e342b' },
-  { base: '#4c6868', light: '#769393', dark: '#344c4c' },
+const CUSTOMER_LOOKS = [
+  { shirt: ['#47728e', '#6f9cb4', '#31566e'], hair: ['#3a2418', '#81512d'], skin: ['#efbd8e', '#c47f58'], pants: ['#292532', '#4c4457'] },
+  { shirt: ['#8e3733', '#c05748', '#632725'], hair: ['#1f1816', '#4d3328'], skin: ['#d59a70', '#a96c4f'], pants: ['#252b2d', '#465054'] },
+  { shirt: ['#315f48', '#5b896c', '#214535'], hair: ['#8a5a2c', '#c18445'], skin: ['#f1c59c', '#ca8d68'], pants: ['#32291f', '#5b4933'] },
+  { shirt: ['#b87524', '#dda248', '#805019'], hair: ['#201917', '#554038'], skin: ['#8f5d45', '#67402f'], pants: ['#262537', '#46465c'] },
+  { shirt: ['#c94f3d', '#e9785e', '#8e342b'], hair: ['#602c22', '#9b4a35'], skin: ['#b97955', '#87513d'], pants: ['#242821', '#454d3b'] },
+  { shirt: ['#4c6868', '#769393', '#344c4c'], hair: ['#b7a07a', '#ddd0a8'], skin: ['#e3aa78', '#b77852'], pants: ['#2c2521', '#524239'] },
 ];
 
 function makeCustomerPalette() {
-  const shirt = CUSTOMER_SHIRT_COLORS[Math.floor(Math.random() * CUSTOMER_SHIRT_COLORS.length)];
+  const look = CUSTOMER_LOOKS[Math.floor(Math.random() * CUSTOMER_LOOKS.length)];
   return {
     '.': null,
-    h: '#3a2a1a',
-    q: '#76502c',
-    k: '#f0c090',
-    K: '#c9855e',
-    l: shirt.light,
-    m: shirt.base,
-    v: shirt.dark,
-    p: '#2a2418',
-    P: '#4b4331',
+    h: look.hair[0],
+    q: look.hair[1],
+    k: look.skin[0],
+    K: look.skin[1],
+    l: look.shirt[1],
+    m: look.shirt[0],
+    v: look.shirt[2],
+    p: look.pants[0],
+    P: look.pants[1],
     s: '#1a1512',
   };
 }
@@ -226,12 +320,12 @@ function beerPalette(liquid) {
 }
 
 const ORDER_ICONS = {
-  'beer-dark': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#3a2414') },
-  'beer-red': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#8a2418') },
-  'beer-blond': { sprite: buildSprite(MUG_ROWS), palette: beerPalette('#e8b830') },
-  cocktail: { sprite: buildSprite(COCKTAIL_ROWS), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
-  wine: { sprite: buildSprite(WINE_ROWS), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
-  food: { sprite: buildSprite(FOOD_ROWS), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
+  'beer-dark': { sprite: detailSprite(buildSprite(MUG_ROWS)), palette: beerPalette('#3a2414') },
+  'beer-red': { sprite: detailSprite(buildSprite(MUG_ROWS)), palette: beerPalette('#8a2418') },
+  'beer-blond': { sprite: detailSprite(buildSprite(MUG_ROWS)), palette: beerPalette('#e8b830') },
+  cocktail: { sprite: detailSprite(buildSprite(COCKTAIL_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
+  wine: { sprite: detailSprite(buildSprite(WINE_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
+  food: { sprite: detailSprite(buildSprite(FOOD_ROWS)), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
 };
 const ORDER_TYPES = Object.keys(ORDER_ICONS);
 function randomOrderType() { return ORDER_TYPES[Math.floor(Math.random() * ORDER_TYPES.length)]; }
@@ -560,27 +654,54 @@ const WAITER_SPRAY_B = buildSprite([
 ]);
 
 const SPRITES = {
-  hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
-  doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
-  customer: { idle: CUSTOMER_IDLE, walk: CUSTOMER_WALK, palette: null },
+  hunter: {
+    idle: detailSprite(HUNTER_IDLE, { o: ['O', 'r'], k: ['k', 'K'], f: ['F', 'f'], p: ['P', 'p'], u: ['U', 'u'] }),
+    walk: detailSprite(HUNTER_WALK, { o: ['O', 'r'], k: ['k', 'K'], f: ['F', 'f'], p: ['P', 'p'], u: ['U', 'u'] }),
+    palette: HUNTER_PALETTE,
+  },
+  doe: {
+    idle: detailSprite(DOE_IDLE, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'] }),
+    walk: detailSprite(DOE_WALK, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'] }),
+    carry: detailSprite(DOE_CARRY, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'], b: ['b', 'u'] }),
+    carryWalk: detailSprite(DOE_CARRY_WALK, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'], b: ['b', 'u'] }),
+    palette: DOE_PALETTE,
+  },
+  customer: {
+    idle: detailSprite(CUSTOMER_IDLE, { h: ['q', 'h'], k: ['k', 'K'], m: ['l', 'v'], p: ['P', 'p'] }),
+    walk: detailSprite(CUSTOMER_WALK, { h: ['q', 'h'], k: ['k', 'K'], m: ['l', 'v'], p: ['P', 'p'] }),
+    palette: null,
+  },
   ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
   waiter: {
-    idle: WAITER_IDLE, walk: WAITER_WALK,
-    spray: WAITER_SPRAY, sprayB: WAITER_SPRAY_B,
+    idle: detailSprite(WAITER_IDLE, { h: ['H', 'h'], b: ['b', 'B'] }),
+    walk: detailSprite(WAITER_WALK, { h: ['H', 'h'], b: ['b', 'B'] }),
+    spray: detailSprite(WAITER_SPRAY, { h: ['H', 'h'], b: ['b', 'B'] }),
+    sprayB: detailSprite(WAITER_SPRAY_B, { h: ['H', 'h'], b: ['b', 'B'] }),
     palette: WAITER_PALETTE,
   },
   nazim: {
-    idle: NAZIM_IDLE, walk: NAZIM_IDLE, idleB: NAZIM_BLINK, talk: NAZIM_TALK,
-    lean: NAZIM_LEAN, leanTalk: NAZIM_LEAN_TALK,
-    slump: NAZIM_SLUMP, slumpTalk: NAZIM_SLUMP_TALK,
+    idle: detailSprite(NAZIM_IDLE, { m: ['m', 'M'] }),
+    walk: detailSprite(NAZIM_IDLE, { m: ['m', 'M'] }),
+    idleB: detailSprite(NAZIM_BLINK, { m: ['m', 'M'] }),
+    talk: detailSprite(NAZIM_TALK, { m: ['m', 'M'] }),
+    lean: detailSprite(NAZIM_LEAN, { m: ['m', 'M'] }),
+    leanTalk: detailSprite(NAZIM_LEAN_TALK, { m: ['m', 'M'] }),
+    slump: detailSprite(NAZIM_SLUMP, { m: ['m', 'M'] }),
+    slumpTalk: detailSprite(NAZIM_SLUMP_TALK, { m: ['m', 'M'] }),
     palette: NAZIM_PALETTE,
   },
   sam: {
-    idle: SAM_IDLE, walk: SAM_IDLE, idleB: SAM_IDLE_B, talk: SAM_TALK,
+    idle: detailSprite(SAM_IDLE, { c: ['c', 'C'], m: ['m', 'M'] }),
+    walk: detailSprite(SAM_IDLE, { c: ['c', 'C'], m: ['m', 'M'] }),
+    idleB: detailSprite(SAM_IDLE_B, { c: ['c', 'C'], m: ['m', 'M'] }),
+    talk: detailSprite(SAM_TALK, { c: ['c', 'C'], m: ['m', 'M'] }),
     palette: SAM_PALETTE,
   },
   gerald: {
-    idle: GERALD_IDLE, walk: GERALD_IDLE, idleB: GERALD_IDLE_B, talk: GERALD_TALK,
+    idle: detailSprite(GERALD_IDLE, { m: ['m', 'M'] }),
+    walk: detailSprite(GERALD_IDLE, { m: ['m', 'M'] }),
+    idleB: detailSprite(GERALD_IDLE_B, { m: ['m', 'M'] }),
+    talk: detailSprite(GERALD_TALK, { m: ['m', 'M'] }),
     palette: GERALD_PALETTE,
   },
 };

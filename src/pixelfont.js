@@ -106,31 +106,37 @@ function fontTextWidth(text) {
 }
 
 // Draws `text` with its top-left at (x, y). Coordinates are rounded once here
-// so callers can pass fractional world-to-screen values.
-function fontDrawText(ctx, text, x, y, color) {
+// so callers can pass fractional world-to-screen values. `scale` (default 1)
+// draws every font pixel as a scale×scale block: that is how the end-of-shift
+// plates get a headline without falling back to a platform font that would
+// go soft the moment the canvas is scaled.
+function fontDrawText(ctx, text, x, y, color, scale) {
+  const s = scale || 1;
   ctx.fillStyle = color;
   let cx = Math.round(x);
   const cy = Math.round(y);
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (ch === ' ') { cx += FONT_SPACE_W + FONT_TRACKING; continue; }
+    if (ch === ' ') { cx += (FONT_SPACE_W + FONT_TRACKING) * s; continue; }
     const g = fontGlyph(ch);
-    if (!g) { cx += FONT_SPACE_W + FONT_TRACKING; continue; }
+    if (!g) { cx += (FONT_SPACE_W + FONT_TRACKING) * s; continue; }
     for (let ry = 0; ry < FONT_H; ry++) {
       const row = g[ry];
       for (let rx = 0; rx < row.length; rx++) {
-        if (row[rx] === '#') ctx.fillRect(cx + rx, cy + ry, 1, 1);
+        if (row[rx] === '#') ctx.fillRect(cx + rx * s, cy + ry * s, s, s);
       }
     }
-    cx += g[0].length + FONT_TRACKING;
+    cx += (g[0].length + FONT_TRACKING) * s;
   }
 }
 
-// Same text with a 1px dark offset behind it, so it stays legible over the
-// floor, furniture or a photo.
-function fontDrawTextShadow(ctx, text, x, y, color, shadow) {
-  fontDrawText(ctx, text, x + 1, y + 1, shadow || '#000');
-  fontDrawText(ctx, text, x, y, color);
+// Same text with a dark offset behind it, so it stays legible over the
+// floor, furniture or a photo. The offset grows with the scale so a headline
+// gets a proportionate drop shadow rather than a hairline.
+function fontDrawTextShadow(ctx, text, x, y, color, shadow, scale) {
+  const s = scale || 1;
+  fontDrawText(ctx, text, x + s, y + s, shadow || '#000', s);
+  fontDrawText(ctx, text, x, y, color, s);
 }
 
 // Greedy word wrap to a pixel width. Returns an array of lines; a single word

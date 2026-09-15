@@ -52,6 +52,7 @@ function makeCanvasContext() {
     fillRect() {},
     fillText() {},
     drawImage() {},
+    setTransform() {},
     putImageData() {},
     createImageData(width, height) {
       return { data: new Uint8ClampedArray(width * height * 4), width, height };
@@ -251,8 +252,27 @@ function run() {
     },
   );
 
+  // Every UI board the game can show: the HUD at a real score and partial
+  // life, the level-done board, the caught board with the name field open,
+  // and the ledger after a name is filed. All of them are pure canvas
+  // painting, so a thrown error here is a broken frame in the real game.
+  debug.setScore(240);
+  debug.setLife(0.5);
+  debug.update(0.05);
+  if (debug.getLevelSplash().timer <= 0) throw new Error('Level-done splash did not fire at score 240.');
+  debug.render();
+  debug.forceCaught();
+  if (!debug.getNameEntry().entering) throw new Error('Caught with a score should open the name field.');
+  debug.render();
+  vm.runInContext("finishNameEntry(true)", context);
+  debug.render();
+  if (!debug.loadHighScores().length) throw new Error('Filed score did not land in the ledger.');
+  debug.clearHighScores();
+  debug.resetGame();
+  debug.render();
+
   console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and render pass.`);
+    `${debug.regularState().length} regulars, waiter visit, and render pass with HUD, level and caught boards.`);
 }
 
 run();

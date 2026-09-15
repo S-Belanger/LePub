@@ -4,6 +4,195 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
+## 2026-09-15 16:58 America/Toronto — session resumed in Claude Code; UI rehaul started
+
+### Context recovered after the Codex session was cut off
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `32a1fef`, in sync with
+  its upstream; PR #3 is still a draft with the rejected first preview.
+- The 23:22 high-density renderer/furniture work is still present as
+  uncommitted changes (`game.js`, `src/scenery.js`, `src/sprites.js`,
+  `tests/smoke.js`, docs, `assets/gameplay.png`). `node tests/smoke.js`
+  passes on this tree, so it is a safe base to build on.
+
+### Direction in force for this session
+
+- User request: a complete rehaul of the *UI* so it matches the cinematic
+  warm-pub look of the sprites and room (see
+  `assets/art-direction/README.md`, acceptance item 6).
+- Scope: in-canvas HUD, order tickets, dialogue placards, caught and level
+  splash plates, floating text; plus the DOM shell — corner chips, start/help
+  overlay, restart button, touch stick/action button, letterbox surround.
+- Material language: dark walnut boards, brass rivets/trim, parchment paper,
+  burgundy leather, amber lamp glow. Crisp stepped pixels, no rounded modern
+  cards, no blurred glass.
+- Keep gameplay geometry, routes, hitboxes, and all input funnels unchanged.
+- Python is not on this machine's PATH; use `node` for scripts and
+  `npx serve`/Edge for browser checks.
+
+### 17:12 — UI rehaul complete and browser-validated (uncommitted)
+
+- DOM shell rebuilt in `style.css`/`index.html` on the same walnut/brass/
+  parchment/leather palette as the canvas kit: wainscot letterbox with one
+  amber lamp, brass-and-walnut canvas frame, `chip board` corner plaques
+  (gradient-drawn fullscreen brackets, red strike when muted), the start
+  panel as a riveted hanging sign (`panel board riveted` + `.panel-scroll`
+  so the `::before/::after` chains aren't clipped), a parchment `.keys` menu
+  card with brass keycaps, burgundy-leather `.primary` buttons, beer-mat
+  stick with brass knob, leather-and-brass action button.
+- `#top-bar` z-index raised above the overlay (45 > 40): previously SFX and
+  fullscreen were unreachable while paused and `?` could not close the
+  overlay it opened.
+- No JS bindings changed: every id/class `game.js` reads is untouched.
+- Validation: `node --check` on all scripts; `node tests/smoke.js` 5/5 runs
+  (now also renders HUD/level/caught/ledger boards); `git diff --check`
+  clean; headless Edge at 1280x720 and 390x844 touch — Press Start 2P
+  confirmed loaded via `document.fonts.check`, zero console/page/request/
+  HTTP errors. Captures reviewed: start sign, gameplay HUD + tickets +
+  placards, level board, caught board with name field and ledger, chips
+  hover/muted, mobile play/caught.
+- Capture tooling: `%TEMP%claude...scratchpadcapture.js` (node static
+  server + playwright-core from the npx cache driving Edge via
+  `channel: 'msedge'`). Shots under the same scratchpad `shots/`.
+- `assets/gameplay.png` replaced with the new desktop gameplay capture.
+- `CLAUDE.md` updated: pixelfont scale, render passes 7/9/10, material kit,
+  page-shell section.
+- Not committed or pushed. Next: user reviews; then commit the whole tree
+  (Codex renderer milestone + this UI pass), push, and redeploy the PR #3
+  preview.
+
+### 17:05 — canvas UI implemented (uncommitted)
+
+- Normalized the Codex-era mixed CRLF/LF back to LF in `game.js`,
+  `src/scenery.js`, `src/sprites.js`, `style.css`, `index.html`,
+  `CLAUDE.md` (HEAD is pure LF; `core.autocrlf=true` would do this on commit
+  anyway). No content changed by that step.
+- `src/pixelfont.js`: `fontDrawText`/`fontDrawTextShadow` take an optional
+  integer `scale` so boards can have real pixel-font headlines.
+- `game.js`: added a `UI` material palette and painters —
+  `fillClipped`, `drawRivet`, `drawWalnutPlate` (bevel, grain, rivets,
+  optional brass rails and hanging chains), `drawParchmentPlate` (aged
+  edges, stitched top), `drawPlateTail`, `drawBrassRule`,
+  `drawSplashImage`, `drawCenteredText`.
+- HUD is now a walnut sign hung on two brass chains: SHIFT/TIPS labels in dim
+  cream with values in cream/amber, and life as three pint glasses
+  (`drawPint`, `PINT_*` constants) that drain from the top and refill.
+  `hudRect` now starts at (3,0) and includes the chains.
+- Order tickets and dialogue placards paint through `drawParchmentPlate`;
+  the patience bar is a brass-capped gauge. Semantic frame colours unchanged.
+- Caught screen: walnut board with brass rails, 3x pixel-font "CAUGHT!",
+  SHIFT/TIPS summary, restart prompt (keyboard vs touch wording), "BEST TIPS"
+  ledger with flanking brass rules, name entry as an ink-on-parchment field,
+  and the caught quip on a parchment note in the speaker's accent. The
+  `16px monospace` `fillText` is gone.
+- Level splash: walnut board, 2x "SHIFT N DONE", "LAST CALL - SHIFT N+1
+  STARTS NOW".
+- `tests/smoke.js` now also renders the HUD at score 240 / half life, the
+  level-done board, the caught board with the name field open, and the ledger
+  after filing. `node tests/smoke.js` passes.
+- Not yet browser-captured. Next: DOM shell (`style.css`, `index.html`), then
+  Edge captures of start overlay, gameplay HUD, caught and level boards.
+
+### Next concrete step (original plan)
+
+- Implement canvas UI first (`game.js`, small `fontDrawText` scale support in
+  `src/pixelfont.js`), then the DOM shell (`style.css`, `index.html`), run
+  `node tests/smoke.js`, capture Edge screenshots, checkpoint here again.
+
+## 2026-09-14 23:22 America/Toronto — high-density renderer/furniture milestone captured
+
+### Implemented since rejection
+
+- Added `ART_SCALE = 2`: gameplay remains in the original logical world while
+  the canvas backing store now has two authored pixels per logical unit.
+- Decoupled every entity's collision box from sprite sheet dimensions, so art
+  resolution and silhouettes can change without changing routes/catch range.
+- Added half-unit sprite rendering and generated genuinely denser character
+  sheets with refined diagonal contours, fabric/hair shading, and material
+  ramps at the same on-screen footprint.
+- Refined every order icon onto the same dense backing grid.
+- Replaced the giant 16px floor grid with deterministic 6px walnut boards,
+  varied 23–46px lengths, half-pixel seams, scratches, knots, and highlights.
+- Rebuilt rugs with fine woven borders, repeated medallions, and uneven fringe.
+- Expanded the rear wall into raised timber panels with carved rails, larger
+  rainy city windows, fine mullions/rain, side-wall panels, portraits, brass
+  sconces, and a layered front doorway.
+- Rebuilt counters with orientation-aware worktops/front faces, panel slats,
+  grain, edge bevels, brass foot rails, and denser detailed bottles/taps/glass.
+- Rebuilt chairs, benches, and tables with legs, backs, cushions, tufting,
+  clipped silhouettes, deep front lips, narrow wood boards, and fine grain.
+- Expanded deterministic table clutter to include mugs, candles, bottles,
+  plates, menus, glasses, and coasters; candles now contribute local light.
+- Added broken varnish reflections beneath hanging lamps and rebuilt the HUD
+  as a clipped walnut/brass pub sign using `SHIFT` and `TIPS` language.
+
+### Validation and honest visual assessment
+
+- `node --check` passes for `game.js` and every `src/*.js` file.
+- `node tests/smoke.js` passes all scripts, 40 customer routes in/out, three
+  regulars, waiter visit, palette coverage, and render pass.
+- `git diff --check` has no whitespace errors (Windows line-ending warnings
+  only).
+- Real Edge capture at 1280x720 uses a 640x360 backing canvas displayed at
+  1280x720; no console/page/request/HTTP errors were observed.
+- Temporary capture: `%TEMP%/lepub-rebuild-checkpoint.png`.
+- The capture is materially different from the rejected build: board scale,
+  architecture, furniture depth, rug weave, prop density, and pixel density
+  all changed. It is closer to the reference, but this is an intermediate
+  comparison—not yet the updated PR/Vercel preview or a completion claim.
+
+### Current files / next step
+
+- Modified, uncommitted: `HANDOFF.md`, `game.js`, `src/scenery.js`,
+  `src/sprites.js`, and `tests/smoke.js`.
+- Branch remains at pushed commit `32a1fef`; `origin/main` has not changed.
+- Next: improve illustrated character presentation, side/back-bar clutter,
+  and DOM overlay/touch UI; then capture desktop and full-room portrait,
+  update `assets/gameplay.png`, test repeatedly, commit, push, and redeploy the
+  draft PR preview.
+
+## 2026-09-14 23:12 America/Toronto — first preview rejected; full visual rebuild started
+
+### User feedback / corrected acceptance bar
+
+- The user correctly rejected the first preview: it still looks like the old
+  game with a palette/decor pass, rather than like
+  `warm-overhead-pub-reference.png`.
+- Treat the visual work in commits `8f7cc5a` through `32a1fef` as a foundation,
+  not an accepted art-direction result.
+- The next pass must materially change authored pixels and proportions: higher
+  sprite detail at the same on-screen footprint, narrow floorboards,
+  dimensional furniture, recognizable chair/stool silhouettes, dense
+  tabletop/bar props, layered wall decor, localized warm reflections, and an
+  illustrated in-world UI.
+- Preserve the straight-overhead camera, collision geometry, routes, and
+  playability. Do not copy the reference's literal isometric projection.
+
+### Concrete visual diagnosis from side-by-side review
+
+- Current floor uses giant 16px tile/plank blocks; the reference uses much
+  narrower boards with frequent seams, grain, knots, and reflected lamplight.
+- Current tables/bar are flat rectangular slabs; the reference has bevels,
+  deep front faces, wood trim, legs, stools, glassware, candles, and clutter.
+- Current characters are visibly 14–21 authored pixels wide with flat block
+  anatomy; the reference has roughly 2–3x the internal contour/fabric/face
+  detail at a comparable on-screen footprint.
+- Current room is uniformly bright and sparse; the reference is built from
+  dark walnut architecture, concentrated amber pools, cool rainy windows,
+  framed wall layers, and dense edge detail.
+- Current HUD is still a generic score strip; it needs to feel like a physical
+  pub sign/ledger while remaining compact enough for gameplay.
+
+### Repository state and next implementation step
+
+- Branch `feat/regulars-responsive-pixel-polish` is clean at `32a1fef`, fully
+  synchronized with its upstream and three commits ahead of `origin/main`.
+- A fresh fetch found no new collaborator commits on `origin/main`.
+- PR #3 remains a draft; the existing Vercel preview shows the rejected pass.
+- Next: introduce a 2x internal art backing scale, decouple visual sprite
+  resolution from collision boxes, rebuild the static room renderer and
+  furniture, then capture/compare before updating the preview.
+
 ## 2026-09-14 23:06 America/Toronto — protected Vercel preview ready
 
 ### Preview links and state

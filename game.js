@@ -10,6 +10,12 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+// The simulation still runs in the original 200x360 logical world, but art is
+// backed by two physical pixels per logical unit. Existing gameplay geometry
+// therefore stays untouched while refined sprites and half-pixel material
+// details get a real pixel of their own instead of being blurred away.
+const ART_SCALE = 2;
+
 // ---- Adaptive viewport ------------------------------------------------------
 // The canvas fills the browser viewport rather than sitting at a fixed size.
 // Two numbers are recomputed on every resize/orientation change:
@@ -48,12 +54,13 @@ function applyViewport() {
   pixelScale = scale;
   viewIsPortrait = portrait;
 
-  canvas.width = viewW;
-  canvas.height = viewH;
+  canvas.width = viewW * ART_SCALE;
+  canvas.height = viewH * ART_SCALE;
   canvas.style.width = (viewW * pixelScale) + 'px';
   canvas.style.height = (viewH * pixelScale) + 'px';
   // Resizing the backing store resets 2D context state, so restore it.
   ctx.imageSmoothingEnabled = false;
+  ctx.setTransform(ART_SCALE, 0, 0, ART_SCALE, 0, 0);
   dustReady = false;   // re-scatter the motes across the new canvas
 }
 
@@ -79,7 +86,20 @@ levelDoneImage.src = 'assets/LevelDone.png';
 // middle-left, a column of small 2-seat tables, and two wide tables below.
 const WORLD_W = 200;
 const WORLD_H = 360;
-const TILE = 16;
+
+// Collision boxes intentionally remain at the dimensions used by the
+// accepted playable build. Sprite sheets can now gain resolution or alter
+// their outer silhouette without silently widening routes or catch distance.
+const ENTITY_HITBOXES = {
+  doe: { w: 16, h: 18 },
+  hunter: { w: 21, h: 18 },
+  customer: { w: 14, h: 13 },
+  ghost: { w: 12, h: 10 },
+  waiter: { w: 14, h: 17 },
+  nazim: { w: 14, h: 15 },
+  sam: { w: 14, h: 15 },
+  gerald: { w: 14, h: 15 },
+};
 
 // ---- Furniture: an L-shaped bar plus tables of varying size and seat count.
 // Colliders block movement for both characters; visuals are z-sorted
@@ -276,7 +296,24 @@ function bakedSprite(sprite, palette, flipX) {
 }
 
 function drawSprite(sprite, palette, screenX, screenY, flipX) {
-  ctx.drawImage(bakedSprite(sprite, palette, !!flipX), Math.round(screenX), Math.round(screenY));
+  const pixelSize = sprite.pixelSize || 1;
+  const x = Math.round(screenX * ART_SCALE) / ART_SCALE;
+  const y = Math.round(screenY * ART_SCALE) / ART_SCALE;
+  ctx.drawImage(
+    bakedSprite(sprite, palette, !!flipX),
+    x,
+    y,
+    sprite.w * pixelSize,
+    sprite.h * pixelSize,
+  );
+}
+
+function spriteVisualW(sprite) { return sprite.w * (sprite.pixelSize || 1); }
+function spriteVisualH(sprite) { return sprite.h * (sprite.pixelSize || 1); }
+function spriteAnchorX(sprite, flipX) {
+  const width = spriteVisualW(sprite);
+  const anchor = sprite.anchorX == null ? width / 2 : sprite.anchorX;
+  return flipX ? width - anchor : anchor;
 }
 
 // ---- Collision: furniture blocks movement for both characters. A small
@@ -331,7 +368,7 @@ function tryMove(e, dx, dy) {
 // smoothing pass then collapses that grid path down to a handful of
 // waypoints so movement still reads as a straight walk, not grid-snapping.
 const PATH_CELL = 8;
-const PATH_MARGIN = (SPRITES.customer.idle.w * 0.55) / 2;
+const PATH_MARGIN = (ENTITY_HITBOXES.customer.w * 0.55) / 2;
 const PATH_FOOT_H = 7;
 
 // Exact line-segment/AABB test. Sampling a fixed number of points can skip a
@@ -395,8 +432,8 @@ function cellFromKey(k, cols) {
 // Same world clamp tryMove/updateCustomer apply to a customer's position —
 // the grid must agree, or it can route through a corner (e.g. a world edge)
 // the entity can never actually reach.
-const CUSTOMER_HALF_W = SPRITES.customer.idle.w / 2;
-const CUSTOMER_HALF_H = SPRITES.customer.idle.h / 2;
+const CUSTOMER_HALF_W = ENTITY_HITBOXES.customer.w / 2;
+const CUSTOMER_HALF_H = ENTITY_HITBOXES.customer.h / 2;
 function cellCenter(cx, cy) {
   return {
     x: clamp(cx * PATH_CELL, CUSTOMER_HALF_W, WORLD_W - CUSTOMER_HALF_W),
@@ -549,11 +586,12 @@ function computeCustomerPath(from, to, excludeTable) {
 // ---- Entities -----------------------------------------------------------
 function makeEntity(kind, x, y) {
   const s = SPRITES[kind];
+  const hitbox = ENTITY_HITBOXES[kind] || { w: spriteVisualW(s.idle), h: spriteVisualH(s.idle) };
   return {
     kind,
     x, y,
-    w: s.idle.w,
-    h: s.idle.h,
+    w: hitbox.w,
+    h: hitbox.h,
     speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : 54,
     flip: false,
     legTimer: 0,
@@ -2057,10 +2095,9 @@ function update(dt) {
 // Everything static (clutter, bottles, stains, light textures) is built once at
 // load. The frame loop only blits and fills.
 
-const PLANK_TILES = 4;
-const WALL_TOP_H = 10;      // decorative wall band along the top of the world
-const WALL_BOTTOM_H = 10;
-const WALL_SIDE_W = 5;
+const WALL_TOP_H = 16;      // decorative wall band along the top of the world
+const WALL_BOTTOM_H = 12;
+const WALL_SIDE_W = 7;
 
 // ---- Static scenery ---------------------------------------------------------
 // Seeded so the clutter is in the same place on every load: a bar whose
@@ -2096,14 +2133,24 @@ function buildDecor() {
   // drift away from the table it belongs to.
   const clutter = new Map();
   for (const t of TABLES) {
-    const items = [];
-    const count = 1 + Math.floor(rnd() * 3);
-    for (let i = 0; i < count; i++) {
+    const items = [{
+      ox: Math.round((rnd() - 0.5) * Math.max(2, t.w * 0.34)),
+      oy: Math.round((rnd() - 0.5) * Math.max(2, t.h * 0.28)),
+      kind: 'candle',
+    }];
+    const count = Math.min(8, 3 + Math.floor((t.w * t.h) / 750));
+    for (let i = 1; i < count; i++) {
       const roll = rnd();
       items.push({
-        ox: Math.round((rnd() - 0.5) * Math.max(2, t.w - 7)),
-        oy: Math.round((rnd() - 0.5) * Math.max(2, t.h - 7)),
-        kind: roll < 0.4 ? 'coaster' : roll < 0.78 ? 'glass' : 'menu',
+        ox: Math.round((rnd() - 0.5) * Math.max(2, t.w - 9)),
+        oy: Math.round((rnd() - 0.5) * Math.max(2, t.h - 9)),
+        kind: roll < 0.16 ? 'coaster'
+          : roll < 0.34 ? 'glass'
+            : roll < 0.52 ? 'mug'
+              : roll < 0.66 ? 'candle'
+                : roll < 0.79 ? 'bottle'
+                  : roll < 0.9 ? 'plate'
+                    : 'menu',
       });
     }
     clutter.set(t, items);
@@ -2116,17 +2163,17 @@ function buildDecor() {
     const c = seg.collider;
     const horizontal = c.w >= c.h;
     const length = horizontal ? c.w : c.h;
-    let p = 5;
-    while (p < length - 5) {
+    let p = 4;
+    while (p < length - 4) {
       const roll = rnd();
       const kind = roll < 0.42 ? 'bottle' : roll < 0.72 ? 'glass' : 'tap';
       barProps.push({
-        x: horizontal ? c.x + p : c.x + 3,
-        y: horizontal ? c.y + 4 : c.y + p,
+        x: horizontal ? c.x + p : c.x + 3 + ((p >> 2) & 1) * 3,
+        y: horizontal ? c.y + 3 + ((p >> 2) & 1) * 3 : c.y + p,
         kind,
         seg,
       });
-      p += 6 + Math.floor(rnd() * 7);
+      p += 4 + Math.floor(rnd() * 5);
     }
   }
 
@@ -2141,8 +2188,8 @@ function buildDecor() {
 
   // Cool light sources: two windows in the rear wall, and the door.
   const windows = [
-    { x: 26, w: 26 },
-    { x: 132, w: 30 },
+    { x: 22, w: 31 },
+    { x: 128, w: 35 },
   ];
 
   const posters = [
@@ -2252,84 +2299,110 @@ function drawBackdrop() {
 function drawRug(ctx, rug) {
   const { x, y, w, h } = rug;
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(x + 1, y + 2, w, h);
+  ctx.fillRect(x + 1.5, y + 2, w, h);
   ctx.fillStyle = PUB.ink;
   ctx.fillRect(x, y, w, h);
   ctx.fillStyle = rug.accent;
-  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.fillRect(x + 0.5, y + 0.5, w - 1, h - 1);
   ctx.fillStyle = rug.base;
   ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x + 2.5, y + 2.5, w - 5, 0.5);
+  ctx.fillRect(x + 2.5, y + h - 3, w - 5, 0.5);
+  ctx.fillRect(x + 2.5, y + 2.5, 0.5, h - 5);
+  ctx.fillRect(x + w - 3, y + 2.5, 0.5, h - 5);
 
-  // A restrained kilim-like border: enough pattern to feel authored while
-  // leaving the rug centre calm behind moving silhouettes.
+  // Dense kilim borders and small woven medallions: the half-unit strokes are
+  // single backing pixels, so this detail reads as textile rather than the
+  // old row of large square dots.
   ctx.fillStyle = rug.accent;
-  for (let px = x + 4; px < x + w - 3; px += 6) {
-    ctx.fillRect(px, y + 3, 2, 1);
-    ctx.fillRect(px + 2, y + h - 4, 2, 1);
+  for (let px = x + 4; px < x + w - 4; px += 4) {
+    ctx.fillRect(px, y + 3.5, 1.5, 0.5);
+    ctx.fillRect(px + 1, y + 4, 1.5, 0.5);
+    ctx.fillRect(px, y + h - 4, 1.5, 0.5);
+    ctx.fillRect(px + 1, y + h - 4.5, 1.5, 0.5);
   }
-  for (let py = y + 6; py < y + h - 5; py += 7) {
-    ctx.fillRect(x + 3, py, 1, 2);
-    ctx.fillRect(x + w - 4, py + 1, 1, 2);
+  for (let py = y + 6; py < y + h - 5; py += 5) {
+    ctx.fillRect(x + 3.5, py, 0.5, 2);
+    ctx.fillRect(x + 4, py + 1, 0.5, 2);
+    ctx.fillRect(x + w - 4, py, 0.5, 2);
+    ctx.fillRect(x + w - 4.5, py + 1, 0.5, 2);
   }
 
-  const cx = Math.round(x + w / 2);
-  const cy = Math.round(y + h / 2);
-  if (rug.motif === 0) {
-    ctx.fillRect(cx - 5, cy, 11, 1);
-    ctx.fillRect(cx, cy - 4, 1, 9);
-    ctx.fillRect(cx - 3, cy - 2, 7, 5);
-    ctx.fillStyle = rug.base;
-    ctx.fillRect(cx - 2, cy - 1, 5, 3);
-  } else if (rug.motif === 1) {
-    ctx.fillRect(cx - 6, cy - 1, 13, 3);
-    ctx.fillStyle = rug.base;
-    ctx.fillRect(cx - 4, cy, 9, 1);
-  } else {
-    for (let py = y + 8; py < y + h - 7; py += 10) {
-      ctx.fillRect(cx - 4, py, 9, 1);
-      ctx.fillRect(cx, py - 2, 1, 5);
+  const stepX = rug.motif === 2 ? 10 : 12;
+  const stepY = rug.motif === 1 ? 10 : 12;
+  for (let py = y + 9; py < y + h - 7; py += stepY) {
+    for (let px = x + 9; px < x + w - 7; px += stepX) {
+      ctx.globalAlpha = 0.72;
+      ctx.fillStyle = rug.accent;
+      ctx.fillRect(px, py - 1.5, 1, 1);
+      ctx.fillRect(px - 1.5, py, 4, 1);
+      ctx.fillRect(px, py + 1, 1, 1);
+      ctx.fillStyle = PUB.creamDim;
+      ctx.fillRect(px + 0.5, py, 0.5, 0.5);
     }
   }
+  ctx.globalAlpha = 1;
 
-  // Short fringe on the ends, kept inside the rug footprint.
+  // Fine uneven fringe on the ends.
   ctx.fillStyle = PUB.creamDim;
-  for (let px = x + 3; px < x + w - 2; px += 4) {
-    ctx.fillRect(px, y, 1, 1);
-    ctx.fillRect(px + 1, y + h - 1, 1, 1);
+  for (let px = x + 2; px < x + w - 1; px += 2) {
+    const fringe = ((px + rug.motif) & 2) ? 1 : 0.5;
+    ctx.fillRect(px, y - fringe, 0.5, fringe);
+    ctx.fillRect(px + 0.5, y + h, 0.5, fringe);
   }
 }
 
+function floorHash(x, y) {
+  let n = (x * 374761393 + y * 668265263) | 0;
+  n = (n ^ (n >>> 13)) * 1274126177;
+  return (n ^ (n >>> 16)) >>> 0;
+}
+
 function drawGround(ctx) {
-  const tilesX = Math.ceil(WORLD_W / TILE);
-  const tilesY = Math.ceil(WORLD_H / TILE);
+  const plankH = 6;
+  ctx.fillStyle = PUB.floor[0];
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
-  for (let worldTileY = 0; worldTileY <= tilesY; worldTileY++) {
-    for (let worldTileX = 0; worldTileX <= tilesX; worldTileX++) {
-      if (worldTileX * TILE >= WORLD_W || worldTileY * TILE >= WORLD_H) continue;
+  for (let row = 0, sy = 0; sy < WORLD_H; row++, sy += plankH) {
+    let plank = 0;
+    let sx = -(row % 3) * 11;
+    while (sx < WORLD_W) {
+      const hash = floorHash(plank + row * 17, row);
+      const length = 23 + (hash % 24);
+      ctx.fillStyle = PUB.floor[hash % PUB.floor.length];
+      ctx.fillRect(sx + 0.5, sy + 0.5, length - 0.5, plankH - 0.5);
 
-      const rowShift = worldTileY % 2 === 0 ? 0 : Math.floor(PLANK_TILES / 2);
-      const plankCol = worldTileX + rowShift;
-      const plankIndex = Math.floor(plankCol / PLANK_TILES);
-      const shadeIdx = Math.abs((plankIndex * 928371 + worldTileY * 6151)) % PUB.floor.length;
+      ctx.fillStyle = PUB.floorEdge;
+      ctx.globalAlpha = 0.28;
+      ctx.fillRect(sx + 1, sy + 0.5, Math.max(1, length - 2), 0.5);
+      ctx.globalAlpha = 1;
 
-      const sx = worldTileX * TILE;
-      const sy = worldTileY * TILE;
-      ctx.fillStyle = PUB.floor[shadeIdx];
-      ctx.fillRect(sx, sy, TILE, TILE);
-
-      // Grain: one sparse dithered line inside the board. Enough to read as
-      // wood, far short of a texture that competes with the characters.
+      // Fine grain, scratches and the occasional knot. At ART_SCALE 2 each
+      // 0.5 unit stroke is one true pixel in the backing store.
       ctx.fillStyle = PUB.floorGrain;
-      const grainRow = 5 + ((worldTileX * 7 + worldTileY * 13) & 5);
-      for (let gx = 1; gx < TILE - 1; gx += 3) {
-        if (((worldTileX * 5 + worldTileY * 11 + gx) & 3) === 0) continue;
-        ctx.fillRect(sx + gx, sy + grainRow, 1, 1);
+      const grainCount = 2 + (hash & 3);
+      for (let g = 0; g < grainCount; g++) {
+        const gx = sx + 3 + ((hash >>> (g * 4)) % Math.max(4, length - 7));
+        const gy = sy + 1.5 + ((hash >>> (g * 3 + 2)) % 7) * 0.5;
+        const gw = 2 + ((hash >>> (g + 11)) % 7);
+        ctx.fillRect(gx, gy, Math.min(gw, sx + length - gx - 1), 0.5);
+      }
+      if ((hash & 15) === 3) {
+        const kx = sx + length * 0.62;
+        ctx.fillStyle = PUB.floorSeam;
+        ctx.fillRect(kx - 1, sy + 2.5, 2.5, 1);
+        ctx.fillStyle = PUB.floorEdge;
+        ctx.fillRect(kx - 0.5, sy + 2.5, 1, 0.5);
       }
 
       ctx.fillStyle = PUB.floorSeam;
-      ctx.fillRect(sx, sy, TILE, 1);
-      if (plankCol % PLANK_TILES === 0) ctx.fillRect(sx, sy, 1, TILE);
+      ctx.fillRect(sx, sy, 0.5, plankH);
+      sx += length;
+      plank++;
     }
+    ctx.fillStyle = PUB.floorSeam;
+    ctx.fillRect(0, sy, WORLD_W, 0.5);
   }
 
   for (const rug of DECOR.rugs) drawRug(ctx, rug);
@@ -2350,47 +2423,68 @@ function drawArchitecture(ctx) {
   const left = 0;
   const top = 0;
 
-  // Rear wall.
-  ctx.fillStyle = PUB.wall;
+  // Rear wall: deep raised timber panels, crown rail and a projected
+  // wainscot. Half-unit lines are the fine carved edges that were impossible
+  // in the old 1x backing store.
+  ctx.fillStyle = PUB.wallDark;
   ctx.fillRect(left, top, WORLD_W, WALL_TOP_H);
+  ctx.fillStyle = PUB.wall;
+  ctx.fillRect(left + 0.5, top + 0.5, WORLD_W - 1, WALL_TOP_H - 3);
   ctx.fillStyle = PUB.wallLit;
-  ctx.fillRect(left, top, WORLD_W, 2);
-  // Narrow timber panels suggest the raised wall face seen from overhead.
-  ctx.fillStyle = PUB.wallDark;
-  for (let x = 9; x < WORLD_W; x += 17) ctx.fillRect(x, top + 2, 1, WALL_TOP_H - 4);
+  ctx.fillRect(left, top + 0.5, WORLD_W, 1);
   ctx.fillStyle = PUB.wainscotLit;
-  ctx.fillRect(left, top + 2, WORLD_W, 1);
-  // Dithered falloff down the wall face.
-  ctx.fillStyle = PUB.wallDark;
-  for (let x = 0; x < WORLD_W; x++) {
-    if ((x & 1) === 0) ctx.fillRect(left + x, top + WALL_TOP_H - 4, 1, 1);
-    ctx.fillRect(left + x, top + WALL_TOP_H - 3, 1, 1);
+  ctx.fillRect(left, top + 2, WORLD_W, 0.5);
+  for (let x = 8; x < WORLD_W; x += 16) {
+    ctx.fillStyle = PUB.wallDark;
+    ctx.fillRect(x, top + 2.5, 1, WALL_TOP_H - 5);
+    ctx.fillStyle = PUB.wainscotLit;
+    ctx.fillRect(x + 1, top + 3, 0.5, WALL_TOP_H - 6);
   }
+  ctx.fillStyle = PUB.wainscotLit;
+  ctx.fillRect(left, top + WALL_TOP_H - 4, WORLD_W, 1);
   ctx.fillStyle = PUB.wainscot;
   ctx.fillRect(left, top + WALL_TOP_H - 3, WORLD_W, 2);
+  for (let x = 1; x < WORLD_W; x += 4) {
+    ctx.fillStyle = (x & 4) ? PUB.wallLit : PUB.wall;
+    ctx.fillRect(x, top + WALL_TOP_H - 2.5, 2, 0.5);
+  }
   ctx.fillStyle = PUB.baseboard;
   ctx.fillRect(left, top + WALL_TOP_H - 1, WORLD_W, 1);
+  ctx.fillStyle = PUB.barTopHi;
+  ctx.globalAlpha = 0.42;
+  ctx.fillRect(left + 1, top + WALL_TOP_H - 1.5, WORLD_W - 2, 0.5);
+  ctx.globalAlpha = 1;
 
   // Windows: cooler light than anything else in the room.
   for (const w of DECOR.windows) {
     const wx = left + w.x;
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(wx - 1, top, w.w + 2, 7);
+    ctx.fillRect(wx - 1.5, top + 0.5, w.w + 3, 13);
+    ctx.fillStyle = PUB.wainscotLit;
+    ctx.fillRect(wx - 1, top + 1, w.w + 2, 11.5);
     ctx.fillStyle = PUB.midnight;
-    ctx.fillRect(wx, top, w.w, 6);
+    ctx.fillRect(wx, top + 1.5, w.w, 10);
     // Tiny skyline blocks and warm windows beyond rain-streaked glass.
     ctx.fillStyle = PUB.cool;
-    for (let x = 1; x < w.w - 1; x += 4) {
-      const buildingH = 2 + ((x + w.x) % 3);
-      ctx.fillRect(wx + x, top + 6 - buildingH, 3, buildingH);
+    for (let x = 1; x < w.w - 1; x += 3) {
+      const buildingH = 3 + ((x + w.x) % 5);
+      ctx.fillRect(wx + x, top + 11 - buildingH, 2.5, buildingH);
       ctx.fillStyle = ((x + w.x) & 1) ? PUB.amber : PUB.coolPale;
-      ctx.fillRect(wx + x + 1, top + 5 - (buildingH & 1), 1, 1);
+      ctx.fillRect(wx + x + 0.5, top + 10 - (buildingH & 1), 0.5, 0.5);
+      if (buildingH > 5) ctx.fillRect(wx + x + 1.5, top + 7, 0.5, 0.5);
       ctx.fillStyle = PUB.cool;
     }
     ctx.fillStyle = PUB.coolPale;
-    ctx.fillRect(wx + Math.floor(w.w / 2), top, 1, 6);
-    ctx.fillRect(wx, top + 3, w.w, 1);
-    for (let x = 3; x < w.w; x += 7) ctx.fillRect(wx + x, top, 1, 2 + ((x + w.x) & 1));
+    ctx.globalAlpha = 0.72;
+    ctx.fillRect(wx + Math.floor(w.w / 2), top + 1.5, 0.5, 10);
+    ctx.fillRect(wx, top + 6, w.w, 0.5);
+    for (let x = 2; x < w.w; x += 5) {
+      ctx.fillRect(wx + x, top + 2, 0.5, 3 + ((x + w.x) & 2));
+      ctx.fillRect(wx + x + 0.5, top + 8.5, 0.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PUB.barTopHi;
+    ctx.fillRect(wx - 1, top + 12, w.w + 2, 0.5);
   }
 
   for (const p of DECOR.posters) {
@@ -2406,17 +2500,24 @@ function drawArchitecture(ctx) {
   }
 
   for (const plant of DECOR.wallPlants) {
-    ctx.fillStyle = PUB.paper;
-    ctx.fillRect(plant.x - 2, plant.y, 5, 2);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(plant.x - 2.5, plant.y, 5.5, 2.5);
+    ctx.fillStyle = PUB.barTop;
+    ctx.fillRect(plant.x - 2, plant.y + 0.5, 4.5, 1.5);
+    ctx.fillStyle = PUB.barTopHi;
+    ctx.fillRect(plant.x - 1.5, plant.y + 0.5, 3, 0.5);
     ctx.fillStyle = PUB.green;
-    ctx.fillRect(plant.x, plant.y + 2, 1, plant.drop);
-    for (let py = plant.y + 3; py < plant.y + plant.drop; py += 3) {
-      const side = ((py + plant.x) & 1) ? -1 : 1;
-      ctx.fillRect(plant.x + side, py, 2, 2);
+    ctx.fillRect(plant.x, plant.y + 2, 0.5, plant.drop);
+    for (let py = plant.y + 2.5; py < plant.y + plant.drop; py += 2) {
+      const side = ((Math.round(py * 2) + plant.x) & 2) ? -1 : 1;
+      ctx.fillRect(plant.x + side * 0.5, py, side * 2, 1);
+      ctx.fillRect(plant.x + side * 1.5, py + 0.5, side * 1.5, 1);
       ctx.fillStyle = PUB.greenLit;
-      ctx.fillRect(plant.x + side, py, 1, 1);
+      ctx.fillRect(plant.x + side * 1.5, py, 0.5, 0.5);
       ctx.fillStyle = PUB.green;
     }
+    ctx.fillStyle = PUB.greenLit;
+    ctx.fillRect(plant.x - 1, plant.y + 3, 2.5, 1);
   }
 
   // Side walls.
@@ -2424,30 +2525,72 @@ function drawArchitecture(ctx) {
   ctx.fillRect(left, top, WALL_SIDE_W, WORLD_H);
   ctx.fillRect(left + WORLD_W - WALL_SIDE_W, top, WALL_SIDE_W, WORLD_H);
   ctx.fillStyle = PUB.wainscotLit;
-  ctx.fillRect(left, top, 1, WORLD_H);
-  ctx.fillRect(left + WORLD_W - 1, top, 1, WORLD_H);
+  ctx.fillRect(left + 0.5, top, 0.5, WORLD_H);
+  ctx.fillRect(left + WORLD_W - 1, top, 0.5, WORLD_H);
   ctx.fillStyle = PUB.baseboard;
   ctx.fillRect(left + WALL_SIDE_W - 1, top, 1, WORLD_H);
   ctx.fillRect(left + WORLD_W - WALL_SIDE_W, top, 1, WORLD_H);
+  for (let y = WALL_TOP_H + 8; y < WORLD_H - WALL_BOTTOM_H; y += 22) {
+    ctx.fillStyle = PUB.wallDark;
+    ctx.fillRect(left + 1.5, y, WALL_SIDE_W - 3, 0.5);
+    ctx.fillRect(left + WORLD_W - WALL_SIDE_W + 1.5, y, WALL_SIDE_W - 3, 0.5);
+    ctx.fillStyle = PUB.wallLit;
+    ctx.fillRect(left + 2, y + 1, WALL_SIDE_W - 4, 0.5);
+    ctx.fillRect(left + WORLD_W - WALL_SIDE_W + 2, y + 1, WALL_SIDE_W - 4, 0.5);
+  }
+
+  // Tiny framed portraits and brass sconces layer the otherwise empty side
+  // walls. They stay inside the wall plane and never create fake collision.
+  for (const side of [0, 1]) {
+    const wallX = side ? WORLD_W - WALL_SIDE_W : 0;
+    for (const py of [118, 238]) {
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(wallX + 1, py, WALL_SIDE_W - 2, 8);
+      ctx.fillStyle = PUB.barTop;
+      ctx.fillRect(wallX + 1.5, py + 0.5, WALL_SIDE_W - 3, 7);
+      ctx.fillStyle = side ? PUB.cool : PUB.burgundy;
+      ctx.fillRect(wallX + 2, py + 1.5, WALL_SIDE_W - 4, 4.5);
+      ctx.fillStyle = PUB.creamDim;
+      ctx.fillRect(wallX + 2.5, py + 2, 1, 1);
+    }
+    for (const sy of [92, 185, 315]) {
+      ctx.fillStyle = PUB.brass;
+      ctx.fillRect(wallX + 2.5, sy, 2, 1.5);
+      ctx.fillRect(wallX + 3, sy + 1.5, 1, 2);
+      ctx.fillStyle = PUB.cream;
+      ctx.fillRect(wallX + 2, sy + 3, 3, 1.5);
+      ctx.fillStyle = PUB.amber;
+      ctx.fillRect(wallX + 2.5, sy + 3.5, 2, 1);
+    }
+  }
 
   // Front wall and the door everyone arrives through.
   const bottom = top + WORLD_H - WALL_BOTTOM_H;
-  ctx.fillStyle = PUB.wall;
+  ctx.fillStyle = PUB.wallDark;
   ctx.fillRect(left, bottom, WORLD_W, WALL_BOTTOM_H);
+  ctx.fillStyle = PUB.wall;
+  ctx.fillRect(left, bottom + 1, WORLD_W, WALL_BOTTOM_H - 1);
+  ctx.fillStyle = PUB.wainscotLit;
+  for (let x = 8; x < WORLD_W; x += 16) ctx.fillRect(x, bottom + 2, 0.5, WALL_BOTTOM_H - 3);
   ctx.fillStyle = PUB.baseboard;
   ctx.fillRect(left, bottom, WORLD_W, 1);
 
   const doorW = 22;
   const dx = Math.round(left + DOOR.x - doorW / 2);
   ctx.fillStyle = PUB.ink;
-  ctx.fillRect(dx - 1, bottom + 1, doorW + 2, WALL_BOTTOM_H - 1);
+  ctx.fillRect(dx - 1.5, bottom, doorW + 3, WALL_BOTTOM_H);
+  ctx.fillStyle = PUB.barTop;
+  ctx.fillRect(dx - 1, bottom + 0.5, doorW + 2, WALL_BOTTOM_H - 0.5);
   ctx.fillStyle = PUB.midnight;
   ctx.fillRect(dx, bottom + 2, doorW, WALL_BOTTOM_H - 2);
   ctx.fillStyle = PUB.wainscotLit;
-  ctx.fillRect(dx, bottom + 2, 1, WALL_BOTTOM_H - 2);
-  ctx.fillRect(dx + doorW - 1, bottom + 2, 1, WALL_BOTTOM_H - 2);
+  ctx.fillRect(dx, bottom + 2, 0.5, WALL_BOTTOM_H - 2);
+  ctx.fillRect(dx + doorW - 0.5, bottom + 2, 0.5, WALL_BOTTOM_H - 2);
+  ctx.fillStyle = PUB.cool;
+  ctx.fillRect(dx + 3, bottom + 3, doorW - 6, 0.5);
+  ctx.fillRect(dx + doorW / 2, bottom + 2, 0.5, WALL_BOTTOM_H - 3);
   ctx.fillStyle = PUB.brass;
-  ctx.fillRect(dx + doorW - 4, bottom + 5, 1, 2);
+  ctx.fillRect(dx + doorW - 4, bottom + 6, 1, 1);
 }
 
 // One world-sized canvas holding passes 2-4. Built at load; the frame loop
@@ -2456,10 +2599,11 @@ const roomCanvas = buildRoomCanvas();
 
 function buildRoomCanvas() {
   const cv = document.createElement('canvas');
-  cv.width = WORLD_W;
-  cv.height = WORLD_H;
+  cv.width = WORLD_W * ART_SCALE;
+  cv.height = WORLD_H * ART_SCALE;
   const g = cv.getContext('2d');
   g.imageSmoothingEnabled = false;
+  g.setTransform(ART_SCALE, 0, 0, ART_SCALE, 0, 0);
   drawGround(g);
   drawArchitecture(g);
   return cv;
@@ -2475,7 +2619,17 @@ function drawRoom(camX, camY) {
   const w = Math.min(WORLD_W - sx, viewW - dx);
   const h = Math.min(WORLD_H - sy, viewH - dy);
   if (w <= 0 || h <= 0) return;
-  ctx.drawImage(roomCanvas, sx, sy, w, h, dx, dy, w, h);
+  ctx.drawImage(
+    roomCanvas,
+    sx * ART_SCALE,
+    sy * ART_SCALE,
+    w * ART_SCALE,
+    h * ART_SCALE,
+    dx,
+    dy,
+    w,
+    h,
+  );
 }
 
 // ---- Pass 5: floor lighting -------------------------------------------------
@@ -2483,7 +2637,28 @@ function drawRoom(camX, camY) {
 // before the characters so people are lit by the room, not tinted through it.
 function drawFloorLight(camX, camY) {
   for (const lamp of DECOR.lamps) {
-    drawGlow(glowFor(lamp.r, WARM_RGB, 0.30), lamp.x, lamp.y, lampIntensity(lamp), camX, camY);
+    drawGlow(glowFor(lamp.r, WARM_RGB, 0.38), lamp.x, lamp.y, lampIntensity(lamp), camX, camY);
+    // Broken vertical highlights mimic warm bulbs reflected in old varnish.
+    // They deliberately stop and restart instead of reading as vector lines.
+    const sx = Math.round((lamp.x - camX) * 2) / 2;
+    const sy = Math.round((lamp.y - camY) * 2) / 2;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.18 * lampIntensity(lamp);
+    for (let i = 0; i < 6; i++) {
+      const ry = sy + 5 + i * 4;
+      const rw = Math.max(0.5, 4 - i * 0.55);
+      ctx.fillStyle = i < 2 ? PUB.cream : PUB.amber;
+      ctx.fillRect(sx - rw / 2 + ((i & 1) ? 0.5 : 0), ry, rw, i < 2 ? 0.5 : 1);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+  }
+  for (const table of TABLES) {
+    const items = DECOR.clutter.get(table) || [];
+    for (const item of items) {
+      if (item.kind !== 'candle') continue;
+      drawGlow(glowFor(9, WARM_RGB, 0.24), table.x + item.ox, table.y + item.oy, 0.82, camX, camY);
+    }
   }
   for (const w of DECOR.windows) {
     drawGlow(glowFor(22, COOL_RGB, 0.16), w.x + w.w / 2, 8, 1, camX, camY);
@@ -2508,38 +2683,106 @@ function drawBar(bar, camX, camY) {
   const c = bar.collider;
   const x = Math.round(c.x - camX);
   const y = Math.round(c.y - camY);
+  const horizontal = c.w >= c.h;
+  const faceDepth = 6;
 
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(x + 1, y + c.h, c.w, 2);
+  ctx.fillRect(x + 2, y + c.h + 1, c.w, 3);
 
+  // Clipped dark silhouette, then a dimensional customer-facing front.
   ctx.fillStyle = PUB.ink;
-  ctx.fillRect(x, y, c.w, c.h);
+  ctx.fillRect(x + 1, y, c.w - 2, c.h);
+  ctx.fillRect(x, y + 1, c.w, c.h - 2);
   ctx.fillStyle = PUB.barFront;
   ctx.fillRect(x + 1, y + 1, c.w - 2, c.h - 2);
-  ctx.fillStyle = PUB.barTop;
-  ctx.fillRect(x, y, c.w, Math.min(c.h, Math.max(4, Math.round(c.h * 0.42))));
-  ctx.fillStyle = PUB.barTopLit;
-  ctx.fillRect(x + 1, y + 1, c.w - 2, 2);
-  ctx.fillStyle = PUB.barTopHi;
-  ctx.fillRect(x + 2, y + 1, c.w - 4, 1);
 
-  // Slats down the customer-facing panel.
-  ctx.fillStyle = PUB.barFrontDark;
-  for (let sx = 3; sx < c.w - 2; sx += 5) ctx.fillRect(x + sx, y + c.h - 5, 1, 4);
-  ctx.fillRect(x, y + c.h - 1, c.w, 1);
-  // Short grain marks stop the broad counter from reading as one flat slab.
-  for (let sx = 5; sx < c.w - 4; sx += 11) {
-    ctx.fillRect(x + sx, y + 4, Math.min(5, c.w - sx - 2), 1);
+  if (horizontal) {
+    ctx.fillStyle = PUB.barFrontDark;
+    ctx.fillRect(x + 1, y + c.h - faceDepth, c.w - 2, faceDepth - 1);
+    ctx.fillStyle = PUB.barFront;
+    ctx.fillRect(x + 2, y + c.h - faceDepth + 1, c.w - 4, faceDepth - 2);
+    ctx.fillStyle = PUB.barFrontLit;
+    ctx.fillRect(x + 1, y + c.h - faceDepth, c.w - 2, 1);
+    for (let px = x + 5; px < x + c.w - 3; px += 7) {
+      ctx.fillStyle = PUB.barFrontDark;
+      ctx.fillRect(px, y + c.h - faceDepth + 1, 0.5, faceDepth - 2);
+      ctx.fillStyle = PUB.barFrontLit;
+      ctx.fillRect(px + 0.5, y + c.h - faceDepth + 1.5, 0.5, faceDepth - 3);
+    }
+  } else {
+    ctx.fillStyle = PUB.barFrontDark;
+    ctx.fillRect(x + c.w - faceDepth, y + 1, faceDepth - 1, c.h - 2);
+    ctx.fillStyle = PUB.barFront;
+    ctx.fillRect(x + c.w - faceDepth + 1, y + 2, faceDepth - 2, c.h - 4);
+    ctx.fillStyle = PUB.barFrontLit;
+    ctx.fillRect(x + c.w - faceDepth, y + 1, 1, c.h - 2);
+    for (let py = y + 6; py < y + c.h - 3; py += 8) {
+      ctx.fillStyle = PUB.barFrontDark;
+      ctx.fillRect(x + c.w - faceDepth + 1, py, faceDepth - 2, 0.5);
+      ctx.fillStyle = PUB.barFrontLit;
+      ctx.fillRect(x + c.w - faceDepth + 1.5, py + 0.5, faceDepth - 3, 0.5);
+    }
   }
-  ctx.fillStyle = PUB.barFrontLit;
-  ctx.fillRect(x, y + c.h - 6, c.w, 1);
+
+  // Thick walnut worktop with a fine golden bevel and long grain scratches.
+  ctx.fillStyle = PUB.tableEdge;
+  if (horizontal) ctx.fillRect(x, y, c.w, c.h - faceDepth + 1);
+  else ctx.fillRect(x, y, c.w - faceDepth + 1, c.h);
+  ctx.fillStyle = PUB.barTop;
+  if (horizontal) ctx.fillRect(x + 1, y + 1, c.w - 2, c.h - faceDepth - 1);
+  else ctx.fillRect(x + 1, y + 1, c.w - faceDepth - 1, c.h - 2);
+  ctx.fillStyle = PUB.barTopLit;
+  if (horizontal) ctx.fillRect(x + 1, y + 1, c.w - 2, 1.5);
+  else ctx.fillRect(x + 1, y + 1, 1.5, c.h - 2);
+  ctx.fillStyle = PUB.barTopHi;
+  if (horizontal) ctx.fillRect(x + 2, y + 1, c.w - 4, 0.5);
+  else ctx.fillRect(x + 1, y + 2, 0.5, c.h - 4);
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = PUB.tableTopHi;
+  if (horizontal) {
+    for (let px = x + 5; px < x + c.w - 5; px += 12) {
+      ctx.fillRect(px, y + 3.5 + ((px >> 2) & 1), Math.min(6, x + c.w - px - 3), 0.5);
+    }
+  } else {
+    for (let py = y + 5; py < y + c.h - 5; py += 12) {
+      ctx.fillRect(x + 3.5 + ((py >> 2) & 1), py, 0.5, Math.min(6, y + c.h - py - 3));
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Brass foot rail follows the customer edge.
   ctx.fillStyle = PUB.brass;
-  for (let rx = 1; rx < c.w - 1; rx += 2) ctx.fillRect(x + rx, y + c.h - 3, 1, 1);
+  if (horizontal) {
+    ctx.fillRect(x + 2, y + c.h - 2, c.w - 4, 0.5);
+    for (let px = x + 5; px < x + c.w - 3; px += 9) ctx.fillRect(px, y + c.h - 2.5, 0.5, 1.5);
+  } else {
+    ctx.fillRect(x + c.w - 2, y + 2, 0.5, c.h - 4);
+    for (let py = y + 5; py < y + c.h - 3; py += 9) ctx.fillRect(x + c.w - 2.5, py, 1.5, 0.5);
+  }
 
   for (const prop of DECOR.barProps) {
     if (prop.seg !== bar) continue;
     drawBarProp(prop, camX, camY);
   }
+  if (horizontal && c.w > 60) drawCounterPlant(x + c.w - 8, y + 4);
+}
+
+function drawCounterPlant(x, y) {
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(x - 2, y + 1, 5, 2);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 2, y - 1, 5, 3);
+  ctx.fillStyle = PUB.barTop;
+  ctx.fillRect(x - 1.5, y - 0.5, 4, 2);
+  ctx.fillStyle = PUB.green;
+  ctx.fillRect(x, y - 6, 0.5, 5.5);
+  ctx.fillRect(x - 3, y - 5, 3, 1.5);
+  ctx.fillRect(x + 0.5, y - 4.5, 3, 1.5);
+  ctx.fillRect(x - 2, y - 7, 2.5, 2);
+  ctx.fillRect(x + 0.5, y - 7.5, 2.5, 2);
+  ctx.fillStyle = PUB.greenLit;
+  ctx.fillRect(x - 2.5, y - 5, 1, 0.5);
+  ctx.fillRect(x + 1, y - 7, 1, 0.5);
 }
 
 function drawBarProp(prop, camX, camY) {
@@ -2547,26 +2790,34 @@ function drawBarProp(prop, camX, camY) {
   const y = Math.round(prop.y - camY);
   if (prop.kind === 'bottle') {
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x, y - 6, 3, 6);
+    ctx.fillRect(x - 0.5, y - 6.5, 3, 6.5);
     ctx.fillStyle = (prop.x & 1) ? PUB.bottleGreen : PUB.bottleAmber;
-    ctx.fillRect(x, y - 5, 3, 5);
+    ctx.fillRect(x, y - 5.5, 2, 5);
     ctx.fillStyle = PUB.glass;
-    ctx.fillRect(x, y - 4, 1, 3);
+    ctx.globalAlpha = 0.75;
+    ctx.fillRect(x, y - 5, 0.5, 3);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PUB.paper;
+    ctx.fillRect(x, y - 3.5, 2, 1);
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x + 1, y - 7, 1, 2);
+    ctx.fillRect(x + 0.5, y - 7.5, 1, 2);
   } else if (prop.kind === 'glass') {
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x, y - 4, 3, 4);
+    ctx.fillRect(x - 0.5, y - 4.5, 3, 4.5);
     ctx.fillStyle = PUB.bottleClear;
-    ctx.fillRect(x, y - 3, 3, 3);
+    ctx.fillRect(x, y - 4, 2, 3.5);
+    ctx.fillStyle = PUB.amber;
+    ctx.fillRect(x, y - 2, 2, 1.5);
     ctx.fillStyle = PUB.cream;
-    ctx.fillRect(x, y - 3, 1, 2);
+    ctx.fillRect(x, y - 4, 0.5, 2);
   } else {
     ctx.fillStyle = PUB.brass;
-    ctx.fillRect(x, y - 5, 2, 5);
-    ctx.fillRect(x + 2, y - 5, 2, 1);
+    ctx.fillRect(x, y - 5, 1.5, 5);
+    ctx.fillRect(x + 1.5, y - 5, 2.5, 0.5);
+    ctx.fillStyle = PUB.barTopHi;
+    ctx.fillRect(x + 0.5, y - 5, 0.5, 3.5);
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x, y - 1, 2, 1);
+    ctx.fillRect(x - 0.5, y - 1, 2.5, 1);
   }
 }
 
@@ -2576,22 +2827,47 @@ function drawSeatChairs(table, camX, camY) {
   const seats = getTableSeats(table);
   for (let i = 0; i < seats.length; i++) {
     const seat = seats[i];
-    const cx = Math.round(seat.x - camX - CHAIR_SIZE / 2);
-    const cy = Math.round(seat.y - camY - CHAIR_SIZE / 2);
+    const centerX = Math.round((seat.x - camX) * 2) / 2;
+    const centerY = Math.round((seat.y - camY) * 2) / 2;
     const alternate = (Math.round(table.x + table.y) + i * 3) % 7 < 2;
     const base = alternate ? PUB.chairAlt : PUB.chair;
     const lit = alternate ? PUB.chairAltLit : PUB.chairLit;
+    const vertical = seat.side === 'n' || seat.side === 's';
+    const w = vertical ? 8 : 7;
+    const h = vertical ? 7 : 8;
+    const cx = centerX - w / 2;
+    const cy = centerY - h / 2;
+
     ctx.fillStyle = PUB.tableShadow;
-    ctx.fillRect(cx + 1, cy + CHAIR_SIZE - 1, CHAIR_SIZE, 2);
+    ctx.fillRect(cx + 1.5, cy + h - 0.5, w, 2);
+    // Thin dark legs protrude from the upholstered seat.
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(cx, cy, CHAIR_SIZE, CHAIR_SIZE);
+    ctx.fillRect(cx + 0.5, cy + h - 1, 1, 2.5);
+    ctx.fillRect(cx + w - 1.5, cy + h - 1, 1, 2.5);
+    ctx.fillRect(cx + 1, cy + 1, w - 2, h - 1);
+    ctx.fillRect(cx + 0.5, cy + 2, w - 1, h - 3);
     ctx.fillStyle = base;
-    ctx.fillRect(cx + 1, cy + 1, CHAIR_SIZE - 2, CHAIR_SIZE - 2);
+    ctx.fillRect(cx + 1, cy + 2, w - 2, h - 3);
     ctx.fillStyle = lit;
-    ctx.fillRect(cx + 1, cy + 1, CHAIR_SIZE - 2, 1);
-    // One dark inset pixel reads as a tuft/button at this scale.
+    ctx.fillRect(cx + 1.5, cy + 2, w - 3, 0.5);
+    ctx.fillRect(cx + 1, cy + 2.5, 0.5, h - 4);
+    // Carved back rail faces away from the table; orientation now reads even
+    // when the character temporarily obscures the cushion.
+    const backAtStart = seat.side === 's' || seat.side === 'e';
+    ctx.fillStyle = PUB.tableEdge;
+    if (vertical) {
+      const by = backAtStart ? cy + h - 1.5 : cy;
+      ctx.fillRect(cx, by, w, 1.5);
+      ctx.fillStyle = PUB.barTopLit;
+      ctx.fillRect(cx + 1, by + (backAtStart ? 0 : 0.5), w - 2, 0.5);
+    } else {
+      const bx = backAtStart ? cx + w - 1.5 : cx;
+      ctx.fillRect(bx, cy, 1.5, h);
+      ctx.fillStyle = PUB.barTopLit;
+      ctx.fillRect(bx + (backAtStart ? 0 : 0.5), cy + 1, 0.5, h - 2);
+    }
     ctx.fillStyle = base;
-    ctx.fillRect(cx + Math.floor(CHAIR_SIZE / 2), cy + Math.floor(CHAIR_SIZE / 2), 1, 1);
+    ctx.fillRect(centerX - 0.5, centerY, 1, 0.5);
   }
 }
 
@@ -2606,16 +2882,27 @@ function drawBench(bench, camX, camY) {
   const x = Math.round(bench.x - bench.w / 2 - camX);
   const y = Math.round(bench.y - bench.h / 2 - camY);
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(x + 1, y + bench.h, bench.w, 2);
+  ctx.fillRect(x + 1.5, y + bench.h, bench.w, 2.5);
   ctx.fillStyle = PUB.ink;
-  ctx.fillRect(x, y, bench.w, bench.h);
+  ctx.fillRect(x + 0.5, y, bench.w - 1, bench.h);
+  ctx.fillRect(x, y + 0.5, bench.w, bench.h - 1);
   ctx.fillStyle = PUB.chair;
   ctx.fillRect(x + 1, y + 1, bench.w - 2, bench.h - 2);
   ctx.fillStyle = PUB.chairLit;
-  ctx.fillRect(x + 2, y + 1, bench.w - 4, 1);
+  ctx.fillRect(x + 1.5, y + 1, bench.w - 3, 0.5);
+  ctx.fillRect(x + 1, y + 1.5, 0.5, bench.h - 3);
   ctx.fillStyle = PUB.tableEdge;
-  ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1);
-  for (let px = x + 5; px < x + bench.w - 3; px += 9) ctx.fillRect(px, y + Math.floor(bench.h / 2), 1, 1);
+  ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1.5);
+  for (let px = x + 4; px < x + bench.w - 3; px += 8) {
+    ctx.fillRect(px, y + Math.floor(bench.h / 2), 1, 1);
+    ctx.fillStyle = PUB.chairLit;
+    ctx.fillRect(px + 0.5, y + Math.floor(bench.h / 2), 0.5, 0.5);
+    ctx.fillStyle = PUB.tableEdge;
+  }
+  ctx.fillStyle = PUB.barFrontDark;
+  for (let px = x + 7; px < x + bench.w - 4; px += 12) {
+    ctx.fillRect(px, y + 1, 0.5, bench.h - 3);
+  }
 }
 
 // A table: contact shadow, dark edge, lit top, a highlight along the back
@@ -2629,22 +2916,43 @@ function drawTable(table, camX, camY) {
   drawSeatChairs(table, camX, camY);
 
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(sx - halfW + 1, sy + halfH, table.w, 2);
+  ctx.fillRect(sx - halfW + 2, sy + halfH + 1, table.w, 3);
 
+  const x = sx - halfW;
+  const y = sy - halfH;
+  const front = Math.min(3.5, Math.max(2.5, table.h * 0.14));
   ctx.fillStyle = PUB.tableEdge;
-  ctx.fillRect(sx - halfW, sy - halfH, table.w, table.h);
+  ctx.fillRect(x + 1, y, table.w - 2, table.h);
+  ctx.fillRect(x, y + 1, table.w, table.h - 2);
+  // Deep front lip and small bracket/leg shadows provide the missing height.
+  ctx.fillStyle = PUB.barFrontDark;
+  ctx.fillRect(x + 1, y + table.h - front - 0.5, table.w - 2, front);
+  ctx.fillStyle = PUB.barFront;
+  ctx.fillRect(x + 2, y + table.h - front, table.w - 4, front - 1);
+  ctx.fillStyle = PUB.tableEdge;
+  ctx.fillRect(x + Math.min(6, table.w * 0.16), y + table.h - 1, 2, 2);
+  ctx.fillRect(x + table.w - Math.min(8, table.w * 0.16) - 1, y + table.h - 1, 2, 2);
+
   ctx.fillStyle = PUB.tableTop;
-  ctx.fillRect(sx - halfW + 1, sy - halfH + 1, table.w - 2, table.h - 2);
+  ctx.fillRect(x + 1, y + 1, table.w - 2, table.h - front - 1);
   ctx.fillStyle = PUB.tableTopLit;
-  ctx.fillRect(sx - halfW + 2, sy - halfH + 2, table.w - 4, table.h - 4);
+  ctx.fillRect(x + 1.5, y + 1.5, table.w - 3, table.h - front - 2);
   ctx.fillStyle = PUB.tableTopHi;
-  ctx.fillRect(sx - halfW + 3, sy - halfH + 2, table.w - 6, 1);
-  ctx.fillStyle = PUB.tableTop;
-  for (let gy = sy - halfH + 6; gy < sy + halfH - 2; gy += 7) {
-    ctx.fillRect(sx - halfW + 3, gy, Math.max(1, table.w - 7), 1);
+  ctx.fillRect(x + 2, y + 1.5, table.w - 4, 0.5);
+  ctx.fillRect(x + 1.5, y + 2, 0.5, table.h - front - 3);
+  // Narrow boards and fine grain across the tabletop.
+  for (let gy = y + 5; gy < y + table.h - front - 1; gy += 4.5) {
+    ctx.fillStyle = PUB.tableTop;
+    ctx.fillRect(x + 2, gy, table.w - 4, 0.5);
+    ctx.fillStyle = PUB.tableTopHi;
+    ctx.globalAlpha = 0.34;
+    for (let gx = x + 5 + ((gy * 2) & 3); gx < x + table.w - 4; gx += 13) {
+      ctx.fillRect(gx, gy + 1, Math.min(6, x + table.w - gx - 3), 0.5);
+    }
+    ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = PUB.tableEdge;
-  ctx.fillRect(sx - halfW + 1, sy + halfH - 2, table.w - 2, 1);
+  ctx.fillStyle = PUB.barTopHi;
+  ctx.fillRect(x + 2, y + table.h - front - 0.5, table.w - 4, 0.5);
 
   const items = DECOR.clutter.get(table);
   if (items) for (const it of items) drawTableProp(it, sx, sy, camX, camY);
@@ -2654,22 +2962,70 @@ function drawTableProp(item, tableSX, tableSY, camX, camY) {
   const x = tableSX + item.ox;
   const y = tableSY + item.oy;
   if (item.kind === 'coaster') {
-    ctx.fillStyle = PUB.creamDim;
-    ctx.fillRect(x - 1, y, 3, 2);
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(x - 1.5, y + 0.5, 3.5, 1.5);
+    ctx.fillStyle = (item.ox & 1) ? PUB.rugRed : PUB.creamDim;
+    ctx.fillRect(x - 1.5, y, 3, 1.5);
     ctx.fillStyle = PUB.cream;
-    ctx.fillRect(x, y, 1, 1);
+    ctx.fillRect(x - 0.5, y, 1, 0.5);
   } else if (item.kind === 'glass') {
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x - 1, y - 3, 3, 4);
+    ctx.fillRect(x - 1.5, y - 3.5, 3, 4);
     ctx.fillStyle = PUB.bottleClear;
-    ctx.fillRect(x - 1, y - 3, 3, 3);
+    ctx.fillRect(x - 1, y - 3, 2, 3);
+    ctx.fillStyle = PUB.amber;
+    ctx.fillRect(x - 1, y - 1.5, 2, 1);
     ctx.fillStyle = PUB.cream;
-    ctx.fillRect(x - 1, y - 3, 1, 2);
-  } else {
-    ctx.fillStyle = PUB.paper;
-    ctx.fillRect(x - 2, y - 1, 5, 3);
+    ctx.fillRect(x - 1, y - 3, 0.5, 1.5);
+  } else if (item.kind === 'mug') {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 2, y - 3.5, 3.5, 4);
+    ctx.fillRect(x + 1.5, y - 2.5, 1.5, 2.5);
+    ctx.fillStyle = PUB.bottleAmber;
+    ctx.fillRect(x - 1.5, y - 2.5, 2.5, 2.5);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 1.5, y - 3, 2.5, 0.5);
+    ctx.fillRect(x - 1, y - 2.5, 0.5, 1.5);
+  } else if (item.kind === 'candle') {
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(x - 2, y, 4, 1);
+    ctx.fillStyle = PUB.creamDim;
+    ctx.fillRect(x - 0.5, y - 3, 1.5, 3);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 0.5, y - 3, 0.5, 2.5);
     ctx.fillStyle = PUB.tomato;
-    ctx.fillRect(x - 1, y, 3, 1);
+    ctx.fillRect(x, y - 4, 0.5, 1);
+    ctx.fillStyle = PUB.amber;
+    ctx.fillRect(x - 0.5, y - 4.5, 1.5, 1);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x, y - 4.5, 0.5, 0.5);
+  } else if (item.kind === 'bottle') {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 1, y - 5, 2.5, 5.5);
+    ctx.fillStyle = (item.oy & 1) ? PUB.bottleGreen : PUB.bottleAmber;
+    ctx.fillRect(x - 0.5, y - 4, 1.5, 4);
+    ctx.fillStyle = PUB.glass;
+    ctx.fillRect(x - 0.5, y - 3.5, 0.5, 2);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x, y - 6, 0.5, 1.5);
+  } else if (item.kind === 'plate') {
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(x - 2.5, y, 5.5, 2);
+    ctx.fillStyle = PUB.creamDim;
+    ctx.fillRect(x - 2.5, y - 0.5, 5, 1.5);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 1.5, y - 0.5, 3, 0.5);
+    ctx.fillStyle = PUB.greenLit;
+    ctx.fillRect(x - 0.5, y, 1, 0.5);
+  } else {
+    ctx.fillStyle = PUB.tableShadow;
+    ctx.fillRect(x - 1.5, y, 5, 3);
+    ctx.fillStyle = PUB.paper;
+    ctx.fillRect(x - 2, y - 1.5, 5, 3);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 1.5, y - 1, 4, 0.5);
+    ctx.fillStyle = PUB.tomato;
+    ctx.fillRect(x - 1, y, 3, 0.5);
   }
 }
 
@@ -2689,17 +3045,23 @@ function drawForeground(camX, camY) {
     if (x < -8 || y < -8 || x > viewW + 8 || y > viewH + 8) continue;
     const glow = lampIntensity(lamp);
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x, y - 6, 1, 3);          // cord
-    ctx.fillStyle = '#3b2a12';
-    ctx.fillRect(x - 2, y - 4, 5, 1);      // shade, top of the cone
-    ctx.fillStyle = '#5c421c';
-    ctx.fillRect(x - 3, y - 3, 7, 1);
+    ctx.fillRect(x - 0.25, y - 9, 0.5, 5); // cord
+    ctx.fillStyle = PUB.barFrontDark;
+    ctx.fillRect(x - 2, y - 4.5, 4, 0.5);  // shade cap
+    ctx.fillRect(x - 3.5, y - 4, 7, 1);
+    ctx.fillStyle = PUB.barTop;
+    ctx.fillRect(x - 4.5, y - 3, 9, 1);
+    ctx.fillStyle = PUB.barTopLit;
+    ctx.fillRect(x - 5, y - 2, 10, 1);
     ctx.fillStyle = PUB.brass;
-    ctx.fillRect(x - 4, y - 2, 9, 1);      // rim
+    ctx.fillRect(x - 5.5, y - 1, 11, 0.5); // rim
+    ctx.fillRect(x - 3.5, y - 2.5, 7, 0.5);
     ctx.fillStyle = glow > 1 ? '#fff3d2' : PUB.amber;
-    ctx.fillRect(x - 2, y - 1, 5, 1);      // bulb under the rim
+    ctx.fillRect(x - 2, y - 0.5, 4, 1.5);  // bulb under the rim
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x - 0.5, y - 0.5, 1, 0.5);
     ctx.fillStyle = PUB.amberDim;
-    ctx.fillRect(x - 1, y, 3, 1);
+    ctx.fillRect(x - 1, y + 1, 2, 0.5);
   }
 
   if (prefersReducedMotion) return;
@@ -2716,7 +3078,7 @@ function drawForeground(camX, camY) {
 // resets for free along with the score.
 function drawGrade() {
   const lvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP);
-  const nightAlpha = Math.min(0.27, 0.05 + (lvl - 1) * 0.024);
+  const nightAlpha = Math.min(0.29, 0.08 + (lvl - 1) * 0.023);
   ctx.globalAlpha = nightAlpha;
   ctx.fillStyle = PUB.midnight;
   ctx.fillRect(0, 0, viewW, viewH);
@@ -2743,14 +3105,27 @@ function pushDrawable(sortY, type, ref) {
   drawList.push(e);
 }
 
-function drawEntity(e, camX, camY) {
+function spriteForEntity(e) {
   const set = SPRITES[e.kind];
+  if (e === player && e.carrying) {
+    return set[e.moving && e.legFrame === 1 ? 'carryWalk' : 'carry'] || set.idle;
+  }
   // Seated regulars pick a named pose; movers use the walk cycle.
-  const sprite = e.pose
+  return e.pose
     ? (set[e.pose] || set.idle)
     : set[e.moving ? (e.legFrame === 1 ? 'walk' : 'idle') : 'idle'];
-  const sx = e.x - camX - sprite.w / 2 + (e.swayOffset || 0);
-  const sy = e.y - camY - sprite.h;
+}
+
+function entityHeadTop(e) {
+  return e.y - spriteVisualH(spriteForEntity(e));
+}
+
+function drawEntity(e, camX, camY) {
+  const set = SPRITES[e.kind];
+  const sprite = spriteForEntity(e);
+  const stepLift = e.moving && e.legFrame === 1 ? -0.5 : 0;
+  const sx = e.x - camX - spriteAnchorX(sprite, e.flip) + (e.swayOffset || 0);
+  const sy = e.y - camY - spriteVisualH(sprite) + stepLift;
   const footX = Math.round(e.x - camX);
   const footY = Math.round(e.y - camY);
   // Tiny broken rings make the two gameplay roles instantly readable in a
@@ -2765,9 +3140,14 @@ function drawEntity(e, camX, camY) {
     ctx.fillRect(footX + 7, footY - 2, 1, 2);
     ctx.globalAlpha = 1;
   }
-  // A small contact shadow so nobody looks pasted onto the floor.
+  // Layered cast/contact shadow: a soft offset mass plus the crisp foot lock.
+  ctx.globalAlpha = 0.46;
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(footX - 4, footY - 1, 8, 2);
+  ctx.fillRect(footX - 4.5, footY + 0.5, 10, 1.5);
+  ctx.fillRect(footX - 2.5, footY + 2, 7, 0.5);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(footX - 3.5, footY - 0.5, 7, 1);
   // Flicker the player after a hit so the temporary invulnerability is visible
   // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
@@ -2781,7 +3161,13 @@ function drawEntity(e, camX, camY) {
 function drawGhost(g, camX, camY) {
   const sprite = SPRITES.ghost.idle;
   ctx.globalAlpha = 0.7;
-  drawSprite(sprite, SPRITES.ghost.palette, g.x - camX - sprite.w / 2, g.y - camY - sprite.h, g.flip);
+  drawSprite(
+    sprite,
+    SPRITES.ghost.palette,
+    g.x - camX - spriteAnchorX(sprite, g.flip),
+    g.y - camY - spriteVisualH(sprite),
+    g.flip,
+  );
   ctx.globalAlpha = 1;
 }
 
@@ -2830,6 +3216,141 @@ function patienceBarColor(frac) {
   return PUB.tomato;
 }
 
+// ---- Pub UI material kit -----------------------------------------------------
+// Every piece of interface — the hanging HUD sign, order tickets, dialogue
+// placards and the end-of-shift boards — is built from the same three
+// materials as the room: walnut boards, brass fittings and parchment. One
+// palette and two plate painters keep them reading as things the pub owns
+// rather than a layer floated on top of it. The DOM shell (style.css) uses the
+// same hexes so the start overlay and touch controls match.
+const UI = {
+  walnut: '#3b2219',
+  walnutLit: '#5c3626',
+  walnutDark: '#22130f',
+  walnutGrain: 'rgba(12,6,4,0.28)',
+  brass: PUB.brass,
+  brassLit: '#f6d688',
+  brassDark: '#7d521a',
+  parchment: PUB.paper,
+  parchmentLit: '#f5e3b9',
+  parchmentDark: '#c8a66c',
+  ink: PUB.ink,
+  shadow: PUB.tableShadow,
+};
+
+// A filled rectangle with its four corner pixels knocked off. Clipped corners
+// are what keep the plates reading as cut boards and card rather than as
+// generic rounded UI.
+function fillClipped(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 1, y, w - 2, h);
+  ctx.fillRect(x, y + 1, w, h - 2);
+}
+
+function drawRivet(x, y) {
+  ctx.fillStyle = UI.brassDark;
+  ctx.fillRect(x, y, 2, 2);
+  ctx.fillStyle = UI.brass;
+  ctx.fillRect(x, y, 1.5, 1.5);
+  ctx.fillStyle = UI.brassLit;
+  ctx.fillRect(x, y, 0.5, 0.5);
+}
+
+// A walnut board: ink outline, lit top-left bevel, dark bottom-right bevel,
+// faint horizontal grain, and a brass rivet in each corner. `rail` adds brass
+// strips along the top and bottom edges — the trim the wide end-of-shift
+// boards get — and `chains` hangs the board from the top of the frame on two
+// brass chains, which is how the HUD sign is mounted.
+function drawWalnutPlate(x, y, w, h, opts) {
+  const rail = !!(opts && opts.rail);
+  const chains = opts ? opts.chains | 0 : 0;
+  if (chains > 0) {
+    for (const cx of [x + 5, x + w - 6]) {
+      for (let cy = y - chains; cy < y; cy++) {
+        ctx.fillStyle = (cy - y) % 2 === 0 ? UI.brass : UI.brassDark;
+        ctx.fillRect(cx, cy, 1, 1);
+      }
+    }
+  }
+  ctx.fillStyle = UI.shadow;
+  ctx.fillRect(x + 1, y + 2, w, h);
+  fillClipped(x, y, w, h, UI.ink);
+  fillClipped(x + 1, y + 1, w - 2, h - 2, UI.walnut);
+  // Grain: half-pixel dark lines, staggered so they don't read as ruled paper.
+  ctx.fillStyle = UI.walnutGrain;
+  for (let gy = y + 4; gy < y + h - 3; gy += 3) {
+    const inset = 3 + ((gy - y) % 2) * 3;
+    ctx.fillRect(x + inset, gy, w - inset * 2, 0.5);
+  }
+  ctx.fillStyle = UI.walnutLit;
+  ctx.fillRect(x + 2, y + 1, w - 4, 1);
+  ctx.fillRect(x + 1, y + 2, 1, h - 4);
+  ctx.fillStyle = UI.walnutDark;
+  ctx.fillRect(x + 2, y + h - 2, w - 4, 1);
+  ctx.fillRect(x + w - 2, y + 2, 1, h - 4);
+  if (rail) {
+    ctx.fillStyle = UI.brass;
+    ctx.fillRect(x + 2, y + 1, w - 4, 1);
+    ctx.fillRect(x + 2, y + h - 2, w - 4, 1);
+    ctx.fillStyle = UI.brassLit;
+    ctx.fillRect(x + 3, y + 1, w - 6, 0.5);
+    ctx.fillRect(x + 3, y + h - 2, w - 6, 0.5);
+  }
+  drawRivet(x + 2, y + 2);
+  drawRivet(x + w - 4, y + 2);
+  drawRivet(x + 2, y + h - 4);
+  drawRivet(x + w - 4, y + h - 4);
+}
+
+// A parchment card with a coloured stitched frame: order tickets and dialogue
+// placards. The accent is semantic (whose order, who's talking, what you're
+// carrying), so it is a parameter rather than a material.
+function drawParchmentPlate(x, y, w, h, accent, stitch) {
+  ctx.fillStyle = UI.shadow;
+  ctx.fillRect(x + 1, y + 2, w, h);
+  fillClipped(x, y, w, h, accent);
+  fillClipped(x + 1, y + 1, w - 2, h - 2, UI.parchment);
+  if (h < 7 || w < 7) return;
+  // Aged bottom/right edge, lit top/left edge, then a stitch of dots along
+  // the top so the card reads as a torn ticket rather than a flat fill.
+  ctx.fillStyle = UI.parchmentDark;
+  ctx.fillRect(x + 2, y + h - 2, w - 4, 0.5);
+  ctx.fillRect(x + w - 2, y + 2, 0.5, h - 4);
+  ctx.fillStyle = UI.parchmentLit;
+  ctx.fillRect(x + 1, y + 2, 0.5, h - 4);
+  ctx.fillStyle = stitch || UI.parchmentLit;
+  ctx.fillRect(x + 3, y + 1, w - 6, 1);
+  ctx.fillStyle = accent;
+  for (let px = x + 4; px < x + w - 4; px += 2) ctx.fillRect(px, y + 1, 0.5, 0.5);
+}
+
+// The little pointer from a placard back to whoever it belongs to. `y` is the
+// plate edge the tail grows from.
+function drawPlateTail(tailX, y, accent, pointingDown) {
+  ctx.fillStyle = accent;
+  if (pointingDown) {
+    ctx.fillRect(tailX, y, 3, 2);
+    ctx.fillRect(tailX + 1, y + 2, 1, 1);
+    ctx.fillStyle = UI.parchment;
+    ctx.fillRect(tailX + 1, y, 1, 1);
+  } else {
+    ctx.fillRect(tailX, y - 2, 3, 2);
+    ctx.fillRect(tailX + 1, y - 3, 1, 1);
+    ctx.fillStyle = UI.parchment;
+    ctx.fillRect(tailX + 1, y - 1, 1, 1);
+  }
+}
+
+// A short brass rule with a dark underline; the divider used on the boards.
+function drawBrassRule(x, y, w) {
+  ctx.fillStyle = UI.brassDark;
+  ctx.fillRect(x, y + 1, w, 0.5);
+  ctx.fillStyle = UI.brass;
+  ctx.fillRect(x, y, w, 1);
+  ctx.fillStyle = UI.brassLit;
+  ctx.fillRect(x + 1, y, w - 2, 0.5);
+}
+
 const BUBBLE_FRAME_DEFAULT = PUB.ink;
 const BUBBLE_FRAME_REGULAR = PUB.amberDim; // a named regular is waiting
 const BUBBLE_FRAME_CARRIED = PUB.greenLit; // this is the order you're carrying
@@ -2849,8 +3370,8 @@ function orderBubbleSpotFree(rect) {
 function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor, grow) {
   const icon = ORDER_ICONS[orderType];
   const pad = 3;
-  const bw = icon.sprite.w + pad * 2;
-  const full = icon.sprite.h + pad * 2;
+  const bw = spriteVisualW(icon.sprite) + pad * 2;
+  const full = spriteVisualH(icon.sprite) + pad * 2;
   const step = grow == null || grow >= 1 ? 3 : Math.max(1, Math.ceil(grow * 3));
   const bh = step === 3 ? full : (step === 2 ? full - 4 : 3);
   const reserveTop = patienceFraction != null && step === 3 ? 3 : 0;
@@ -2890,35 +3411,28 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
   const sy = by + reserveTop;
   const border = highlighted ? BUBBLE_FRAME_CARRIED : (frameColor || BUBBLE_FRAME_DEFAULT);
 
-  // One-pixel shadow, clipped paper corners, and a coloured top stitch give
-  // this the same hand-built material language as the room furniture.
-  ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(sx + 1, sy + 2, bw, bh);
-  ctx.fillStyle = border;
-  ctx.fillRect(sx + 1, sy, bw - 2, bh);
-  ctx.fillRect(sx, sy + 1, bw, bh - 2);
-  ctx.fillStyle = PUB.paper;
-  ctx.fillRect(sx + 2, sy + 1, bw - 4, bh - 2);
-  ctx.fillRect(sx + 1, sy + 2, bw - 2, bh - 4);
-  if (bh >= 7) {
-    ctx.fillStyle = highlighted ? PUB.greenLit : PUB.cream;
-    ctx.fillRect(sx + 3, sy + 1, bw - 6, 1);
-  }
-  ctx.fillStyle = border;
+  // A parchment order ticket in the shared material kit; the stitch turns
+  // green on the one you're carrying so it reads apart from the queue.
+  drawParchmentPlate(sx, sy, bw, bh, border, highlighted ? PUB.greenLit : null);
   const tailX = clamp(Math.round(worldX - camX) - 1, sx + 2, sx + bw - 4);
-  ctx.fillRect(tailX, sy + bh, 3, 2);
-  ctx.fillStyle = PUB.paper;
-  ctx.fillRect(tailX + 1, sy + bh, 1, 1);
+  drawPlateTail(tailX, sy + bh, border, true);
 
   if (step < 3) return;   // mid-pop: frame only, no icon and no patience bar
   drawSprite(icon.sprite, icon.palette, sx + pad, sy + pad, false);
 
   if (patienceFraction != null) {
+    // Patience is a brass-capped gauge sitting on the ticket's top edge.
     const barY = sy - 3;
-    ctx.fillStyle = PUB.ink;
-    ctx.fillRect(sx, barY, bw, 2);
+    const fillW = Math.round((bw - 2) * clamp(patienceFraction, 0, 1));
+    ctx.fillStyle = UI.ink;
+    ctx.fillRect(sx, barY - 0.5, bw, 2.5);
+    ctx.fillStyle = UI.walnutDark;
+    ctx.fillRect(sx + 1, barY, bw - 2, 1);
     ctx.fillStyle = patienceBarColor(patienceFraction);
-    ctx.fillRect(sx + 1, barY, Math.round((bw - 2) * clamp(patienceFraction, 0, 1)), 1);
+    ctx.fillRect(sx + 1, barY, fillW, 1.5);
+    ctx.fillStyle = UI.brass;
+    ctx.fillRect(sx, barY - 0.5, 0.5, 2.5);
+    ctx.fillRect(sx + bw - 0.5, barY - 0.5, 0.5, 2.5);
   }
 }
 
@@ -2930,9 +3444,9 @@ function drawOrderBubbleFor(e, camX, camY, frameColor) {
   if (e.orderType && !e.served && (e.isRegular || e.state === 'sitting')) {
     const patience = clamp(e.sitTimer / e.patienceDuration, 0, 1);
     const grow = (gameTime - e.orderAppearAt) / BUBBLE_APPEAR_TIME;
-    drawOrderBubble(e.x, e.y - e.h, camX, camY, e.orderType, e.beingCarried, patience, frameColor, grow);
+    drawOrderBubble(e.x, entityHeadTop(e), camX, camY, e.orderType, e.beingCarried, patience, frameColor, grow);
   } else if (e.orderExit) {
-    drawOrderBubble(e.x, e.y - e.h, camX, camY, e.orderExit.type, false, null, frameColor,
+    drawOrderBubble(e.x, entityHeadTop(e), camX, camY, e.orderExit.type, false, null, frameColor,
       e.orderExit.ttl / BUBBLE_EXIT_TIME);
   }
 }
@@ -2944,7 +3458,6 @@ function drawOrderBubbleFor(e, camX, camY, frameColor) {
 const DIALOGUE_MAX_W = 92;
 const DIALOGUE_PAD = 2;
 const DIALOGUE_LINE_GAP = 1;
-const DIALOGUE_BG = PUB.paper;
 const DIALOGUE_INK = PUB.ink;
 
 // Reused across frames so the bubble pass allocates nothing per frame.
@@ -2954,21 +3467,58 @@ function rectsTouch(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// Reused; the HUD's footprint is fed to the bubble layout as an obstacle.
-const hudRect = { x: 2, y: 2, w: 0, h: 0 };
+// Reused; the HUD's footprint (chains included) is fed to the bubble layout
+// as an obstacle.
+const hudRect = { x: 3, y: 0, w: 0, h: 0 };
+const HUD_CHAIN_H = 3;   // brass chain between the top of the frame and the sign
+const HUD_PAD_X = 6;     // clears the corner rivets
+// Life is three pints on the sign. Each is PINT_W × PINT_H and drains from the
+// top as that third of the bar goes, so a hit reads as a pint knocked over
+// and regeneration as the glass filling back up.
 const LIFE_SEGMENT_COUNT = 3;
-const LIFE_SEG_W = 16;
-const LIFE_SEG_H = 3;
-const LIFE_SEG_GAP = 2;
+const PINT_W = 5;
+const PINT_H = 7;
+const PINT_GAP = 3;
+const PINT_FILL_ROWS = PINT_H - 2; // rows between the foam line and the base
 
 function lifeBarWidth() {
-  return LIFE_SEGMENT_COUNT * LIFE_SEG_W + (LIFE_SEGMENT_COUNT - 1) * LIFE_SEG_GAP;
+  return LIFE_SEGMENT_COUNT * PINT_W + (LIFE_SEGMENT_COUNT - 1) * PINT_GAP;
+}
+
+function hudLabels() {
+  return { shift: 'SHIFT ' + getLevel(), tips: 'TIPS ' + score };
 }
 
 function measureHud() {
-  hudRect.w = Math.max(fontTextWidth('LEVEL ' + getLevel() + '  SCORE ' + score) + 6, lifeBarWidth() + 6);
-  hudRect.h = FONT_H + LIFE_SEG_H + 10;
+  const labels = hudLabels();
+  const textW = fontTextWidth(labels.shift) + 6 + fontTextWidth(labels.tips);
+  hudRect.w = Math.max(textW, lifeBarWidth()) + HUD_PAD_X * 2;
+  hudRect.h = HUD_CHAIN_H + 4 + FONT_H + 3 + PINT_H + 4;
   return hudRect;
+}
+
+function drawPint(x, y, fill) {
+  const rows = Math.ceil(PINT_FILL_ROWS * clamp(fill, 0, 1));
+  // Glass: light rim on the outer columns, dark inside.
+  ctx.fillStyle = UI.walnutDark;
+  ctx.fillRect(x + 1, y + 1, PINT_W - 2, PINT_H - 2);
+  ctx.fillStyle = PUB.bottleClear;
+  ctx.fillRect(x, y + 1, 1, PINT_H - 2);
+  ctx.fillRect(x + PINT_W - 1, y + 1, 1, PINT_H - 2);
+  ctx.fillRect(x + 1, y + PINT_H - 1, PINT_W - 2, 1);
+  ctx.fillRect(x + 1, y, PINT_W - 2, 0.5);
+  if (rows > 0) {
+    const top = y + PINT_H - 1 - rows;
+    ctx.fillStyle = PUB.amberDim;
+    ctx.fillRect(x + 1, top, PINT_W - 2, rows);
+    ctx.fillStyle = PUB.amber;
+    ctx.fillRect(x + 1, top, PINT_W - 3, rows);
+    ctx.fillStyle = PUB.cream;
+    ctx.fillRect(x + 1, top, PINT_W - 2, fill >= 0.999 ? 1 : 0.5);
+  }
+  // Highlight down the left of the glass reads as the lamp on it.
+  ctx.fillStyle = PUB.glass;
+  ctx.fillRect(x, y + 1, 0.5, PINT_H - 3);
 }
 
 function drawDialogueBubbles(camX, camY) {
@@ -2989,7 +3539,7 @@ function drawDialogueBubbles(camX, camY) {
     const bw = textW + DIALOGUE_PAD * 2;
     const bh = rows.length * FONT_H + (rows.length - 1) * DIALOGUE_LINE_GAP + DIALOGUE_PAD * 2;
 
-    const headTop = r.y - r.h - camY;
+    const headTop = entityHeadTop(r) - camY;
     // Three placements, in descending order of preference. The regulars' booth
     // sits close to the top wall, so on a short viewport there genuinely isn't
     // room for the ideal one and the fallbacks matter.
@@ -3041,32 +3591,14 @@ function drawDialogueBubbles(camX, camY) {
     if (rect.y < 2) rect.y = 2;
     placedBubbles.push(rect);
 
-    // Frame, clipped paper corners, top stitch, and a tail pointing back at
-    // whoever is talking. The offset dark plate keeps text readable over the
-    // patterned rugs without resorting to a modern rounded card.
+    // A parchment placard in the speaker's accent, with a tail pointing back
+    // at whoever is talking. The offset dark plate keeps text readable over
+    // the patterned rugs without resorting to a modern rounded card.
     const accent = r.cfg.accent || '#141414';
-    ctx.fillStyle = PUB.tableShadow;
-    ctx.fillRect(rect.x + 1, rect.y + 2, bw, bh);
-    ctx.fillStyle = accent;
-    ctx.fillRect(rect.x + 1, rect.y, bw - 2, bh);
-    ctx.fillRect(rect.x, rect.y + 1, bw, bh - 2);
-    ctx.fillStyle = DIALOGUE_BG;
-    ctx.fillRect(rect.x + 2, rect.y + 1, bw - 4, bh - 2);
-    ctx.fillRect(rect.x + 1, rect.y + 2, bw - 2, bh - 4);
-    if (bw > 7) {
-      ctx.fillStyle = PUB.cream;
-      ctx.fillRect(rect.x + 3, rect.y + 1, bw - 6, 1);
-    }
-
+    drawParchmentPlate(rect.x, rect.y, bw, bh, accent);
     const tailX = clamp(Math.round(r.x - camX) - 1, rect.x + 2, rect.x + bw - 4);
-    ctx.fillStyle = accent;
-    if (below) {
-      ctx.fillRect(tailX, rect.y - 2, 3, 2);
-      ctx.fillRect(tailX + 1, rect.y - 3, 1, 1);
-    } else {
-      ctx.fillRect(tailX, rect.y + bh, 3, 2);
-      ctx.fillRect(tailX + 1, rect.y + bh + 2, 1, 1);
-    }
+    if (below) drawPlateTail(tailX, rect.y, accent, false);
+    else drawPlateTail(tailX, rect.y + bh, accent, true);
 
     for (let i = 0; i < rows.length; i++) {
       fontDrawText(ctx, rows[i], rect.x + DIALOGUE_PAD, rect.y + DIALOGUE_PAD + i * (FONT_H + DIALOGUE_LINE_GAP), DIALOGUE_INK);
@@ -3088,85 +3620,87 @@ function getCamera() {
   return { x: Math.round(camX), y: Math.round(camY) };
 }
 
-// The HUD stays a compact pixel plate rather than a card: strong contrast,
-// small footprint, and no information the player doesn't need mid-chase.
+// The HUD is a walnut pub sign hung on two brass chains from the top of the
+// frame: shift and tips on the top line, the three pints of life below.
+// Compact, high contrast, and nothing the player doesn't need mid-chase.
 // Nazim's state deliberately isn't here — it's readable from how he looks and
 // what he says, which is the point of him.
 function drawHud() {
-  const text = 'LEVEL ' + getLevel() + '  SCORE ' + score;
   const hud = measureHud();
-  ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(hud.x + 2, hud.y + 2, hud.w, hud.h);
-  ctx.fillStyle = PUB.ink;
-  ctx.fillRect(hud.x, hud.y, hud.w, hud.h);
-  ctx.fillStyle = 'rgba(24,49,47,0.94)';
-  ctx.fillRect(hud.x + 1, hud.y + 1, hud.w - 2, hud.h - 2);
-  ctx.fillStyle = PUB.amber;
-  ctx.fillRect(hud.x + 2, hud.y + 1, hud.w - 4, 1);
-  ctx.fillStyle = PUB.greenLit;
-  ctx.fillRect(hud.x + 2, hud.y + hud.h - 2, hud.w - 4, 1);
-  ctx.fillStyle = PUB.brass;
-  ctx.fillRect(hud.x + 2, hud.y + 3, 1, 1);
-  ctx.fillRect(hud.x + hud.w - 3, hud.y + 3, 1, 1);
-  fontDrawText(ctx, text, 5, 5, PUB.cream);
+  const labels = hudLabels();
+  const boardY = hud.y + HUD_CHAIN_H;
+  const boardH = hud.h - HUD_CHAIN_H;
+  drawWalnutPlate(hud.x, boardY, hud.w, boardH, { chains: HUD_CHAIN_H });
 
-  const barY = hud.y + FONT_H + 6;
+  const textY = boardY + 4;
+  let tx = hud.x + HUD_PAD_X;
+  fontDrawTextShadow(ctx, 'SHIFT', tx, textY, PUB.creamDim, UI.walnutDark);
+  fontDrawTextShadow(ctx, String(getLevel()), tx + fontTextWidth('SHIFT ') , textY, PUB.cream, UI.walnutDark);
+  tx += fontTextWidth(labels.shift) + 6;
+  fontDrawTextShadow(ctx, 'TIPS', tx, textY, PUB.creamDim, UI.walnutDark);
+  fontDrawTextShadow(ctx, String(score), tx + fontTextWidth('TIPS '), textY, PUB.amber, UI.walnutDark);
+
+  const pintY = textY + FONT_H + 3;
   for (let i = 0; i < LIFE_SEGMENT_COUNT; i++) {
-    const x = hud.x + 3 + i * (LIFE_SEG_W + LIFE_SEG_GAP);
-    ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x - 1, barY - 1, LIFE_SEG_W + 2, LIFE_SEG_H + 2);
-    ctx.fillStyle = PUB.wallDark;
-    ctx.fillRect(x, barY, LIFE_SEG_W, LIFE_SEG_H);
-    const fill = clamp(life * LIFE_SEGMENT_COUNT - i, 0, 1);
-    if (fill > 0) {
-      ctx.fillStyle = fill > 0.5 ? PUB.tomato : PUB.amber;
-      ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), LIFE_SEG_H);
-      ctx.fillStyle = fill > 0.5 ? '#e9785e' : PUB.cream;
-      ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), 1);
-    }
+    const x = hud.x + HUD_PAD_X + i * (PINT_W + PINT_GAP);
+    drawPint(x, pintY, clamp(life * LIFE_SEGMENT_COUNT - i, 0, 1));
   }
+  // Brass coaster rail under the pints so they sit on something.
+  drawBrassRule(hud.x + HUD_PAD_X - 1, pintY + PINT_H, lifeBarWidth() + 2);
 }
 
-function drawCaughtOverlay() {
-  if (caughtImage.complete && caughtImage.naturalWidth > 0) {
-    // Cover-fit the image into the internal resolution, cropping overflow.
-    const scale = Math.max(viewW / caughtImage.naturalWidth, viewH / caughtImage.naturalHeight);
-    const dw = caughtImage.naturalWidth * scale;
-    const dh = caughtImage.naturalHeight * scale;
-    ctx.drawImage(caughtImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.fillRect(0, 0, viewW, viewH);
+// Cover-fits a splash image into the internal resolution and drops a tint
+// over it so the board on top stays the brightest thing on screen.
+function drawSplashImage(img, tint) {
+  if (img.complete && img.naturalWidth > 0) {
+    const scale = Math.max(viewW / img.naturalWidth, viewH / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    ctx.drawImage(img, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
+    ctx.fillStyle = tint;
   } else {
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, viewW, viewH);
+    ctx.fillStyle = 'rgba(10,6,4,0.8)';
   }
+  ctx.fillRect(0, 0, viewW, viewH);
+}
 
-  // The text sits on its own plate: the splash is a busy, high-contrast
-  // painting and small type disappears into it otherwise.
+function drawCenteredText(text, y, color, scale, shadow) {
+  const s = scale || 1;
+  fontDrawTextShadow(ctx, text, Math.round((viewW - fontTextWidth(text) * s) / 2), y, color, shadow || UI.ink, s);
+}
+
+const BOARD_ROW_H = 8;
+const BOARD_TITLE_SCALE = 3;
+
+function drawCaughtOverlay() {
+  drawSplashImage(caughtImage, 'rgba(12,6,4,0.5)');
+
   // The newest line, not the oldest: the reaction to being caught is the one
-  // worth showing, even if an earlier bubble is still on its way out.
+  // worth showing, even if an earlier bubble is still on its way out. It goes
+  // on a parchment note pinned under the ledger.
   const active = Dialogue.getActive();
   const reaction = active.length ? active[active.length - 1] : null;
   const speaker = reaction ? regularById.get(reaction.who) : null;
+  const boardW = clamp(Math.min(viewW - 8, 210), 120, viewW - 8);
+  const innerW = boardW - 12;
   const quipRows = reaction
-    ? fontWrapText((speaker ? speaker.name + ': ' : '') + reaction.text.toUpperCase(), Math.min(200, viewW - 20))
+    ? fontWrapText((speaker ? speaker.name + ': ' : '') + reaction.text.toUpperCase(), innerW - 6)
     : null;
 
-  // Below the score line the plate shows one of two things: the name field
-  // while a score is being filed, or the table it was filed into. Both are
-  // built as rows first so the plate can be sized to fit them.
+  // Below the score line the board shows one of two things: the name field
+  // while a score is being filed, or the ledger it was filed into. Both are
+  // built as rows first so the board can be sized to fit them.
   const rows = [];
   if (enteringName) {
-    // A blinking cursor after the typed name shows the field is live.
     const cursor = Math.floor(performance.now() / 400) % 2 === 0 ? '_' : ' ';
-    rows.push({ text: 'NEW SCORE - ENTER YOUR NAME', color: PUB.amber });
-    rows.push({ text: '> ' + nameInput.toUpperCase() + cursor, color: PUB.cream });
+    rows.push({ text: 'NEW BEST - SIGN THE LEDGER', color: PUB.amber });
+    rows.push({ text: nameInput.toUpperCase() + cursor, color: UI.ink, field: true });
     rows.push({ text: 'ENTER TO CONFIRM   ESC TO SKIP', color: PUB.creamDim });
   } else {
-    rows.push({ text: 'PRESS SPACE TO RESTART', color: PUB.amber });
+    rows.push({ text: canTypeName() ? 'PRESS SPACE FOR ANOTHER SHIFT' : 'TAP RESTART FOR ANOTHER SHIFT', color: PUB.amber });
     const highScores = loadHighScores();
     if (highScores.length) {
-      rows.push({ text: 'BEST', color: PUB.creamDim });
+      rows.push({ text: 'BEST TIPS', color: PUB.creamDim, rule: true });
       for (let i = 0; i < highScores.length; i++) {
         rows.push({
           text: (i + 1) + '. ' + String(highScores[i].name).toUpperCase() + '  ' + highScores[i].score,
@@ -3176,60 +3710,73 @@ function drawCaughtOverlay() {
     }
   }
 
-  const plateH = 30 + rows.length * 8 + (quipRows ? quipRows.length * 7 + 3 : 0);
-  const plateY = Math.round(clamp(viewH / 2 - plateH / 2, 2, viewH - plateH - 2));
-  ctx.fillStyle = 'rgba(10,6,14,0.72)';
-  ctx.fillRect(0, plateY, viewW, plateH);
-  ctx.fillStyle = 'rgba(232,161,58,0.55)';
-  ctx.fillRect(0, plateY, viewW, 1);
-  ctx.fillRect(0, plateY + plateH - 1, viewW, 1);
+  const titleH = FONT_H * BOARD_TITLE_SCALE;
+  const quipH = quipRows ? quipRows.length * (FONT_H + 2) + 4 + 4 : 0;
+  const boardH = 6 + titleH + 4 + 2 + 4 + FONT_H + 5 + rows.length * BOARD_ROW_H + quipH + 4;
+  const bx = Math.round((viewW - boardW) / 2);
+  const by = Math.round(clamp(viewH / 2 - boardH / 2, 2, Math.max(2, viewH - boardH - 2)));
+  drawWalnutPlate(bx, by, boardW, boardH, { rail: true });
 
-  ctx.fillStyle = '#e8620c';
-  ctx.font = '16px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('CAUGHT!', viewW / 2, plateY + 15);
-  ctx.textAlign = 'left';
+  let y = by + 6;
+  drawCenteredText('CAUGHT!', y, PUB.tomato, BOARD_TITLE_SCALE);
+  y += titleH + 4;
+  drawBrassRule(bx + 6, y, boardW - 12);
+  y += 2 + 4;
+  drawCenteredText('SHIFT ' + getLevel() + '   TIPS ' + score, y, PUB.cream);
+  y += FONT_H + 5;
 
-  const summary = 'LEVEL ' + getLevel() + '   SCORE ' + score;
-  fontDrawTextShadow(ctx, summary, Math.round((viewW - fontTextWidth(summary)) / 2), plateY + 20, PUB.cream);
-
-  let rowY = plateY + 28;
   for (const row of rows) {
-    fontDrawTextShadow(ctx, row.text, Math.round((viewW - fontTextWidth(row.text)) / 2), rowY, row.color);
-    rowY += 8;
+    if (row.field) {
+      // The name field is a parchment strip on the board; ink on paper reads
+      // as writing in the ledger rather than typing into a form.
+      const fw = Math.min(innerW, Math.max(fontTextWidth(row.text) + 12, 70));
+      const fx = Math.round((viewW - fw) / 2);
+      drawParchmentPlate(fx, y - 2, fw, FONT_H + 4, UI.brassDark);
+      fontDrawText(ctx, row.text, Math.round((viewW - fontTextWidth(row.text)) / 2), y, row.color);
+    } else {
+      if (row.rule) {
+        const tw = fontTextWidth(row.text);
+        const rx = Math.round((viewW - tw) / 2);
+        const flank = Math.max(0, Math.floor((innerW - tw - 8) / 2));
+        if (flank > 3) {
+          drawBrassRule(rx - 4 - flank, y + 2, flank);
+          drawBrassRule(rx + tw + 4, y + 2, flank);
+        }
+      }
+      drawCenteredText(row.text, y, row.color);
+    }
+    y += BOARD_ROW_H;
   }
 
   if (quipRows) {
+    const qw = innerW;
+    const qx = Math.round((viewW - qw) / 2);
+    const qh = quipRows.length * (FONT_H + 2) + 4;
+    drawParchmentPlate(qx, y + 2, qw, qh, speaker ? speaker.cfg.accent : UI.brassDark);
     for (let k = 0; k < quipRows.length; k++) {
-      fontDrawTextShadow(ctx, quipRows[k], Math.round((viewW - fontTextWidth(quipRows[k])) / 2), rowY + 3 + k * 7,
-        speaker ? speaker.cfg.accent : PUB.cream);
+      fontDrawText(ctx, quipRows[k], Math.round((viewW - fontTextWidth(quipRows[k])) / 2),
+        y + 2 + 2 + k * (FONT_H + 2), UI.ink);
     }
   }
 }
 
 function drawLevelSplashOverlay() {
-  if (levelDoneImage.complete && levelDoneImage.naturalWidth > 0) {
-    const scale = Math.max(viewW / levelDoneImage.naturalWidth, viewH / levelDoneImage.naturalHeight);
-    const dw = levelDoneImage.naturalWidth * scale;
-    const dh = levelDoneImage.naturalHeight * scale;
-    ctx.drawImage(levelDoneImage, (viewW - dw) / 2, (viewH - dh) / 2, dw, dh);
-    ctx.fillStyle = 'rgba(7,15,22,0.28)';
-    ctx.fillRect(0, 0, viewW, viewH);
-  } else {
-    ctx.fillStyle = 'rgba(7,15,22,0.82)';
-    ctx.fillRect(0, 0, viewW, viewH);
-  }
+  drawSplashImage(levelDoneImage, 'rgba(7,12,18,0.34)');
 
-  const title = 'LEVEL ' + splashLevel + ' DONE';
-  const next = 'LEVEL ' + (splashLevel + 1) + ' STARTS NOW';
-  const plateY = Math.round(viewH / 2 - 20);
-  ctx.fillStyle = 'rgba(8,12,18,0.78)';
-  ctx.fillRect(0, plateY, viewW, 38);
-  ctx.fillStyle = 'rgba(232,161,58,0.7)';
-  ctx.fillRect(0, plateY, viewW, 1);
-  ctx.fillRect(0, plateY + 37, viewW, 1);
-  fontDrawTextShadow(ctx, title, Math.round((viewW - fontTextWidth(title)) / 2), plateY + 10, PUB.cream);
-  fontDrawTextShadow(ctx, next, Math.round((viewW - fontTextWidth(next)) / 2), plateY + 24, PUB.amber);
+  const title = 'SHIFT ' + splashLevel + ' DONE';
+  const next = 'LAST CALL - SHIFT ' + (splashLevel + 1) + ' STARTS NOW';
+  const titleScale = 2;
+  const boardW = clamp(Math.max(fontTextWidth(title) * titleScale, fontTextWidth(next)) + 20, 100, viewW - 8);
+  const boardH = 6 + FONT_H * titleScale + 4 + 2 + 4 + FONT_H + 6;
+  const bx = Math.round((viewW - boardW) / 2);
+  const by = Math.round(viewH / 2 - boardH / 2);
+  drawWalnutPlate(bx, by, boardW, boardH, { rail: true });
+  let y = by + 6;
+  drawCenteredText(title, y, PUB.cream, titleScale);
+  y += FONT_H * titleScale + 4;
+  drawBrassRule(bx + 6, y, boardW - 12);
+  y += 2 + 4;
+  drawCenteredText(next, y, PUB.amber);
 }
 
 function render() {
@@ -3279,7 +3826,7 @@ function render() {
   if (player.carrying) {
     const carriedFor = player.carrying.customer;
     const carriedPatience = carriedFor ? clamp(carriedFor.sitTimer / carriedFor.patienceDuration, 0, 1) : null;
-    drawOrderBubble(player.x, player.y - player.h, camX, camY, player.carrying.type, false, carriedPatience);
+    drawOrderBubble(player.x, entityHeadTop(player), camX, camY, player.carrying.type, false, carriedPatience);
   }
 
   drawDialogueBubbles(camX, camY);
