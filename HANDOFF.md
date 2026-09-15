@@ -30,6 +30,24 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 19:20 — visual pass 2: the whole cast re-authored at backing resolution
+
+- `src/sprites.js`: `lightSprite(rows, ramps, w, h)` — literal-row sheets at
+  `pixelSize 0.5` with directional (top-left) shading derived per material;
+  `patchRow` for pose variants. Doe 32×40 (idle/walk; carry/carryWalk 36
+  wide with `anchorX` 8 and the pint held out), hunter 32×40 (+shotgun,
+  36 wide), Nazim/Sam/Gerald 28×32 (blink/talk patches; Nazim lean/slump drop
+  the head 2/4 rows with 'v' eyes; 'r' cheeks and 'w' eyes kept so
+  `NAZIM_STAGE_PALETTES` still works), walk-ins 28×26 (palette variety as
+  before; `makeCustomerPalette` gained i/w/b). `SPRITES.{doe,hunter,nazim,
+  sam,gerald,customer}` point at the HD sets; the coarse rows remain as
+  reference. Hitboxes unchanged. Waiter and ghost still old-style.
+- Tools: scratchpad `capture-sprites.js` renders any `kind:pose` at 6×;
+  `validate-rows.js` checks widths.
+- Smoke passes; review frame shows faces at play scale.
+- Next: perimeter props (fireplace, deer head, coat rack, plants, barrel),
+  ticket weight, then gameplay.png/docs/push/deploy.
+
 ### 18:45 — visual pass 1: darkness + additive light, 3/4 furniture (committed)
 
 - User rejected the state as "still the old style"; executing the reference

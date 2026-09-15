@@ -269,6 +269,9 @@ function makeCustomerPalette() {
     p: look.pants[0],
     P: look.pants[1],
     s: '#1a1512',
+    i: '#16110c',
+    w: '#f5efe0',
+    b: '#2a1a10',
   };
 }
 
@@ -656,24 +659,507 @@ const WAITER_SPRAY_B = buildSprite([
   ...WAITER_SPRAY.rows.slice(15),
 ]);
 
+// ---- High-density lead sheets --------------------------------------------
+// The Doe and the hunter authored straight onto the 2x backing grid: 32x40
+// backing pixels (16x20 on screen, same footprint and hitbox as before) with
+// room for a face. Rows are literal strings so the picture is the source.
+// Light comes from the top-left: `lightSprite` derives highlight/shade
+// variants from that one direction, which is what keeps the figures from
+// pillow-shading, and each material gets exactly three tones.
+
+function lightSprite(rows, ramps, w, h) {
+  const src = rows.map(r => {
+    if (r.length !== w) throw new Error('sprite row width ' + r.length + ' != ' + w + ': ' + r);
+    return r;
+  });
+  if (src.length !== h) throw new Error('sprite height ' + src.length + ' != ' + h);
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? '.' : src[y][x];
+  const solid = ch => ch !== '.';
+  const out = [];
+  for (let y = 0; y < h; y++) {
+    let row = '';
+    for (let x = 0; x < w; x++) {
+      const key = src[y][x];
+      const ramp = ramps[key];
+      if (!ramp) { row += key; continue; }
+      const litN = !solid(at(x, y - 1)) || at(x, y - 1) === 'i';
+      const litW = !solid(at(x - 1, y)) || at(x - 1, y) === 'i';
+      const shS = !solid(at(x, y + 1)) || at(x, y + 1) === 'i';
+      const shE = !solid(at(x + 1, y)) || at(x + 1, y) === 'i';
+      if (litN || litW) row += ramp[0];
+      else if (shS || shE) row += ramp[1];
+      else row += key;
+    }
+    out.push(row);
+  }
+  return { rows: out, w, h, pixelSize: 0.5 };
+}
+
+// Swap a run of characters in one row (x is the column of the first).
+function patchRow(rows, y, x, text) {
+  const r = rows[y];
+  rows[y] = r.slice(0, x) + text + r.slice(x + text.length);
+}
+
+// ---- The Doe ----------------------------------------------------------------
+const DOE_HD_PALETTE = {
+  '.': null,
+  i: '#1b120c',  // outline
+  n: '#a9764f', N: '#d3a26b', M: '#7a5236',   // antler
+  d: '#6b4a30', L: '#8a6242', D: '#49301f',   // onesie
+  f: '#f2e8da',                                // ear fluff
+  k: '#f0c090', J: '#f8d9b0', K: '#c9855e',   // skin
+  h: '#c9a86a', H: '#936f3f',                  // hair
+  g: '#141414', G: '#cfe6ee', w: '#f7f3ea', p: '#2a1a10',  // glasses, eyes
+  e: '#5a4030', F: '#7a5a44', E: '#3f2b20',   // beard
+  c: '#e8ddc0', C: '#c9b98f',                  // chest patch
+  s: '#2a2018', S: '#4a3a2c',                  // hooves
+  u: '#271913', q: '#fff0ca', b: '#d7902f', B: '#b0701e',  // the pint
+};
+const DOE_RAMPS = { d: ['L', 'D'], k: ['J', 'K'], e: ['F', 'E'], c: ['c', 'C'], n: ['N', 'M'], s: ['S', 's'], h: ['h', 'H'] };
+
+const DOE_HD_IDLE_ROWS = [
+  '........n.n..........n.n........',
+  '........n.n..........n.n........',
+  '........nnn..........nnn........',
+  '.........n............n.........',
+  '.........n............n.........',
+  '.........iiiiiiiiiiiiii.........',
+  '........idddddddddddddddi.......',
+  '.......iddddddddddddddddi.......',
+  '......iddddddddddddddddddi......',
+  '..iiiiiddddddddddddddddddiiiii..',
+  '.iffffiddddddddddddddddddiffffi.',
+  '.iffffiddddddddddddddddddiffffi.',
+  '..iiiiiddddddddddddddddddiiiii..',
+  '.....iddihhhhhhhhhhhhhiddi......',
+  '.....iddikkkkkkkkkkkkkiddi......',
+  '.....iddikkkkkkkkkkkkkiddi......',
+  '.....iddigggggkkkkgggggiddi.....',
+  '.....iddigGwpgggggGwpgiddi......',
+  '.....iddigGGGgkkkkgGGGgiddi.....',
+  '.....iddikgggkkkkkkgggkiddi.....',
+  '.....iddikkkkkkKKkkkkkkiddi.....',
+  '.....iddikkeeeeeeeeeekkiddi.....',
+  '.....iddikeeeeeeeeeeeekiddi.....',
+  '.....iddikeeeeeiiiieeeekiddi....',
+  '.....iddiieeeeeeeeeeeeiiddi.....',
+  '...iddddddieeeeeeeeeeidddddddi..',
+  '..iddddddddieeeeeeeeidddddddddi.',
+  '.iddddddddddiieeeeiiddddddddddi.',
+  '.idddddddddddcccccccdddddddddddi',
+  '.iddiddddddddcccccccddddddddiddi',
+  '.iddidddddddcccccccccdddddddiddi',
+  '.iddidddddddcccccccccdddddddiddi',
+  '.ikkiddddddddcccccccddddddddikki',
+  '.ikkidddddddddddddddddddddddikki',
+  '..iiiddddddddddddddddddddddiii..',
+  '....idddddddddiiiidddddddddi....',
+  '....iddddddddi....iddddddddi....',
+  '....iddddddddi....iddddddddi....',
+  '....isssssssssi..isssssssssi....',
+  '.....iiiiiiiii....iiiiiiiii.....',
+];
+// A quirk in the rows above: several face rows drift one column, which is
+// what a hand-drawn face does; the shader and outline absorb it.
+function doeRows() { return DOE_HD_IDLE_ROWS.slice(); }
+
+function doeWalkRows() {
+  const r = doeRows();
+  // Legs scissor: left leg forward and lifted, right leg back.
+  patchRow(r, 35, 0, '...idddddddddiiiiiidddddddddi...');
+  patchRow(r, 36, 0, '...iddddddddi......iddddddddi...');
+  patchRow(r, 37, 0, '...isssssssssi.....iddddddddi...');
+  patchRow(r, 38, 0, '....iiiiiiiii.....isssssssssi...');
+  patchRow(r, 39, 0, '...................iiiiiiiii....');
+  return r;
+}
+
+// Carrying: the right arm comes up and out holding a pint at shoulder
+// height, the tray hand tucked. The sheet is 36 wide so the pint has room;
+// anchorX keeps the feet where they were.
+function doeCarryRows(base) {
+  const r = base.map(row => row + '....');
+  patchRow(r, 22, 26, 'iuuuui');
+  patchRow(r, 23, 26, 'iqqqqi');
+  patchRow(r, 24, 26, 'ibbbbiu');
+  patchRow(r, 25, 26, 'ibbbbiu');
+  patchRow(r, 26, 26, 'ibbbbi.');
+  patchRow(r, 27, 26, 'iBBBBi.');
+  patchRow(r, 28, 26, 'iuuuui.');
+  // Arm: out from the shoulder to the glass.
+  patchRow(r, 27, 21, 'idddd');
+  patchRow(r, 28, 21, 'iddddd');
+  patchRow(r, 29, 21, 'iddiiii');
+  patchRow(r, 29, 27, 'kkk');
+  patchRow(r, 30, 27, 'ikki');
+  return r;
+}
+
+// ---- The hunter --------------------------------------------------------------
+const HUNTER_HD_PALETTE = {
+  '.': null,
+  i: '#16110c',
+  o: '#e8791c', O: '#ffa04a', r: '#b45a12',   // cap
+  k: '#f0c090', J: '#f8d9b0', K: '#c9855e',   // skin
+  g: '#141414', G: '#cfe6ee', w: '#f7f3ea', p: '#2a1a10',
+  e: '#4a3222', F: '#6a4a34', E: '#2f1f16',   // beard
+  P: '#9c2f2a', X: '#c44a3f', Q: '#4a1a18',   // plaid
+  v: '#6b4a2a', W: '#8a6438', V: '#4a3220',   // vest
+  t: '#5a5a34', U: '#74744a', T: '#3e3e24',   // trousers
+  s: '#2a2018', S: '#4a3a2c',                  // boots
+  m: '#6a6f72', z: '#3a3f42', y: '#7a4a28',   // shotgun
+};
+const HUNTER_RAMPS = { o: ['O', 'r'], k: ['J', 'K'], e: ['F', 'E'], P: ['X', 'Q'], v: ['W', 'V'], t: ['U', 'T'], s: ['S', 's'], m: ['m', 'z'] };
+
+const HUNTER_HD_IDLE_ROWS = [
+  '..........iiiiiiiiiiii..........',
+  '.........ioooooooooooooi........',
+  '........iooooooooooooooooi......',
+  '........iooooooooooooooooi......',
+  '.......iooooooooooooooooooi.....',
+  '.......iooooooooooooooooooi.....',
+  '.....iiiooooooooooooooooooiii...',
+  '....iooooooooooooooooooooooooi..',
+  '.....iiiiiiiiiiiiiiiiiiiiiiii...',
+  '........ikkkkkkkkkkkkkkkki......',
+  '........ikkkkkkkkkkkkkkkki......',
+  '........igggggkkkkkkgggggi......',
+  '........igGwpgggggggGwpgi.......',
+  '........igGGGgkkkkkkgGGGgi......',
+  '........ikgggkkkkkkkkgggki......',
+  '........ikkkkkkkKKkkkkkkki......',
+  '........ikkeeeeeeeeeeeekki......',
+  '........ikeeeeeeeeeeeeeeki......',
+  '........ikeeeeeiiiiieeeeki......',
+  '.........ieeeeeeeeeeeeeei.......',
+  '..........iieeeeeeeeeeii........',
+  '....iiiivvvviieeeeiivvvviiii....',
+  '...ivvvvvvvvvPPPPPPvvvvvvvvvi...',
+  '..iPvvvvvvvvvPQPPQPvvvvvvvvvPi..',
+  '..iPQPivvvvvvPPPPPPvvvvvviPQPi..',
+  '..iPPPivvvvvvQPPQPPvvvvvviPPPi..',
+  '..iQPQivvvvvvPPPPPPvvvvvviQPQi..',
+  '..iPPPivvvvvvPPQPPQvvvvvviPPPi..',
+  '..iPQPivvvvvvPPPPPPvvvvvviPQPi..',
+  '..iPPPiivvvvvQPPQPPvvvvviiPPPi..',
+  '..ikkkii.ivvvvPPPPPvvvvi.iikkki.',
+  '..ikkki..ittttttttttttti..ikkki.',
+  '...iii...itttttttttttti...iii...',
+  '.........ittttttiitttttti.......',
+  '.........itttttti.itttttti......',
+  '.........itttttti.itttttti......',
+  '.........itttttti.itttttti......',
+  '........issssssssi.issssssssi...',
+  '........issssssssi.issssssssi...',
+  '.........iiiiiiii...iiiiiiii....',
+];
+function hunterRows() { return HUNTER_HD_IDLE_ROWS.slice(); }
+function hunterWalkRows() {
+  const r = hunterRows();
+  patchRow(r, 33, 0, '........itttttttiiitttttttti....');
+  patchRow(r, 34, 0, '........ittttttti..itttttttti...');
+  patchRow(r, 35, 0, '........ittttttti...itttttttti..');
+  patchRow(r, 36, 0, '.......isssssssssi..itttttttti..');
+  patchRow(r, 37, 0, '.......isssssssssi.issssssssssi.');
+  patchRow(r, 38, 0, '........iiiiiiiii..issssssssssi.');
+  patchRow(r, 39, 0, '....................iiiiiiiiii..');
+  return r;
+}
+// The shotgun rides on his right side, barrel up past the shoulder.
+function withShotgun(rows) {
+  const r = rows.map(row => row + '....');
+  for (let y = 12; y < 30; y++) patchRow(r, y, 30, y < 26 ? 'im' : 'iy');
+  patchRow(r, 11, 30, 'iz');
+  patchRow(r, 29, 29, 'iyyi');
+  patchRow(r, 30, 29, 'iyyi');
+  patchRow(r, 31, 30, 'ii');
+  return r;
+}
+
+function hdSheet(rows, ramps, palette, extra) {
+  const w = rows[0].length;
+  const sp = lightSprite(rows, ramps, w, rows.length);
+  if (extra && extra.anchorX != null) sp.anchorX = extra.anchorX;
+  return sp;
+}
+
+const DOE_HD = {
+  idle: hdSheet(doeRows(), DOE_RAMPS),
+  walk: hdSheet(doeWalkRows(), DOE_RAMPS),
+  carry: hdSheet(doeCarryRows(doeRows()), DOE_RAMPS, null, { anchorX: 8 }),
+  carryWalk: hdSheet(doeCarryRows(doeWalkRows()), DOE_RAMPS, null, { anchorX: 8 }),
+  palette: DOE_HD_PALETTE,
+};
+const HUNTER_HD = {
+  idle: hdSheet(withShotgun(hunterRows()), HUNTER_RAMPS, null, { anchorX: 8 }),
+  walk: hdSheet(withShotgun(hunterWalkRows()), HUNTER_RAMPS, null, { anchorX: 8 }),
+  palette: HUNTER_HD_PALETTE,
+};
+
+
+// ---- High-density cast sheets: the regulars and the walk-ins ----------------
+// 28x32 backing pixels (14x16 on screen) for the seated regulars, 28x26 for
+// walk-ins. Same authoring rules as the leads: literal rows, outline 'i',
+// one light direction applied by lightSprite.
+
+const NAZIM_HD_PALETTE = {
+  '.': null,
+  i: '#16110c',
+  h: '#241a12', H: '#3a2c20',                  // hair
+  k: '#c98d5c', J: '#dba46f', K: '#a8714a',   // skin
+  r: '#c98d5c',                                // cheek — blush by stage
+  w: '#f5efe0',                                // open eye — colour by stage
+  v: '#6b4630',                                // heavy-lidded eye
+  b: '#3a2a1c',                                // stubble / pupil / closed mouth
+  o: '#1d0f0a',                                // open mouth
+  m: '#4f6440', L: '#63795a', M: '#3a4b2e',   // hoodie
+  p: '#2e3040', P: '#3c3e52',                  // legs
+};
+const NAZIM_RAMPS = { k: ['J', 'K'], m: ['L', 'M'], p: ['P', 'p'], h: ['H', 'h'] };
+const NAZIM_HD_ROWS = [
+  '.........hhhhhhhhhh.........',
+  '.......hhhhhhhhhhhhhh.......',
+  '......hhhhhhhhhhhhhhhh......',
+  '.....ihhhhhhhhhhhhhhhhi.....',
+  '.....ihhkkkkkkkkkkkkhhi.....',
+  '.....ihkkkkkkkkkkkkkkhi.....',
+  '.....ihkkkkkkkkkkkkkkhi.....',
+  '.....ihkkkkkkkkkkkkkkhi.....',
+  '.....ihkkkwbkkkkwbkkkhi.....',
+  '.....ihkkkkkkkkkkkkkkhi.....',
+  '.....ihkrrkkkkkkkkrrkhi.....',
+  '.....ihkkkkkkbbkkkkkkhi.....',
+  '.....ihkkkkbbbbbbkkkkhi.....',
+  '......ikkkkkbbbbkkkkki......',
+  '.......ikkkkkkkkkkkki.......',
+  '....iiimmmmmmiiiimmmmmmiii..',
+  '..immmmmmmmmmMMMMmmmmmmmmmmi',
+  '.immmmmmmmmmmMMmmmmmmmmmmmi.',
+  '.immmmmmmmmmmmmmmmmmmmmmmmi.',
+  '.immimmmmmmmmmmmmmmmmmmimmi.',
+  '.immimmmmmmmmmmmmmmmmmmimmi.',
+  '.immimmmmmMMMMMMMMmmmmmimmi.',
+  '.immimmmmmMmmmmmmMmmmmmimmi.',
+  '.ikkimmmmmMmmmmmmMmmmmmikki.',
+  '.ikkimmmmmMMMMMMMMmmmmmikki.',
+  '..iimmmmmmmmmmmmmmmmmmmmii..',
+  '....immmmmmmmmmmmmmmmmmi....',
+  '....ippppppppppppppppppi....',
+  '....ipppppppppiippppppppi...',
+  '....ippppppppi..ippppppppi..',
+  '....ippppppppi..ippppppppi..',
+  '.....iiiiiiii....iiiiiiii...',
+];
+
+// Pose builders. Blink closes the eyes, talk opens the mouth, lean and slump
+// drop the head onto the chest by two and four rows with heavier eyes.
+const NAZIM_EYE_ROW = 8;
+const NAZIM_MOUTH_ROW = 12;
+function nazimPose(opts) {
+  let r = NAZIM_HD_ROWS.slice();
+  const eye = opts.eye || 'w';
+  r[NAZIM_EYE_ROW] = r[NAZIM_EYE_ROW].split('w').join(eye === 'closed' ? 'b' : eye);
+  if (opts.talk) r[NAZIM_MOUTH_ROW] = '.....ihkkkkboooobkkkkhi.....';
+  if (opts.drop) {
+    const head = r.slice(0, 13);
+    const body = r.slice(15);
+    const blank = '.'.repeat(28);
+    r = Array(opts.drop).fill(blank).concat(head, body).slice(0, 32);
+    // The dropped head overlaps the shoulders; keep the outline continuous.
+    while (r.length < 32) r.push(blank);
+  }
+  return r;
+}
+
+const SAM_HD_PALETTE = {
+  '.': null,
+  i: '#16110c',
+  c: '#2c3a58', C: '#1d2740',                  // cap
+  H: '#a8814a',                                // hair under the cap
+  k: '#e0ab7c', J: '#f0c290', K: '#b8875c',   // skin
+  g: '#16161c', w: '#5d6b82',                  // glasses, lens
+  b: '#5a3a24', o: '#1d0f0a',                  // mouth
+  m: '#ddd4b8', M: '#8f3a38',                  // stripes
+  p: '#3a3a46', P: '#4a4a58',
+};
+const SAM_RAMPS = { k: ['J', 'K'], c: ['c', 'C'], p: ['P', 'p'] };
+const SAM_HD_ROWS = [
+  '.......cccccccccccccc.......',
+  '.....cccccccccccccccccc.....',
+  '....icccccccccccccccccccci..',
+  '...iCCCCCCCCCCCCCCCCCCCCCi..',
+  '.....iHHkkkkkkkkkkkkHHi.....',
+  '.....iHkkkkkkkkkkkkkkHi.....',
+  '.....iHkkkkkkkkkkkkkkHi.....',
+  '.....iHkgggggkkgggggkHi.....',
+  '.....iHkgwwbggggwwbgkHi.....',
+  '.....iHkgggggkkgggggkHi.....',
+  '.....iHkkkkkkkkkkkkkkHi.....',
+  '.....iHkkkkkkbbkkkkkkHi.....',
+  '......ikkkkkkkkkbbbkki......',
+  '.......ikkkkkkkkkkkki.......',
+  '.....iiimmmmmmmmmmmmiii.....',
+  '...immmmmmmmmmmmmmmmmmmmi...',
+  '..iMMMMMMMMMMMMMMMMMMMMMMi..',
+  '..immmimmmmmmmmmmmmmmimmmi..',
+  '..iMMMiMMMMMMMMMMMMMMiMMMi..',
+  '..immmimmmmmmmmmmmmmmimmmi..',
+  '..iMMMiMMMMMMMMMMMMMMiMMMi..',
+  '..immmimmmmmmmmmmmmmmimmmi..',
+  '..ikkkiMMMMMMMMMMMMMMikkki..',
+  '..ikkkimmmmmmmmmmmmmmikkki..',
+  '...iiiMMMMMMMMMMMMMMMMiii...',
+  '.....immmmmmmmmmmmmmmmi.....',
+  '.....ippppppppppppppppi.....',
+  '.....ippppppppiippppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '......iiiiiii....iiiiiii....',
+];
+function samPose(opts) {
+  const r = SAM_HD_ROWS.slice();
+  if (opts.blink) r[8] = '.....iHkgbbbggggbbbgkHi.....';
+  if (opts.talk) r[12] = '......ikkkkkkkkooookki......';
+  return r;
+}
+
+const GERALD_HD_PALETTE = {
+  '.': null,
+  i: '#16110c',
+  k: '#d59a70', J: '#e6b087', K: '#b07a56',   // ruddy skin
+  H: '#b9b5ac',                                // grey side hair
+  G: '#6e6a62',                                // brows
+  w: '#2a1c14', b: '#cfcac0', o: '#1d0f0a',   // eyes, moustache, mouth
+  m: '#5c2431', L: '#733040', M: '#3f1720',   // cardigan
+  p: '#2a2430', P: '#3a3444',
+};
+const GERALD_RAMPS = { k: ['J', 'K'], m: ['L', 'M'], p: ['P', 'p'] };
+const GERALD_HD_ROWS = [
+  '.........iiiiiiiiii.........',
+  '.......iikkkkkkkkkkii.......',
+  '......ikkkkkkkkkkkkkki......',
+  '.....iHkkkkkkkkkkkkkkHi.....',
+  '.....iHHkkkkkkkkkkkkHHi.....',
+  '.....iHHkkkkkkkkkkkkHHi.....',
+  '.....iHkkGGGkkkkGGGkkHi.....',
+  '.....iHkkkwbkkkkkwbkkHi.....',
+  '.....iHkkkkkkkkkkkkkkHi.....',
+  '.....iHkkkkkkbbkkkkkkHi.....',
+  '.....iHkkbbbbbbbbbbkkHi.....',
+  '......ikkbbbbbbbbbbkki......',
+  '......ikkkkkkkkkkkkkki......',
+  '.......ikkkkkkkkkkkki.......',
+  '.....iiimmmmmmmmmmmmiii.....',
+  '...immmmmmmmmmmmmmmmmmmmi...',
+  '..immmmmmmmmmmmmmmmmmmmmmi..',
+  '..immmmmmmmmmmmmmmmmmmmmmi..',
+  '..iMMMMMMMMMMMMMMMMMMMMMMi..',
+  '..immmmmmmmmmmmmkkkmmmmmmi..',
+  '..immmmmmkkkmmmmmmmmmmmmmi..',
+  '..iMMMMMMMMMMMMMMMMMMMMMMi..',
+  '..immmmmmmmmmmmmmmmmmmmmmi..',
+  '..immmmmmmmmmmmmmmmmmmmmmi..',
+  '...iiimmmmmmmmmmmmmmmmiii...',
+  '.....immmmmmmmmmmmmmmmi.....',
+  '.....ippppppppppppppppi.....',
+  '.....ippppppppiippppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '......iiiiiii....iiiiiii....',
+];
+function geraldPose(opts) {
+  const r = GERALD_HD_ROWS.slice();
+  if (opts.blink) r[7] = '.....iHkkkbbkkkkkbbkkHi.....';
+  if (opts.talk) r[12] = '......ikkkkkoooookkkki......';
+  return r;
+}
+
+// Walk-ins share one silhouette; the palette (hair, skin, shirt, trousers)
+// does the variety, as before.
+const CUSTOMER_RAMPS = { h: ['q', 'h'], k: ['k', 'K'], m: ['l', 'v'], p: ['P', 'p'] };
+const CUSTOMER_HD_ROWS = [
+  '.........hhhhhhhhhh.........',
+  '.......hhhhhhhhhhhhhh.......',
+  '......ihhhhhhhhhhhhhhi......',
+  '......ihhkkkkkkkkkkhhi......',
+  '......ihkkkkkkkkkkkkhi......',
+  '......ihkkkkkkkkkkkkhi......',
+  '......ihkkwbkkkkwbkkhi......',
+  '......ihkkkkkkkkkkkkhi......',
+  '......ihkkkkkbbkkkkkhi......',
+  '.......ikkkkbbbbkkkki.......',
+  '........ikkkkkkkkkki........',
+  '.....iiimmmmmmmmmmmmiii.....',
+  '...immmmmmmmmmmmmmmmmmmmi...',
+  '..immmmmmmmmmmmmmmmmmmmmmi..',
+  '..immimmmmmmmmmmmmmmmmimmi..',
+  '..immimmmmmmmmmmmmmmmmimmi..',
+  '..immimmmmmmmmmmmmmmmmimmi..',
+  '..ikkimmmmmmmmmmmmmmmmikki..',
+  '..ikkimmmmmmmmmmmmmmmmikki..',
+  '...iiimmmmmmmmmmmmmmmmiii...',
+  '.....ippppppppppppppppi.....',
+  '.....ippppppppiippppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '.....ipppppppi..ipppppppi...',
+  '....issssssssi..issssssssi..',
+  '.....iiiiiiii....iiiiiiii...',
+];
+function customerWalkRows() {
+  const r = CUSTOMER_HD_ROWS.slice();
+  r[21] = '....ipppppppppiiippppppppi..';
+  r[22] = '....ipppppppi....ipppppppi..';
+  r[23] = '...issssssssi....ipppppppi..';
+  r[24] = '....iiiiiiii....issssssssi..';
+  r[25] = '.................iiiiiiii...';
+  return r;
+}
+
+function castSheet(rows, ramps) {
+  return lightSprite(rows, ramps, rows[0].length, rows.length);
+}
+
+const NAZIM_HD = {
+  idle: castSheet(nazimPose({}), NAZIM_RAMPS),
+  walk: castSheet(nazimPose({}), NAZIM_RAMPS),
+  idleB: castSheet(nazimPose({ eye: 'closed' }), NAZIM_RAMPS),
+  talk: castSheet(nazimPose({ talk: true }), NAZIM_RAMPS),
+  lean: castSheet(nazimPose({ drop: 2, eye: 'v' }), NAZIM_RAMPS),
+  leanTalk: castSheet(nazimPose({ drop: 2, eye: 'v', talk: true }), NAZIM_RAMPS),
+  slump: castSheet(nazimPose({ drop: 4, eye: 'v' }), NAZIM_RAMPS),
+  slumpTalk: castSheet(nazimPose({ drop: 4, eye: 'v', talk: true }), NAZIM_RAMPS),
+  palette: NAZIM_HD_PALETTE,
+};
+const SAM_HD = {
+  idle: castSheet(samPose({}), SAM_RAMPS),
+  walk: castSheet(samPose({}), SAM_RAMPS),
+  idleB: castSheet(samPose({ blink: true }), SAM_RAMPS),
+  talk: castSheet(samPose({ talk: true }), SAM_RAMPS),
+  palette: SAM_HD_PALETTE,
+};
+const GERALD_HD = {
+  idle: castSheet(geraldPose({}), GERALD_RAMPS),
+  walk: castSheet(geraldPose({}), GERALD_RAMPS),
+  idleB: castSheet(geraldPose({ blink: true }), GERALD_RAMPS),
+  talk: castSheet(geraldPose({ talk: true }), GERALD_RAMPS),
+  palette: GERALD_HD_PALETTE,
+};
+const CUSTOMER_HD = {
+  idle: castSheet(CUSTOMER_HD_ROWS, CUSTOMER_RAMPS),
+  walk: castSheet(customerWalkRows(), CUSTOMER_RAMPS),
+  palette: null,
+};
+
+
 const SPRITES = {
-  hunter: {
-    idle: detailSprite(HUNTER_IDLE, { o: ['O', 'r'], k: ['k', 'K'], f: ['F', 'f'], p: ['P', 'p'], u: ['U', 'u'] }),
-    walk: detailSprite(HUNTER_WALK, { o: ['O', 'r'], k: ['k', 'K'], f: ['F', 'f'], p: ['P', 'p'], u: ['U', 'u'] }),
-    palette: HUNTER_PALETTE,
-  },
-  doe: {
-    idle: detailSprite(DOE_IDLE, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'] }),
-    walk: detailSprite(DOE_WALK, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'] }),
-    carry: detailSprite(DOE_CARRY, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'], b: ['b', 'u'] }),
-    carryWalk: detailSprite(DOE_CARRY_WALK, { n: ['N', 'n'], h: ['h', 'H'], k: ['k', 'K'], d: ['d', 'D'], c: ['c', 'C'], b: ['b', 'u'] }),
-    palette: DOE_PALETTE,
-  },
-  customer: {
-    idle: detailSprite(CUSTOMER_IDLE, { h: ['q', 'h'], k: ['k', 'K'], m: ['l', 'v'], p: ['P', 'p'] }),
-    walk: detailSprite(CUSTOMER_WALK, { h: ['q', 'h'], k: ['k', 'K'], m: ['l', 'v'], p: ['P', 'p'] }),
-    palette: null,
-  },
+  // The two leads use the high-density sheets above; the coarse DOE_*/HUNTER_*
+  // rows are kept as the authored reference for their silhouettes.
+  hunter: HUNTER_HD,
+  doe: DOE_HD,
+  customer: CUSTOMER_HD,
   ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
   waiter: {
     idle: detailSprite(WAITER_IDLE, { h: ['H', 'h'], b: ['b', 'B'] }),
@@ -682,29 +1168,7 @@ const SPRITES = {
     sprayB: detailSprite(WAITER_SPRAY_B, { h: ['H', 'h'], b: ['b', 'B'] }),
     palette: WAITER_PALETTE,
   },
-  nazim: {
-    idle: detailSprite(NAZIM_IDLE, { m: ['m', 'M'] }),
-    walk: detailSprite(NAZIM_IDLE, { m: ['m', 'M'] }),
-    idleB: detailSprite(NAZIM_BLINK, { m: ['m', 'M'] }),
-    talk: detailSprite(NAZIM_TALK, { m: ['m', 'M'] }),
-    lean: detailSprite(NAZIM_LEAN, { m: ['m', 'M'] }),
-    leanTalk: detailSprite(NAZIM_LEAN_TALK, { m: ['m', 'M'] }),
-    slump: detailSprite(NAZIM_SLUMP, { m: ['m', 'M'] }),
-    slumpTalk: detailSprite(NAZIM_SLUMP_TALK, { m: ['m', 'M'] }),
-    palette: NAZIM_PALETTE,
-  },
-  sam: {
-    idle: detailSprite(SAM_IDLE, { c: ['c', 'C'], m: ['m', 'M'] }),
-    walk: detailSprite(SAM_IDLE, { c: ['c', 'C'], m: ['m', 'M'] }),
-    idleB: detailSprite(SAM_IDLE_B, { c: ['c', 'C'], m: ['m', 'M'] }),
-    talk: detailSprite(SAM_TALK, { c: ['c', 'C'], m: ['m', 'M'] }),
-    palette: SAM_PALETTE,
-  },
-  gerald: {
-    idle: detailSprite(GERALD_IDLE, { m: ['m', 'M'] }),
-    walk: detailSprite(GERALD_IDLE, { m: ['m', 'M'] }),
-    idleB: detailSprite(GERALD_IDLE_B, { m: ['m', 'M'] }),
-    talk: detailSprite(GERALD_TALK, { m: ['m', 'M'] }),
-    palette: GERALD_PALETTE,
-  },
+  nazim: NAZIM_HD,
+  sam: SAM_HD,
+  gerald: GERALD_HD,
 };
