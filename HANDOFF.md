@@ -30,6 +30,18 @@ contents here.
 - Python is not on this machine's PATH; use `node` for scripts and
   `npx serve`/Edge for browser checks.
 
+### 20:10 — light toned down ("relatively blinding")
+
+- Pools 0.55→0.26, hot core 0.5→0.16, streaks 0.42→0.2, cones 0.045→0.018,
+  counter glows 0.16→0.07, candles 0.5→0.24, fire 0.5→0.26, halos 0.3/0.22
+  → 0.14/0.1, gantry/hatch lamp washes ~÷2.5, `DARK_SCENE` lightened to
+  #aea3a6 so figures read without a pool. `assets/gameplay.png` refreshed.
+- User also asked whether the pixel art can be "100% accurate like the
+  reference": answered that procedural code art can't match a painted 3/4
+  concept; the route is raster assets (sprite sheets + tiles) generated or
+  commissioned to match the reference, loaded by a new asset pipeline.
+  Awaiting their choice (assets pipeline vs higher internal resolution).
+
 ### 19:55 — pushed, previewed, review page updated
 
 - Branch at `4db06bd`, in sync. Preview <https://lepub-5as0nhdru-maisoncastros-projects.vercel.app>

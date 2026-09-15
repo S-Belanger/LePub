@@ -3505,8 +3505,8 @@ function drawFloorLight(camX, camY) {
     const k = lampIntensity(lamp);
     // A wide soft pool, then a hot core: the reference's lamps have a bright
     // disc directly under the shade and a long soft skirt.
-    drawGlow(glowFor(lamp.r, WARM_RGB, 0.55), lamp.x, lamp.y, k, camX, camY);
-    drawGlow(glowFor(Math.round(lamp.r * 0.45), HOT_RGB, 0.5), lamp.x, lamp.y - 2, k, camX, camY);
+    drawGlow(glowFor(lamp.r, WARM_RGB, 0.26), lamp.x, lamp.y, k, camX, camY);
+    drawGlow(glowFor(Math.round(lamp.r * 0.4), HOT_RGB, 0.16), lamp.x, lamp.y - 2, k, camX, camY);
     // Varnish reflection: a long broken streak straight under the bulb, the
     // way the boards throw a lamp back in the reference.
     const sx = Math.round((lamp.x - camX) * 2) / 2;
@@ -3515,7 +3515,7 @@ function drawFloorLight(camX, camY) {
     for (let i = 0; i < 9; i++) {
       const ry = sy + 2 + i * 3;
       const rw = Math.max(0.5, 3 - i * 0.28);
-      ctx.globalAlpha = (0.42 - i * 0.04) * k;
+      ctx.globalAlpha = (0.2 - i * 0.02) * k;
       ctx.fillStyle = i < 3 ? '#fff4d6' : PUB.amber;
       ctx.fillRect(sx - rw / 2 + ((i & 1) ? 0.5 : 0), ry, rw, i < 3 ? 1 : 1.5);
     }
@@ -3531,27 +3531,27 @@ function drawFloorLight(camX, camY) {
     for (let p = 10; p < length - 4; p += 20) {
       const gx = horizontal ? c.x + p : c.x + c.w / 2 - 2;
       const gy = horizontal ? c.y + c.h / 2 - 4 : c.y + p;
-      drawGlow(glowFor(18, HOT_RGB, 0.16), gx, gy, 0.8, camX, camY);
+      drawGlow(glowFor(18, HOT_RGB, 0.07), gx, gy, 0.8, camX, camY);
     }
   }
   for (const table of TABLES) {
     const items = DECOR.clutter.get(table) || [];
     for (const item of items) {
       if (item.kind !== 'candle') continue;
-      drawGlow(glowFor(13, HOT_RGB, 0.5), table.x + item.ox, table.y + item.oy, 0.9, camX, camY);
+      drawGlow(glowFor(11, HOT_RGB, 0.24), table.x + item.ox, table.y + item.oy, 0.9, camX, camY);
     }
   }
   for (const w of DECOR.windows) {
-    drawGlow(glowFor(26, COOL_RGB, 0.22), w.x + w.w / 2, 8, 1, camX, camY);
+    drawGlow(glowFor(26, COOL_RGB, 0.14), w.x + w.w / 2, 8, 1, camX, camY);
   }
   // The fire: an orange pool that breathes, plus a hotter core in the hearth.
   const fire = prefersReducedMotion ? 1 : 0.86 + Math.sin(gameTime * 9.3) * 0.08 + Math.sin(gameTime * 23.7) * 0.06;
-  drawGlow(glowFor(34, FIRE_RGB, 0.5), FIREPLACE.x + 8, FIREPLACE.y + 24, fire, camX, camY);
-  drawGlow(glowFor(12, HOT_RGB, 0.5), FIREPLACE.x + 7, FIREPLACE.y + 21, fire, camX, camY);
+  drawGlow(glowFor(30, FIRE_RGB, 0.26), FIREPLACE.x + 8, FIREPLACE.y + 24, fire, camX, camY);
+  drawGlow(glowFor(10, HOT_RGB, 0.24), FIREPLACE.x + 7, FIREPLACE.y + 21, fire, camX, camY);
   // Readability halos on the two leads, dim enough to be separation rather
   // than a spotlight, so they read even when a route runs between pools.
-  drawGlow(glowFor(22, WARM_RGB, 0.3), player.x, player.y - 4, 1, camX, camY);
-  if (hunterState !== 'arriving') drawGlow(glowFor(20, WARM_RGB, 0.22), hunter.x, hunter.y - 4, 1, camX, camY);
+  drawGlow(glowFor(20, WARM_RGB, 0.14), player.x, player.y - 4, 1, camX, camY);
+  if (hunterState !== 'arriving') drawGlow(glowFor(18, WARM_RGB, 0.1), hunter.x, hunter.y - 4, 1, camX, camY);
   // The door brightens while someone is coming in or going out.
   let doorBusy = 0;
   for (const c of customers) {
@@ -3559,7 +3559,7 @@ function drawFloorLight(camX, camY) {
     const d = Math.hypot(c.x - DOOR.x, c.y - DOOR.y);
     if (d < 40) doorBusy = Math.max(doorBusy, 1 - d / 40);
   }
-  drawGlow(glowFor(26, COOL_RGB, 0.2), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+  drawGlow(glowFor(26, COOL_RGB, 0.12), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
 }
 
 // A soft additive rectangle (stepped edges, no gradient) for counter tops.
@@ -3581,7 +3581,7 @@ function drawGlowRect(x, y, w, h, alpha) {
 // black between lamps, while furniture and people take only the second,
 // lighter step and stay readable in the dark.
 const DARK_FLOOR = '#6a6066';
-const DARK_SCENE = '#a49a9e';
+const DARK_SCENE = '#aea3a6';
 function drawDarkness(colour) {
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = colour;
@@ -3728,10 +3728,10 @@ function drawBottleGantry(x, y, topW, topH) {
   }
   // A small lamp on the gantry throws light down the bottles.
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.22;
+  ctx.globalAlpha = 0.09;
   ctx.fillStyle = 'rgb(255,200,110)';
   ctx.fillRect(gx - 4, gy - 6, 16, gh + 8);
-  ctx.globalAlpha = 0.18;
+  ctx.globalAlpha = 0.07;
   ctx.fillRect(gx - 1, gy - 4, 10, gh + 4);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
@@ -3757,7 +3757,7 @@ function drawKitchenHatch(x, y, topW) {
     ctx.fillRect(px + 1, y - 4, 2, 1);                  // food
   }
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.25;
+  ctx.globalAlpha = 0.1;
   ctx.fillStyle = 'rgb(255,200,110)';
   ctx.fillRect(hx - 3, y - 9, 30, 14);
   ctx.globalCompositeOperation = 'source-over';
@@ -4095,7 +4095,7 @@ function drawForeground(camX, camY) {
     // Light cone from the shade to the pool: three stepped trapezoids, additive.
     ctx.globalCompositeOperation = 'lighter';
     for (let band = 0; band < 3; band++) {
-      ctx.globalAlpha = 0.045 * glow;
+      ctx.globalAlpha = 0.018 * glow;
       ctx.fillStyle = 'rgb(255,200,110)';
       const steps = 7;
       for (let i = 0; i < steps; i++) {
