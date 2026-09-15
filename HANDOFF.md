@@ -4,6 +4,35 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
+## 2026-09-14 23:06 America/Toronto — protected Vercel preview ready
+
+### Preview links and state
+
+- PR #3 is now a **draft**, matching the explicit in-PR direction not to merge
+  while visual work continues: <https://github.com/S-Belanger/LePub/pull/3>
+- GitHub's Vercel integration did not report a check or deployment, so the
+  already-linked local Vercel project was used to create a non-production
+  preview of commit `0fc3a32`.
+- Preview: <https://lepub-8oxma8m00-maisoncastros-projects.vercel.app>
+- Vercel inspector:
+  <https://vercel.com/maisoncastros-projects/lepub/6qN2xoFcJjLyBUxHFML9tP2MCxEB>
+- Deployment ID: `dpl_6qN2xoFcJjLyBUxHFML9tP2MCxEB`; Vercel reported
+  `READY` with a non-production target.
+- Deployment Protection is enabled. An anonymous Edge session reaches the
+  Vercel login screen; the authenticated `vercel curl` check returns
+  `Le Pub: The Chase` and confirms the game canvas is present. The user should
+  sign into the project account when opening the preview.
+- The preview URL and protection note were also posted on PR #3.
+
+### Handoff state
+
+- The complete visual/gameplay change and prior publish ledger are committed
+  and pushed. This final deployment checkpoint is the only subsequent local
+  change and should be committed/pushed as a docs-only update.
+- Do not merge the draft PR until the user approves the hosted visuals.
+- Continue to treat the redesign as reviewable/in progress rather than final;
+  use feedback from this preview for the next polish pass.
+
 ## 2026-09-14 23:04 America/Toronto — preview PR opened
 
 ### Published state
