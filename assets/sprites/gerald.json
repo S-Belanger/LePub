@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.gerald",
+  "image": "gerald.png",
+  "imageSize": {
+    "width": 320,
+    "height": 88
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 2,
+  "alphaPolicy": "binary",
+  "palettePolicy": "lepub-base-30+identity",
+  "fallbackKey": "gerald",
+  "directions": [
+    "down",
+    "up",
+    "right",
+    "left"
+  ],
+  "provenance": "exported from the procedural overhead generator by tools/export-sheets.js",
+  "frames": {
+    "idle.down.0": {
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "idle.up.0": {
+      "rect": {
+        "x": 40,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "idle.right.0": {
+      "rect": {
+        "x": 80,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "idle.left.0": {
+      "rect": {
+        "x": 120,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.down.0": {
+      "rect": {
+        "x": 160,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.down.1": {
+      "rect": {
+        "x": 200,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.up.0": {
+      "rect": {
+        "x": 240,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.up.1": {
+      "rect": {
+        "x": 280,
+        "y": 0,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.right.0": {
+      "rect": {
+        "x": 0,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.right.1": {
+      "rect": {
+        "x": 40,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.left.0": {
+      "rect": {
+        "x": 80,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "walk.left.1": {
+      "rect": {
+        "x": 120,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "idle.down.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "idle.up.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "idle.right.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "idle.left.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walk.down.0",
+          "durationMs": 140
+        },
+        {
+          "frameId": "walk.down.1",
+          "durationMs": 140
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walk.up.0",
+          "durationMs": 140
+        },
+        {
+          "frameId": "walk.up.1",
+          "durationMs": 140
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walk.right.0",
+          "durationMs": 140
+        },
+        {
+          "frameId": "walk.right.1",
+          "durationMs": 140
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walk.left.0",
+          "durationMs": 140
+        },
+        {
+          "frameId": "walk.left.1",
+          "durationMs": 140
+        }
+      ]
+    }
+  }
+}

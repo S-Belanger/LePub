@@ -79,6 +79,34 @@ double-scaling, phases P0–P7 with evidence.
   scratchpad `review/sheet-overhead*.png` (cast at 6×). Smoke passes.
   Colliders/routes/hitboxes unchanged (smoke's 40 routes).
 
+### P1/P2 evidence — render metrics and the raster asset registry (ARC-02/03/04/05/14)
+
+- Units (P1, ARC-02): the one transform stays `ctx.setTransform(ART_SCALE)`;
+  raster frames draw via `drawRasterFrame(frame, wx, wy)`: source rect in
+  image pixels, destination = pixels ÷ `authoredPixelsPerWorldUnit` in world
+  units, pivot at the entity's feet, origin snapped to the backing grid like
+  every procedural sprite. Nothing in the render path writes simulation
+  state (ARC-03: `rasterFrameFor`/`drawRasterFrame` are pure reads).
+- `src/assets.js` (P2): `Assets` registry — schema v1 per the pack's
+  vocabulary, `validate()` (finite/positive/integer/in-bounds/unique/known
+  refs/durations/loop), intrinsic-size check, `Image.decode()`, states
+  unloaded/loading/ready/failed(reason), generation token (`reset()` on
+  restart drops stale completions), in-flight dedupe, bounded log, optional
+  `assets/sprites/manifest.json`, per-family fallback (`hasFamily`) to the
+  procedural sets. Loaded in `index.html` before `game.js`; startup calls
+  `loadManifest` only when `fetch`/`Image` exist. Walk-ins stay procedural
+  (per-entity palettes).
+- `tools/export-sheets.js`: renders the directional sets from the live game
+  into `assets/sprites/{doe,hunter,nazim,sam,gerald}.png+json` + manifest
+  (24/24/20/12/12 frames, 40×44 cells, pivot (20,44), density 2, 140 ms
+  walk steps). Replacing a PNG with a cleaned sheet of the same layout is
+  the production path.
+- Tests: `node tests/assets.js` (31 checks: validator cases, dedupe, five
+  failure kinds, stale generation, manifest) and the smoke test's raster
+  section (ready atlas draws, missing family falls back). Browser: all five
+  atlases report `ready`; frame work median 2.7 ms / p95 10.6 ms (baseline
+  1.9–3.0 / 7.6–10.6).
+
 ### Plan for this session
 
 P1 metrics doc + raster frame draw; P2 `src/assets.js` (PNG+JSON v1 per the

@@ -9,7 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and eight plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
 
 There is no `package.json` or linter. `node tests/smoke.js` is a dependency-free
-runtime smoke test for script loading, customer/waiter routing, and rendering.
+runtime smoke test for script loading, customer/waiter routing, and rendering;
+`node tests/assets.js` covers the raster asset registry. `node tools/export-sheets.js`
+regenerates `assets/sprites/*.png+json` from the procedural sets (needs Edge and
+playwright-core in the npx cache).
 Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for
 the game-over and completed-level splashes; `assets/planFloor.png` is the
 retained floor-plan reference the current layout is traced from.
@@ -55,6 +58,7 @@ Script order in `index.html` matters: each file only uses things defined in the 
 | `src/dialogue.js` | The `Dialogue` module: selection, weighting, cooldowns, queueing, repetition control. |
 | `src/regulars.js` | `REGULARS` config, `INTOX_STAGES`, `NAZIM_STAGE_VISUALS`, order weighting, mood constants. Data and pure functions. |
 | `src/sound.js` | The lazy Web Audio sound system and its synthesized cue definitions. No audio assets. |
+| `src/assets.js` | `Assets`: optional PNG+JSON sprite atlases (schema v1), validation, decode, per-family fallback to the procedural sets. No game state. |
 | `game.js` | Everything that needs the canvas or mutable game state: viewport, world, collision, entities, customers, regulars runtime, input, page shell, touch, hunter AI, update, render. |
 
 `game.js` is by far the largest (~2850 lines) and is still flat top-level `const`/`function` declarations, no classes. Execution order inside it matters the same way it always did.

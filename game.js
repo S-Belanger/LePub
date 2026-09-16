@@ -676,6 +676,14 @@ function tickLegs(e, dt) {
   }
 }
 
+// Optional raster atlases (src/assets.js). Loaded once at startup from the
+// manifest next to the sheets; anything missing or invalid leaves that family
+// on its procedural sprites. No fetch in a test runtime means nothing loads.
+if (typeof fetch === 'function' && typeof Image === 'function') {
+  Assets.configure(Assets.browserIO());
+  Assets.loadManifest('assets/sprites/manifest.json');
+}
+
 const player = makeEntity('doe', WORLD_W / 2, WORLD_H / 2);
 const hunter = makeEntity('hunter', WORLD_W / 2 + 60, WORLD_H / 2 - 90);
 // The hunter is a patron too. Every so often he wants a pint; hand it to him
@@ -1837,6 +1845,7 @@ function resetGame() {
   roundTimer = randomInRange(ROUND_INTERVAL);
   Dialogue.reset();
   resetDialogueTriggers();
+  Assets.reset();
   if (hasPlayedBefore) {
     Sound.play('start');
     Dialogue.trigger('restart', null);
@@ -4208,17 +4217,31 @@ function pushDrawable(sortY, type, ref) {
   drawList.push(e);
 }
 
+// The pose an entity is in, as the raster animation id ("carryWalk.down"):
+// the same name the procedural sets key their frames by.
+function poseBase(e) {
+  if (e === player && e.tray.length) return e.moving ? 'carryWalk' : 'carry';
+  if (e === hunter) return e.moving ? 'gunWalk' : 'gun';
+  if (e.pose) return e.pose.indexOf('slump') === 0 ? 'slump' : e.pose.indexOf('lean') === 0 ? 'lean' : 'idle';
+  return e.moving ? 'walk' : 'idle';
+}
+function animIdFor(e) { return poseBase(e) + '.' + (e.facing || 'down'); }
+
+// A ready raster frame for this entity, or null. Walk-ins keep their
+// per-entity palettes, so they stay procedural.
+function rasterFrameFor(e) {
+  if (e.kind === 'customer' || !Assets.hasFamily(e.kind)) return null;
+  return Assets.frameFor(e.kind, animIdFor(e), gameTime * 1000);
+}
+
 // Directional sets ("dirs") key poses as "pose.facing" with a two-step walk
 // (walk/walkB); older sets use idle/walk and a horizontal flip.
 function spriteForEntity(e) {
   const set = SPRITES[e.kind];
   if (set.dirs) {
     const facing = e.facing || 'down';
-    let base;
-    if (e === player && e.tray.length) base = e.moving ? (e.legFrame === 1 ? 'carryWalk' : 'carryWalkB') : 'carry';
-    else if (e === hunter) base = e.moving ? (e.legFrame === 1 ? 'gunWalk' : 'gunWalkB') : 'gun';
-    else if (e.pose) base = e.pose.indexOf('slump') === 0 ? 'slump' : e.pose.indexOf('lean') === 0 ? 'lean' : 'idle';
-    else base = e.moving ? (e.legFrame === 1 ? 'walk' : 'walkB') : 'idle';
+    let base = poseBase(e);
+    if (e.moving && (base === 'walk' || base === 'carryWalk' || base === 'gunWalk') && e.legFrame !== 1) base += 'B';
     return set[base + '.' + facing] || set['idle.' + facing] || set.idle;
   }
   if (e === player && e.tray.length) {
@@ -4231,6 +4254,8 @@ function spriteForEntity(e) {
 }
 
 function entityHeadTop(e) {
+  const frame = rasterFrameFor(e);
+  if (frame) return e.y - frame.pivot.y / frame.density;
   return e.y - spriteVisualH(spriteForEntity(e));
 }
 
@@ -4266,8 +4291,21 @@ function drawEntity(e, camX, camY) {
   // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
   ctx.globalAlpha = flicker ? 0.4 : 1;
-  drawSprite(sprite, e.palette || set.palette, sx, sy, flip);
+  const frame = rasterFrameFor(e);
+  if (frame) drawRasterFrame(frame, e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift);
+  else drawSprite(sprite, e.palette || set.palette, sx, sy, flip);
   ctx.globalAlpha = 1;
+}
+
+// Draws an atlas frame with its pivot at world point (wx, wy): source rect in
+// image pixels, destination in world units (pixels ÷ authored density), the
+// origin snapped to the backing grid like every procedural sprite.
+function drawRasterFrame(frame, wx, wy) {
+  const d = frame.density;
+  const x = Math.round((wx - frame.pivot.x / d) * ART_SCALE) / ART_SCALE;
+  const y = Math.round((wy - frame.pivot.y / d) * ART_SCALE) / ART_SCALE;
+  ctx.drawImage(frame.image, frame.rect.x, frame.rect.y, frame.rect.width, frame.rect.height,
+    x, y, frame.rect.width / d, frame.rect.height / d);
 }
 
 // No contact shadow and no flicker handling — the ghost isn't standing on the
@@ -5108,6 +5146,7 @@ window.__debug = {
   setHunterState,
   hunterCanSeePlayer: () => hunterCanSeePlayer(hunterSightRange()),
   hunterWantsPint,
+  Assets,
   getSpills: () => spills,
   getRound: () => round,
   callRound: tryCallRound,

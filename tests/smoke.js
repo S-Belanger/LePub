@@ -11,6 +11,7 @@ const SCRIPT_FILES = [
   'src/dialogue.js',
   'src/regulars.js',
   'src/sound.js',
+  'src/assets.js',
   'game.js',
 ];
 
@@ -444,8 +445,32 @@ function run() {
   debug.resetGame();
   debug.render();
 
-  console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, shifts, and render pass with HUD, tally and caught boards.`);
+  // Raster path: with a ready atlas the Doe draws from it (frame lookup
+  // succeeds and render() survives drawImage with a source rect); without one
+  // he falls back to the procedural sheet. Fake I/O, no network.
+  const rasterMeta = {
+    schemaVersion: 1, assetId: 'test.doe', image: 'doe.png', imageSize: { width: 80, height: 44 },
+    frameSpace: 'untrimmed-source-pixels', pivotSpace: 'frame-local-pixels', authoredPixelsPerWorldUnit: 2,
+    alphaPolicy: 'binary', palettePolicy: 'test', fallbackKey: 'doe', directions: ['down'],
+    frames: { 'idle.down.0': { rect: { x: 0, y: 0, width: 40, height: 44 }, pivot: { x: 20, y: 44 } } },
+    animations: { 'idle.down': { loop: true, sequence: [{ frameId: 'idle.down.0', durationMs: 500 }] } },
+  };
+  debug.Assets.configure({
+    fetchJson: () => Promise.resolve(rasterMeta),
+    loadImage: () => Promise.resolve({ naturalWidth: 80, naturalHeight: 44 }),
+  });
+  const rasterCheck = debug.Assets.load('t/doe.json').then(() => {
+    if (!debug.Assets.hasFamily('doe')) throw new Error('Fake atlas should be ready.');
+    debug.resetGame();
+    debug.player.facing = 'down'; debug.player.moving = false;
+    const frame = vm.runInContext('rasterFrameFor(player)', context);
+    if (!frame || frame.rect.width !== 40) throw new Error('Doe should draw from the atlas frame.');
+    debug.render();
+    if (vm.runInContext('rasterFrameFor(hunter)', context) !== null) throw new Error('Hunter has no atlas and must fall back.');
+  });
+
+  rasterCheck.then(() => console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, shifts, and render pass with HUD, tally and caught boards; raster atlas path.`)).catch(err => { console.error(err); process.exit(1); });
 }
 
 run();
