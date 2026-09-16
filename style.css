@@ -1,14 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
+/* The page shell is built from the same three materials as the in-canvas UI
+   (see the `UI` kit in game.js): walnut boards, brass fittings and parchment,
+   with burgundy leather for anything you press. The hexes here mirror the
+   `PUB`/`UI` palettes so the DOM never looks like a different product from
+   the canvas it frames. Corners stay square: stepped pixels, not rounded
+   cards. */
 :root {
-  --bg: #0b0a10;
-  --bg-2: #16121c;
-  --panel: #1a1622;
-  --ink: #eae4d8;
-  --muted: #9a93a4;
-  --accent: #e8620c;
-  --amber: #e8a13a;
-  --line: #3a3446;
+  --bg: #0b0806;
+  --walnut: #3b2219;
+  --walnut-lit: #5c3626;
+  --walnut-dark: #22130f;
+  --walnut-deep: #17100d;
+  --brass: #d99a38;
+  --brass-lit: #f6d688;
+  --brass-dark: #7d521a;
+  --parchment: #e5c78d;
+  --parchment-lit: #f5e3b9;
+  --parchment-dark: #c8a66c;
+  --leather: #8d342f;
+  --leather-lit: #b34a3f;
+  --leather-dark: #4e1d1a;
+  --ink: #181515;
+  --cream: #f1d9a8;
+  --cream-dim: #bfa579;
+  --amber: #f0b84c;
+  --amber-glow: rgba(240, 184, 76, 0.22);
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -25,37 +42,39 @@ html, body {
   overflow: hidden;              /* no document scrolling, ever */
   overscroll-behavior: none;     /* kills pull-to-refresh / rubber-banding */
   background: var(--bg);
-  color: var(--ink);
+  color: var(--cream);
   font-family: 'Press Start 2P', ui-monospace, monospace;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
 }
 
 /* The shell owns the viewport. 100dvh with a 100vh fallback for browsers
-   that don't know dynamic viewport units yet. */
+   that don't know dynamic viewport units yet. Whatever space the canvas
+   can't use is painted as the pub's own wainscoting: vertical walnut boards
+   under one warm lamp, so the letterbox reads as more room, not a black bar. */
 #shell {
   position: fixed;
   inset: 0;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  /* Deliberate treatment for whatever viewport space the canvas can't use:
-     a dark room around the room, not a raw black bar. */
   background:
-    radial-gradient(120% 90% at 50% 42%, #241a2a 0%, #120e18 55%, var(--bg) 100%);
+    radial-gradient(60% 45% at 50% 0%, var(--amber-glow) 0%, rgba(240, 184, 76, 0) 100%),
+    repeating-linear-gradient(90deg,
+      var(--walnut-deep) 0 1px, #201410 1px 12px, #1a110d 12px 22px, var(--walnut-deep) 22px 23px),
+    var(--bg);
 }
 
-/* Vignette + faint scanline haze over the letterbox area. Purely decorative
-   and pointer-transparent so it never eats input. */
+/* Grain and a vignette over the boards. Purely decorative and
+   pointer-transparent so it never eats input. */
 #shell::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    repeating-linear-gradient(to bottom, rgba(0,0,0,0.14) 0 2px, rgba(0,0,0,0) 2px 4px),
-    radial-gradient(130% 100% at 50% 50%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
-  opacity: 0.5;
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, rgba(0, 0, 0, 0) 1px 5px),
+    radial-gradient(120% 100% at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 100%);
 }
 
 #stage {
@@ -66,30 +85,72 @@ html, body {
   justify-content: center;
 }
 
+/* The canvas sits in a brass-and-walnut picture frame: crisp rings, no blur
+   until the final drop shadow onto the boards behind it. */
 canvas#game {
   display: block;
-  background: #0d0a12;
+  background: #100e0e;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   /* JS sets width/height in CSS px to an exact integer multiple of the
      internal resolution — never a non-proportional stretch. */
-  box-shadow: 0 0 0 1px #000, 0 18px 48px rgba(0, 0, 0, 0.7);
+  box-shadow:
+    0 0 0 1px var(--ink),
+    0 0 0 3px var(--brass-dark),
+    0 0 0 4px var(--brass),
+    0 0 0 5px var(--brass-dark),
+    0 0 0 9px var(--walnut),
+    0 0 0 10px var(--walnut-lit),
+    0 0 0 11px var(--ink),
+    0 22px 48px rgba(0, 0, 0, 0.82);
   touch-action: none;            /* the canvas is a game surface, not a page */
   user-select: none;
   -webkit-user-select: none;
 }
 
+/* ---- Shared materials ------------------------------------------------ */
+/* A walnut board with a lit top bevel, dark bottom bevel, faint grain and an
+   ink outline. Used by the chips, the start panel and the touch action. */
+.board {
+  color: var(--cream);
+  background:
+    repeating-linear-gradient(0deg, rgba(12, 6, 4, 0.22) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
+    linear-gradient(180deg, var(--walnut-lit) 0 2px, var(--walnut) 2px calc(100% - 2px), var(--walnut-dark) calc(100% - 2px) 100%);
+  border: 1px solid var(--ink);
+  box-shadow:
+    inset 1px 0 0 var(--walnut-lit),
+    inset -1px 0 0 var(--walnut-dark),
+    0 3px 0 var(--ink),
+    0 6px 14px rgba(0, 0, 0, 0.6);
+}
+
+/* Brass rivets in the four corners of a board, drawn as backgrounds so no
+   extra markup is needed. Layer this on top of `.board`'s own backgrounds via
+   the `--rivet` inset variable. */
+.riveted {
+  --rivet: 7px;
+  background-image:
+    radial-gradient(circle at var(--rivet) var(--rivet), var(--brass-lit) 0 1px, var(--brass) 1px 2.5px, var(--brass-dark) 2.5px 3.5px, rgba(0, 0, 0, 0) 3.5px),
+    radial-gradient(circle at calc(100% - var(--rivet)) var(--rivet), var(--brass-lit) 0 1px, var(--brass) 1px 2.5px, var(--brass-dark) 2.5px 3.5px, rgba(0, 0, 0, 0) 3.5px),
+    radial-gradient(circle at var(--rivet) calc(100% - var(--rivet)), var(--brass-lit) 0 1px, var(--brass) 1px 2.5px, var(--brass-dark) 2.5px 3.5px, rgba(0, 0, 0, 0) 3.5px),
+    radial-gradient(circle at calc(100% - var(--rivet)) calc(100% - var(--rivet)), var(--brass-lit) 0 1px, var(--brass) 1px 2.5px, var(--brass-dark) 2.5px 3.5px, rgba(0, 0, 0, 0) 3.5px),
+    repeating-linear-gradient(0deg, rgba(12, 6, 4, 0.22) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
+    linear-gradient(180deg, var(--walnut-lit) 0 2px, var(--walnut) 2px calc(100% - 2px), var(--walnut-dark) calc(100% - 2px) 100%);
+}
+
 /* ---- Corner chips --------------------------------------------------- */
 #top-bar {
   position: absolute;
-  top: calc(8px + var(--safe-t));
-  right: calc(8px + var(--safe-r));
+  top: calc(10px + var(--safe-t));
+  right: calc(10px + var(--safe-r));
   display: flex;
   gap: 8px;
-  z-index: 30;
+  z-index: 45;   /* above the start overlay, so sound/fullscreen work while paused */
 }
 
+/* Small brass-lettered walnut plaques. Quiet at rest, lit like a lamp caught
+   them on hover/focus. */
 .chip {
   position: relative;
   width: 44px;
@@ -98,36 +159,65 @@ canvas#game {
   min-height: 44px;
   display: grid;
   place-items: center;
+  padding: 0;
   font-family: inherit;
-  font-size: 12px;
-  color: var(--muted);
-  background: rgba(18, 14, 24, 0.55);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--brass);
+  text-shadow: 0 1px 0 var(--ink);
   cursor: pointer;
-  opacity: 0.45;
-  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  opacity: 0.9;
+  transition: opacity 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   touch-action: manipulation;
 }
 .chip:hover,
 .chip:focus-visible,
-.chip.active { opacity: 1; color: var(--ink); border-color: var(--amber); outline: none; }
+.chip.active {
+  opacity: 1;
+  color: var(--brass-lit);
+  outline: none;
+  box-shadow:
+    inset 1px 0 0 var(--walnut-lit),
+    inset -1px 0 0 var(--walnut-dark),
+    0 0 0 1px var(--brass-dark),
+    0 3px 0 var(--ink),
+    0 0 16px var(--amber-glow);
+}
+.chip:active { transform: translateY(2px); box-shadow: inset 1px 0 0 var(--walnut-lit), 0 1px 0 var(--ink); }
 
 .chip.sound {
-  font-size: 7px;
+  font-size: 8px;
   letter-spacing: 1px;
 }
-.chip.sound.muted { color: #b96363; border-color: #734348; }
+
+/* Fullscreen: four brass corner brackets, drawn rather than typed so it
+   doesn't depend on which glyph the platform font happens to have. */
+.chip.full::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  --bar: linear-gradient(currentColor, currentColor);
+  background:
+    var(--bar) 0 0 / 8px 3px, var(--bar) 0 0 / 3px 8px,
+    var(--bar) 100% 0 / 8px 3px, var(--bar) 100% 0 / 3px 8px,
+    var(--bar) 0 100% / 8px 3px, var(--bar) 0 100% / 3px 8px,
+    var(--bar) 100% 100% / 8px 3px, var(--bar) 100% 100% / 3px 8px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 0 var(--ink));
+}
+.chip.sound.muted { color: #c7584a; }
 .chip.sound.muted::after {
   content: '';
   position: absolute;
-  width: 29px;
-  height: 1px;
+  width: 30px;
+  height: 2px;
   background: currentColor;
+  box-shadow: 0 1px 0 var(--ink);
   transform: rotate(-36deg);
 }
 
 /* ---- Start / help overlay ------------------------------------------- */
+/* The room goes dark and one lamp stays on over the sign. */
 .overlay {
   position: absolute;
   inset: 0;
@@ -135,46 +225,107 @@ canvas#game {
   display: grid;
   place-items: center;
   padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));
-  background: rgba(8, 6, 12, 0.78);
-  backdrop-filter: blur(2px);
+  background:
+    radial-gradient(55% 40% at 50% 8%, rgba(240, 184, 76, 0.16) 0%, rgba(240, 184, 76, 0) 100%),
+    rgba(8, 5, 4, 0.8);
   overflow: auto;
 }
 .overlay.hidden, .hidden { display: none !important; }
 
+/* The start panel is a hanging pub sign: walnut board, brass rails top and
+   bottom, rivets in the corners, two chains up to the lamp. */
 .panel {
+  --rivet: 9px;
+  position: relative;
   width: min(560px, 100%);
-  max-height: 100%;
-  overflow: auto;
+  margin-top: 28px;             /* room for the chains above the board */
   text-align: center;
-  padding: 20px 18px;
-  background: linear-gradient(180deg, #1d1726 0%, #14101c 100%);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  border-top: 4px solid var(--brass);
+  border-bottom: 4px solid var(--brass);
+  box-shadow:
+    inset 0 1px 0 var(--brass-lit),
+    inset 0 -1px 0 var(--brass-dark),
+    inset 1px 0 0 var(--walnut-lit),
+    inset -1px 0 0 var(--walnut-dark),
+    0 0 0 1px var(--ink),
+    0 4px 0 var(--ink),
+    0 18px 44px rgba(0, 0, 0, 0.8),
+    0 0 60px var(--amber-glow);
+}
+/* Chains. */
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  top: -26px;
+  width: 3px;
+  height: 22px;
+  background: repeating-linear-gradient(180deg, var(--brass) 0 3px, var(--brass-dark) 3px 5px);
+  box-shadow: 1px 0 0 var(--ink);
+}
+.panel::before { left: 28px; }
+.panel::after { right: 28px; }
+
+/* The board itself never clips (the chains hang outside it); the content
+   scrolls inside when a short viewport can't fit the whole sign. */
+.panel-scroll {
+  max-height: calc(100vh - 100px);
+  max-height: calc(100dvh - 100px);
+  overflow: auto;
+  padding: 24px 20px 20px;
 }
 
 .panel h1 {
-  margin: 0 0 10px;
-  font-size: clamp(16px, 5vw, 26px);
-  color: var(--accent);
-  letter-spacing: 3px;
-  text-shadow: 3px 3px 0 #000;
+  margin: 0 0 6px;
+  font-size: clamp(18px, 6vw, 30px);
+  color: var(--amber);
+  letter-spacing: 4px;
+  text-shadow: 2px 2px 0 var(--leather), 4px 4px 0 var(--ink);
+}
+
+.strap {
+  margin: 0 0 12px;
+  font-size: clamp(7px, 2.4vw, 10px);
+  letter-spacing: 5px;
+  color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+/* Brass rule either side of the strap. */
+.strap::before,
+.strap::after {
+  content: '';
+  display: inline-block;
+  vertical-align: middle;
+  width: clamp(24px, 10vw, 60px);
+  height: 2px;
+  margin: 0 10px;
+  background: var(--brass);
+  box-shadow: 0 1px 0 var(--brass-dark);
 }
 
 .subtitle {
   margin: 0 0 16px;
   font-size: clamp(7px, 2.2vw, 9px);
-  line-height: 1.8;
-  color: var(--muted);
+  line-height: 1.9;
+  color: var(--cream-dim);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 
+/* The controls are a parchment menu card pinned to the sign. */
 .keys {
   list-style: none;
-  margin: 0 0 18px;
-  padding: 0;
+  margin: 0 auto 18px;
+  padding: 12px 10px;
+  width: min(100%, 420px);
   display: grid;
   gap: 8px;
   font-size: clamp(6px, 2vw, 8px);
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 80, 30, 0.08) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
+    linear-gradient(180deg, var(--parchment-lit) 0 1px, var(--parchment) 1px calc(100% - 2px), var(--parchment-dark) calc(100% - 2px) 100%);
+  border: 1px solid var(--brass-dark);
+  box-shadow: inset 0 0 0 1px var(--parchment-lit), 0 2px 0 var(--ink);
 }
 .keys li {
   display: flex;
@@ -182,43 +333,63 @@ canvas#game {
   gap: 6px;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: var(--ink);
 }
-.keys span { min-width: 96px; text-align: right; color: var(--ink); }
-.keys em { font-style: normal; color: var(--amber); }
+.keys span { min-width: 96px; text-align: right; color: var(--leather); }
+.keys em { font-style: normal; color: var(--brass-dark); }
 
+/* Keycaps are brass. */
 kbd {
-  background: var(--panel);
-  border: 1px solid #444;
-  border-bottom-width: 2px;
-  border-radius: 3px;
-  padding: 3px 5px;
   font-family: inherit;
   font-size: inherit;
   color: var(--ink);
+  background: linear-gradient(180deg, var(--brass-lit) 0 1px, var(--brass) 1px calc(100% - 2px), var(--brass-dark) calc(100% - 2px) 100%);
+  border: 1px solid var(--brass-dark);
+  border-bottom-width: 2px;
+  padding: 3px 5px;
 }
 
+/* Anything you press is burgundy leather with a brass rim. */
 .primary {
   font-family: inherit;
   font-size: clamp(8px, 2.6vw, 11px);
   letter-spacing: 2px;
-  color: #14100a;
-  background: linear-gradient(180deg, var(--amber) 0%, #c97f1e 100%);
-  border: 1px solid #7a4c10;
-  border-radius: 6px;
-  padding: 14px 22px;
+  color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink);
+  background: linear-gradient(180deg, var(--leather-lit) 0 2px, var(--leather) 2px calc(100% - 3px), var(--leather-dark) calc(100% - 3px) 100%);
+  border: 2px solid var(--brass);
+  padding: 14px 24px;
   min-height: 44px;
   cursor: pointer;
-  box-shadow: 0 3px 0 #6a3f0c;
+  box-shadow:
+    0 0 0 1px var(--ink),
+    inset 0 0 0 1px var(--brass-dark),
+    0 4px 0 var(--ink),
+    0 8px 18px rgba(0, 0, 0, 0.6);
   touch-action: manipulation;
+  transition: box-shadow 0.1s ease;
 }
-.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 #6a3f0c; }
+.primary:hover,
+.primary:focus-visible {
+  outline: none;
+  border-color: var(--brass-lit);
+  box-shadow:
+    0 0 0 1px var(--ink),
+    inset 0 0 0 1px var(--brass-dark),
+    0 4px 0 var(--ink),
+    0 0 18px var(--amber-glow);
+}
+.primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--brass-dark), 0 1px 0 var(--ink);
+}
 
 .hint {
   margin: 14px 0 0;
   font-size: clamp(6px, 1.9vw, 7px);
   line-height: 1.9;
-  color: #6f6879;
+  color: var(--cream-dim);
+  text-shadow: 1px 1px 0 var(--ink);
 }
 
 /* ---- Caught-screen restart ------------------------------------------ */
@@ -239,6 +410,7 @@ kbd {
   touch-action: none;
 }
 
+/* The stick is a beer mat: parchment ring on a walnut disc, brass rim. */
 .stick {
   position: absolute;
   left: calc(18px + var(--safe-l));
@@ -246,15 +418,21 @@ kbd {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 161, 58, 0.28);
-  background: radial-gradient(circle at 50% 50%, rgba(30,24,40,0.5) 0%, rgba(18,14,24,0.28) 70%, rgba(18,14,24,0.06) 100%);
+  border: 3px solid var(--brass-dark);
+  background:
+    radial-gradient(circle at 50% 50%,
+      var(--walnut) 0 38%, var(--ink) 38% 40%, var(--parchment-dark) 40% 44%,
+      var(--parchment) 44% 50%, var(--parchment-dark) 50% 52%, var(--ink) 52% 54%,
+      var(--walnut-dark) 54% 100%);
+  box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px var(--brass), 0 4px 10px rgba(0, 0, 0, 0.6);
   pointer-events: auto;
   touch-action: none;
-  opacity: 0.5;
+  opacity: 0.6;
   transition: opacity 0.15s ease;
 }
-.stick.active { opacity: 0.95; }
+.stick.active { opacity: 0.96; }
 
+/* The knob is a brass tap handle cap. */
 .stick-knob {
   position: absolute;
   left: 50%;
@@ -263,11 +441,13 @@ kbd {
   height: 52px;
   margin: -26px 0 0 -26px;
   border-radius: 50%;
-  background: rgba(232, 161, 58, 0.35);
-  border: 2px solid rgba(232, 161, 58, 0.65);
+  background: radial-gradient(circle at 40% 35%, var(--brass-lit) 0 18%, var(--brass) 18% 70%, var(--brass-dark) 70% 100%);
+  border: 2px solid var(--ink);
+  box-shadow: 0 3px 0 var(--brass-dark), 0 5px 8px rgba(0, 0, 0, 0.5);
   will-change: transform;
 }
 
+/* The action button is a big leather-and-brass pub bell. */
 .action {
   position: absolute;
   right: calc(20px + var(--safe-r));
@@ -276,17 +456,23 @@ kbd {
   height: 88px;
   border-radius: 50%;
   font-family: inherit;
-  font-size: 16px;
-  color: #14100a;
-  background: radial-gradient(circle at 50% 40%, rgba(232,161,58,0.85) 0%, rgba(190,116,26,0.8) 100%);
-  border: 2px solid rgba(122, 76, 16, 0.9);
+  font-size: 18px;
+  color: var(--cream);
+  text-shadow: 1px 1px 0 var(--ink);
+  background: radial-gradient(circle at 42% 36%, var(--leather-lit) 0 30%, var(--leather) 30% 78%, var(--leather-dark) 78% 100%);
+  border: 3px solid var(--brass);
+  box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px var(--brass-dark), 0 5px 0 var(--ink), 0 8px 14px rgba(0, 0, 0, 0.6);
   pointer-events: auto;
   touch-action: none;
   cursor: pointer;
-  opacity: 0.55;
-  transition: opacity 0.12s ease, transform 0.08s ease;
+  opacity: 0.68;
+  transition: opacity 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease;
 }
-.action.active { opacity: 1; transform: scale(0.94); }
+.action.active {
+  opacity: 1;
+  transform: translateY(4px);
+  box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px var(--brass-dark), 0 1px 0 var(--ink), 0 0 18px var(--amber-glow);
+}
 
 /* `touch-only` hints stay hidden unless the touch UI is live. */
 .touch-only { display: none; }

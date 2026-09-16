@@ -154,6 +154,42 @@ const DIALOGUE_LINES = [
   // Rare, understated decency — always immediately after the cruelty.
   { who: 'gerald', category: 'ambient', nazim: ['drunk', 'gone'], rare: true, text: "Idiot. ...Bring him a water, would you." },
   { who: 'gerald', category: 'ambient', nazim: ['gone'], rare: true, text: "He's insufferable. Don't let him walk home." },
+  // ---------------------------------------------------------- THE HUNTER
+  // He walks in, he looks around, he loses the thread, he gets bought a pint.
+  { who: 'gerald', category: 'hunterArrives', text: "Here he comes. Shake the rain off, mate." },
+  { who: 'sam', category: 'hunterArrives', text: "Door. Orange hat. That's your evening sorted." },
+  { who: 'nazim', category: 'hunterArrives', stage: ['sober', 'warm'], text: "He's back. He always comes back." },
+  { who: 'nazim', category: 'hunterArrives', stage: ['drunk', 'gone'], text: "Is that... he's got a hat on." },
+  { who: 'sam', category: 'hunterSpotted', text: "He's clocked you. Move." },
+  { who: 'gerald', category: 'hunterSpotted', text: "Eyes on. Stop admiring the floorboards." },
+  { who: 'nazim', category: 'hunterSpotted', stage: ['sober', 'warm', 'buzzed'], text: "Run. Politely, but run." },
+  { who: 'gerald', category: 'hunterLost', text: "He's looking at the coat rack. You're a coat now." },
+  { who: 'sam', category: 'hunterLost', text: "Lost him. Don't get cocky." },
+  { who: 'nazim', category: 'hunterLost', stage: ['drunk', 'gone'], text: "I lost him too. Where am I." },
+  { who: 'gerald', category: 'hunterOrdered', text: "The hunter wants a pint. Of course he does." },
+  { who: 'sam', category: 'hunterOrdered', text: "He's ordering. Bold of you to serve him." },
+  { who: 'nazim', category: 'hunterOrdered', stage: ['buzzed', 'drunk', 'gone'], text: "Put it on my tab. No. Don't." },
+  { who: 'sam', category: 'hunterServed', text: "You bought the man a pint. Stockholm, but a round." },
+  { who: 'gerald', category: 'hunterServed', text: "Bribery. Finally some proper hospitality." },
+  { who: 'nazim', category: 'hunterServed', stage: ['sober', 'warm'], text: "He drinks like a man with a plan." },
+  { who: 'nazim', category: 'hunterServed', stage: ['drunk', 'gone'], text: "Cheers, hunter. No. Not cheers." },
+  // ------------------------------------------------- NAZIM'S NIGHT, PAID FOR
+  { who: 'gerald', category: 'spill', text: "That's a pint on the floor. Mind it." },
+  { who: 'sam', category: 'spill', text: "He's watering the boards again." },
+  { who: 'nazim', category: 'spill', stage: ['gone'], text: "The glass moved. I saw it." },
+  { who: 'sam', category: 'nazimUp', text: "He's up. Nobody make eye contact." },
+  { who: 'gerald', category: 'nazimUp', text: "Sit down, Nazim. That's a lane." },
+  { who: 'nazim', category: 'nazimUp', stage: ['gone'], text: "Just stretching. Legs. Both." },
+  { who: 'gerald', category: 'roundMissed', text: "That wasn't a round. That was three drinks." },
+  { who: 'sam', category: 'roundMissed', text: "Staggered arrivals. Like a bad wedding." },
+  // ------------------------------------------------------------- LAST CALL
+  { who: 'gerald', category: 'lastCall', text: "Last call. Don't make it weird." },
+  { who: 'sam', category: 'lastCall', text: "Bell's gone. Everybody wants everything now." },
+  { who: 'nazim', category: 'lastCall', stage: ['sober', 'warm', 'buzzed'], text: "Already? The night was just getting good." },
+  { who: 'nazim', category: 'lastCall', stage: ['drunk', 'gone'], text: "Last call is a state of mind." },
+  { who: 'sam', category: 'hunterSpooked', text: "Did he just flinch at nothing?" },
+  { who: 'gerald', category: 'hunterSpooked', text: "Big man. Scared of a draught." },
+  { who: 'nazim', category: 'hunterSpooked', stage: ['drunk', 'gone'], text: "I saw it too. The see-through fella." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------
@@ -290,6 +326,55 @@ const DIALOGUE_EXCHANGES = [
     lines: [
       { who: 'gerald', text: "Round two. Try the walking this time.", delay: 0 },
       { who: 'sam', text: "He can't hear you. He's new again.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'waterOrdered',
+    lines: [
+      { who: 'gerald', text: "Water for him. Now. On me.", delay: 0 },
+      { who: 'nazim', text: "I ordered no water.", delay: 1.5 },
+    ],
+  },
+  {
+    category: 'waterOrdered',
+    lines: [
+      { who: 'gerald', text: "Cut him off. Water. Tall one.", delay: 0 },
+      { who: 'sam', text: "He'll drink it and call it a cocktail.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'sobered',
+    lines: [
+      { who: 'nazim', text: "That's... wet. Thank you.", delay: 0 },
+      { who: 'gerald', text: "Now sit up straight.", delay: 1.4 },
+    ],
+  },
+  {
+    category: 'roundCalled',
+    lines: [
+      { who: 'gerald', text: "A round. Three. Go.", delay: 0 },
+      { who: 'sam', text: "Together, mind. It's a round, not a queue.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'roundCalled',
+    lines: [
+      { who: 'sam', text: "Round's on Gerald tonight.", delay: 0 },
+      { who: 'gerald', text: "Round's on whoever's slowest.", delay: 1.4 },
+    ],
+  },
+  {
+    category: 'roundDone',
+    lines: [
+      { who: 'sam', text: "Three at once. That's a proper pub.", delay: 0 },
+      { who: 'gerald', text: "Fine. That was competent.", delay: 1.5 },
+    ],
+  },
+  {
+    category: 'roundDone', nazim: ['drunk', 'gone'],
+    lines: [
+      { who: 'nazim', text: "To the deer!", delay: 0 },
+      { who: 'gerald', text: "Quietly, Nazim.", delay: 1.2 },
     ],
   },
 ];

@@ -8,7 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 It's plain HTML/CSS/JS with **no build step, no package manager, and no dependencies**: `index.html` loads `style.css` and eight plain `<script>` files directly, and everything is drawn to one `<canvas>` with the 2D context.
 
-There is no `package.json`, no test suite, and no linter configured. Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for the game-over and completed-level splashes; `assets/planFloor.png` is the retained floor-plan reference the current layout is traced from. `assets/cover.png` and `assets/gameplay.png` are not loaded by the game — the first is a leftover from a canvas title screen that the HTML start overlay replaced, the second is for the README.
+There is no `package.json` or linter. `node tests/smoke.js` is a dependency-free
+runtime smoke test for script loading, customer/waiter routing, and rendering.
+Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for
+the game-over and completed-level splashes; `assets/planFloor.png` is the
+retained floor-plan reference the current layout is traced from.
+`assets/cover.png` and `assets/gameplay.png` are not loaded by the game — the
+first is a leftover from a canvas title screen that the HTML start overlay
+replaced, the second is for the README.
 
 ## Running it
 
@@ -20,15 +27,30 @@ There is no build command. To run the game, either:
 
 Any change to the JS/HTML/CSS takes effect on a page reload — no compilation step.
 
+## Art-direction guardrails
+
+`assets/art-direction/warm-overhead-pub-reference.png` is the primary room-art
+reference. Borrow its honeyed wood, forest-green shadows, burgundy seating,
+amber light, rainy windows, rugs, plants, and crowded edge detail, but keep the
+game's straight-overhead camera. The reference's isometric composition is not
+a layout target. Preserve furniture colliders while the visual language is
+being established, and keep main walk lanes calmer than the bar and seating
+clusters so orders, characters, and chase routes stay readable.
+
+Palette swaps alone do not satisfy this direction. The accepted renderer uses
+a 2x art backing grid, fine floorboards, dimensional furniture, dense readable
+props, localized light/reflections, varied patrons, and coherent walnut/brass/
+parchment UI. `assets/art-direction/README.md` is the concrete acceptance list.
+
 ## Files and load order
 
 Script order in `index.html` matters: each file only uses things defined in the ones before it, and they share one global scope (top-level `const`/`function` in a classic script is visible to later scripts).
 
 | File | Contains |
 | --- | --- |
-| `src/pixelfont.js` | 3×5 bitmap font: glyphs, `fontTextWidth`, `fontDrawText`, `fontDrawTextShadow`, `fontWrapText`. Pure data + helpers. |
+| `src/pixelfont.js` | 3×5 bitmap font: glyphs, `fontTextWidth`, `fontDrawText`, `fontDrawTextShadow`, `fontWrapText`. `fontDrawText`/`fontDrawTextShadow` take an optional integer `scale` for headlines. Pure data + helpers. |
 | `src/scenery.js` | The `PUB` palette, `makeSeededRandom`, and the `makeGlowCanvas`/`makeVignetteCanvas` lighting bakers. No game state. |
-| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`), every sprite and palette (doe, hunter, customers, the three regulars, the waiter, order icons) and the `SPRITES` set map. No canvas, no game state. |
+| `src/sprites.js` | The sprite DSL (`R`, `buildSprite`, `composeSprite`, `detailSprite`), every sprite and palette (doe, hunter, customers, the three regulars, the waiter, order icons) and the `SPRITES` set map. No canvas, no game state. |
 | `src/dialogue-content.js` | `DIALOGUE_LINES` and `DIALOGUE_EXCHANGES` — authored text only. |
 | `src/dialogue.js` | The `Dialogue` module: selection, weighting, cooldowns, queueing, repetition control. |
 | `src/regulars.js` | `REGULARS` config, `INTOX_STAGES`, `NAZIM_STAGE_VISUALS`, order weighting, mood constants. Data and pure functions. |
@@ -46,6 +68,12 @@ The canvas fills the browser viewport. `applyViewport()` recomputes three things
 - `pixelScale` — an **integer** css-pixels-per-game-pixel factor, so art is never resampled onto fractional pixels.
 - `viewW` / `viewH` — the internal (game-pixel) resolution, sized so `viewW*scale × viewH*scale` covers as much of the viewport as possible.
 
+`ART_SCALE` is separate from both: the canvas backing store is
+`viewW*ART_SCALE × viewH*ART_SCALE` (currently 2x), while CSS size and all
+simulation/camera coordinates remain in logical units. The context transform
+maps logical drawing calls to that denser store. Half-unit scenery strokes and
+`pixelSize: 0.5` sprite sheets therefore resolve to one real backing pixel.
+
 Landscape leans on a 320×180 base, portrait on 180×320 (the world is portrait, so a phone gets a portrait internal resolution instead of a squashed 16:9 letterbox). Both are clamped by `VIEW_MIN`/`VIEW_MAX` so an ultrawide monitor can't reveal empty space outside the pub — the leftover viewport is painted as a dark surround by CSS instead.
 
 **`viewW`/`viewH` are `let`, not constants.** Everything downstream — camera, HUD, bubbles, overlays, the vignette — reads the current values, so a resize or rotation mid-run is just a re-derivation and never touches game state. Resizes are coalesced into the next frame via `viewportDirty`, and layout is read once per resize, never per frame. Setting `canvas.width` resets 2D context state, so `imageSmoothingEnabled = false` is restored there.
@@ -54,7 +82,9 @@ Landscape leans on a 320×180 base, portrait on 180×320 (the world is portrait,
 
 ### 2. World and furniture: hand-placed, not procedural
 
-`WORLD_W` 200 × `WORLD_H` 360, portrait. `TILE` (16) is only the floor-rendering grid — not a collision or layout grid.
+`WORLD_W` 200 × `WORLD_H` 360, portrait. The floor renderer uses deterministic
+6-unit walnut plank rows with varied lengths; this is visual texture only, not
+a collision or layout grid.
 
 `BAR_SEGMENTS` is three rectangles forming an L; `TABLES` and `BENCHES` are literal arrays of `makeTable(cx, cy, opts)` calls, all traced from `assets/planFloor.png`. `makeTable` takes `{w, h, seats: {n, s, e, w}, type, seatStyle}` where each side's count is how many chairs are spaced evenly along that edge (default 1, `0` = none). `getTableSeats()` derives those points and is used for **both** gameplay seat positions and chair sprite placement, so the two can't drift apart; each returned seat also carries the `side` it sits on.
 
@@ -72,7 +102,7 @@ A collider is padded by `CHAIR_GAP + CHAIR_SIZE` **only on sides that actually h
 
 ### 3. Sprite authoring and rendering
 
-All visuals are rows-of-palette-characters: `R(char, count, ...)` builds a row string, `buildSprite(rows)` wraps rows into `{rows, w, h}`, and a palette object maps each character to a hex colour (or `null` for transparent). The regulars are authored as literal 14-wide strings instead of `R()` runs because their shapes are irregular enough that the runs would be less readable than the picture.
+All visuals are rows-of-palette-characters: `R(char, count, ...)` builds a row string, `buildSprite(rows)` wraps rows into `{rows, w, h}`, and a palette object maps each character to a hex colour (or `null` for transparent). **The cast is authored straight onto the 2x backing grid.** `lightSprite(rows, ramps, w, h)` takes literal rows (32×40 for the Doe and hunter, 28×32 for the regulars, 28×26 for walk-ins), applies one light direction (top-left: exposed north/west edges take the material's light key, south/east its dark key) and returns a `pixelSize: 0.5` sheet — the same on-screen footprint as the old 16×18 authored sprites with four times the information, which is where the faces come from. Pose variants are built by `patchRow` (blink, talk, walk legs, the held pint) rather than authored twice; Nazim's lean/slump drop the head rows onto the chest. Nazim keeps the `r` cheek and `w` eye keys so `NAZIM_STAGE_PALETTES` still recolours him per stage. Sheets wider than the body (carry, shotgun) set `anchorX` in logical units. The coarse `DOE_IDLE`/`NAZIM_IDLE`/… rows remain as silhouette reference and feed `detailSprite()`, which refines a 1x silhouette onto the 2x grid — still used by the waiter and the order icons. `composeSprite()` is the older wide-pose helper.
 
 `drawSprite()` is still the single renderer for the format, but it no longer paints pixel by pixel every frame: it **bakes** each `(sprite, palette, facing)` combination into an offscreen canvas the first time it's needed and blits it afterwards. The cache is nested `WeakMap`s keyed by object identity, so a customer's one-off palette is collected along with the customer.
 
@@ -80,7 +110,7 @@ A sprite set is keyed by pose name. Movers use `idle`/`walk` driven by `legFrame
 
 ### 4. Entities and movement
 
-`makeEntity(kind, x, y)` creates the shared shape used by the player, hunter, customers **and regulars**. **An entity's `(x, y)` is its feet/anchor point, not top-left** — sprites draw upward from `y - sprite.h`, and this underlies collision boxes (`getFootBox`), z-sorting and bubble placement everywhere.
+`makeEntity(kind, x, y)` creates the shared shape used by the player, hunter, customers **and regulars**. **An entity's `(x, y)` is its feet/anchor point, not top-left.** `ENTITY_HITBOXES` preserves the original physics dimensions; visual width/height and optional `anchorX` come from the selected sheet. Never derive collision from refined sprite dimensions or a wider prop pose.
 
 `tryMove(e, dx, dy)` resolves X and Y independently against `FURNITURE` colliders so movement slides along walls/tables instead of stopping dead, returning `{x, y, blockedX, blockedY}`. `collidesAt(e, x, y, exclude)` takes an optional piece of furniture to ignore — that is what lets a customer walk *into* their own table's padded collider to reach the chair inside it. Base speeds: player **62**, customer 38, hunter 54 (recomputed every frame from the level), waiter 46, ghost 16.
 
@@ -90,7 +120,7 @@ Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), f
 
 **`spawnCustomer()` only considers seats that are neither occupied nor `reserved`.** A walk-in can never take a regular's chair.
 
-**Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath`.
+**Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. Exact segment/AABB checks use the same asymmetric, feet-anchored footprint as runtime collision; endpoint grid anchors are chosen only when the real endpoint can see them. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath` or run `node tests/smoke.js`.
 
 **The ghost** (`updateGhost`) is purely decorative: every 35–80s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
 
@@ -120,13 +150,21 @@ Their orders are framed in amber (`BUBBLE_FRAME_REGULAR`) so they read apart fro
 
 Gerald's escalation is content-side: his lines about Nazim declare a `nazim: [...]` stage gate, so he can't use drunk material on a sober man.
 
-### 7. Carrying and delivery
+**His night costs and pays.** Drunk or gone (`nazimIsFarGone`): order cooldown ×`NAZIM_FAST_ORDER` 0.6 and alcohol tips ×`NAZIM_TIP_MULT` 2. Gone: each delivery has a `NAZIM_SPILL_CHANCE` of knocking the pint (`addSpill` — `spills` slow player and hunter to `SPILL_SLOW` 60% within 9px for 25 s, drawn by `drawSpills` under the y-sorted pass), and every 12–20 s he gets up (`startNazimWander`/`updateNazimWander`: lean pose plus his sway, 14 px/s to a spot near the booth, a pause, then home). While up he is in `dynamicBlockers`, which `collidesAt` checks after `FURNITURE` so everyone slides round him; routes ignore him. Entering gone sets `waterOwed`, so his next order is `'water'` (an `ORDER_ICONS` entry made at the taps and excluded from walk-in `ORDER_TYPES`); delivering it takes `NAZIM_WATER_SOBERS` 2 drinks off with the `sobered` exchange instead of a thank-you. Keep pouring for double tips, or cut him off — that's the choice.
 
-`player.carrying` holds `{ type, customer }` referencing a *specific* person — walk-in or regular — flagged `beingCarried` so two orders are never picked up for one person. `handleInteract()` (bound to `E`, `Space`, and the touch action button) either grabs an order at the bar or delivers the carried one.
+**The round.** Every `ROUND_INTERVAL` 90–150 s, when none of the three is mid-order, `tryCallRound()` gives all three an order with `ROUND_PATIENCE` 32 s; all three served inside `ROUND_WINDOW` 20 s pays `ROUND_BONUS` 25 (`noteRoundDelivery`), otherwise `roundMissed`.
 
-`findOldestPendingOrder()` picks by `orderPlacedAt` across **both** populations, so the queue stays fair now that two feed it.
+### 7. Stations, the tray, tips and delivery
 
-Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`). If the target stops wanting the order, `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
+**Orders are picked up at the station that makes them.** `BAR_STATIONS` maps each `BAR_SEGMENTS` entry's `station` (`taps` → beers and water, `shelf` → wine/cocktail, `hatch` → food) to its order types, and `findOldestPendingOrder(types)` filters the queue by them. `nearestBarSegment()` resolves the L's corner by distance, not array order. A press at the wrong counter floats the right station's label (`SHELF >`) instead of just buzzing. `drawStationTag` paints a parchment label on each counter. Remapping a station is a one-word edit.
+
+**The tray.** `player.tray` holds up to `TRAY_MAX` (2) `{ type, customer }` items, each referencing a *specific* person — walk-in, regular or the hunter — flagged `beingCarried` so two orders are never picked up for one person. A full tray drops speed to `TRAY_SPEED` (54, under the hunter's late-game 60); landing both without a hit pays `DOUBLE_BONUS` (`doubleArmed`/`doubleHitFree`, cancelled by a hit or a dropped order). `handleInteract()` (`E`, `Space`, the touch action) tries a delivery first — whichever tray item's customer is in reach (`canDeliverTo`) — then a pickup.
+
+**Tips** (`deliveryTip`): `POINTS_PER_DELIVERY` 10 plus another 10 scaled by remaining patience, plus `CLUTCH_BONUS` 5 under `CLUTCH_FRACTION` 20%. The patience bar is a score meter, not just a fail timer. Every tip earned or lost goes through `earnTips`/`loseTips` so the shift ledger (`shiftStats`) stays exact.
+
+`findOldestPendingOrder()` picks by `orderPlacedAt` across walk-ins, regulars **and the hunter**, so the queue stays fair.
+
+Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`); the hunter is served at arm's length (`HUNTER_SERVE_RANGE` 26, wider than the ~15px catch radius). If a target stops wanting its order (`stillWantsOrder`), `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped from the tray so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
 
 ### 8. Dialogue
 
@@ -138,44 +176,58 @@ A reactive layer on top of gameplay. It never pauses the chase, blocks input, or
 - **`Dialogue.reset()` is called from `resetGame()`**, so a restart cancels everything queued or on screen; `resetDialogueTriggers()` clears the edge-detection state alongside it.
 - **Rendering** is `drawDialogueBubbles()`. Placement tries, in order: clear above the speaker's order bubble; straight above their head; pinned to the top of the camera; and only then hanging off the shoulder facing away from the booth. Bubbles are nudged sideways before vertically when two are on screen, and the HUD's footprint is fed in as an obstacle so a line can never sit on the score.
 
-### 9. Hunter AI: pursuit, not wandering
+### 9. Hunter AI: a rhythm, then pursuit
 
-`pickNewHunterDirection()` re-aims at the player's *current* position on a short timer with random angle jitter and a small chance to pause. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst.
+`updateHunter()` is a state machine (`hunterState`): **arriving** (hidden at `DOOR` for `HUNTER_ARRIVAL_FIRST` 20 s on a first run, `HUNTER_ARRIVAL_RETRY` 8 s on a restart, so a new player learns the bar before the chase; not drawn, can't catch) → **scanning** (half-speed prowl between random clear spots with a pause-and-look; he notices the Doe only inside a ±60° cone in front of him with a clear line through the furniture, within `hunterSightRange()` 70 + 4/level px — or within `HUNTER_HEAR_RANGE` 24 regardless; walking into him counts) → **chase** ("!" placard via `showHunterAlert`, `whistle` cue) → **lost** ("?" for `HUNTER_LOST_TIME` 3 s after `hunterLoseTime()` 4 + 0.5/level s out of sight) → scanning. **drinking** is 8 s sat out after being bought a pint. The ghost drifting through him forces a 1.2 s `lost` once per apparition. `setHunterState()` clears the route and slide state.
+
+**He is a patron too.** `hunter.isHunter` and the shared order fields; `hunterWantsPint()` every `HUNTER_ORDER_INTERVAL` 45–75 s with 25 s patience and no penalty; his ticket is framed `BUBBLE_FRAME_HUNTER` (tomato); `hunterServed()` pays the tip plus `HUNTER_SERVE_BONUS` 20 and seats him. Buying the man who's hunting you a pint is the joke the premise was begging for.
+
+**In chase he is a pathfinder.** `hunterRouteTo()` runs the same A* as customers with `HUNTER_FOOTPRINT` — the search is body-size aware (`footprintFor(kind, cell)`; `findBlockingObstacle`/`pointBlocked`/`cellCenter`/`computeCustomerPath` take an optional `fp`) and the hunter uses a **4px grid**, because on the 8px one his 11.6px foot box finds no clear centre in the 15px lane beside the bar stem though he physically fits. The route is recomputed every `hunterRepathInterval()` 1.5 → 0.8 s. `pickNewHunterDirection()` then aims at the next waypoint with half the old angle jitter and a small chance to pause, so he still reads as a man running rather than a homing missile. Level tightens all three: jitter 60°→15°, shorter re-aim timer, smaller pause chance. If `tryMove` reports **both** axes blocked the hunter is wedged in a corner and `pickEscapeDirection()` fires a fully random burst.
 
 Only one axis blocked means it is scraping along something. Re-aiming sooner is the first response, but pursuit alone cannot get round a *long* obstacle: every re-aim re-rolls the sideways component, so the hunter random-walks up and down the same wall forever and the player is safe just by standing on the other side of the bar. So after `HUNTER_RUB_TIME` of getting nowhere it commits to one direction along the open axis (`hunterSlide`) and holds it for `HUNTER_SLIDE_TIME` before trying the other way — plain wall following. The slide vector still leans into the wall, so the frame the obstacle runs out nothing is blocked, the slide clears itself, and pursuit resumes. `hunterRubTimer` and `hunterSlide` both reset in `resetGame()`.
 
-The hunter is still not a pathfinder, and the floor plan's bar leaves a couple of long detours it can only find by luck. A player who stands perfectly still behind the bar can outlast it.
+The rub/slide layer stays as the safety net for the cases the grid can't express; a route that fails outright falls back to a straight line and lets the slide sort it out. A red edge pulse (`drawDangerEdge`) and footstep cues (`step`) mark him within `DANGER_RANGE` 80 while chasing, strongest when he's off camera.
 
 ### 10. Life and capture
 
-Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
+Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. A hit also holds the floor for `HIT_STOP` 0.08 s and rocks the emptied pint on the HUD sign (`pintKnockTimer`/`pintKnockIndex`). Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
 
 **High scores** live in `localStorage` under `lepub_highscores` (top 5, `{name, score}`; plain numbers from older saves are normalized on read, and every access is wrapped because storage can throw outright). Being caught with a score calls `beginNameEntry()`: while `enteringName` is true the caught screen shows a name field instead of the restart prompt, and the keydown handler takes the keyboard outright so no other shortcut can eat a letter or drop the score. The DOM restart button is hidden for the same reason (`syncCaughtDom`). Typing a name needs a keyboard, so on a touch device (`canTypeName()`) the score is filed unnamed rather than showing a field nobody can fill.
 
-### 11. Levels and difficulty
+### 11. Shifts and difficulty
 
-Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`, `LEVEL_UP_SCORE` 100). Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the displayed level keeps climbing. Per level: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — sharper aim, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint. Crossing a new high-water level freezes the simulation for a 2.5-second `LevelDone.png` splash; losing points and re-crossing the same threshold does not replay it.
+The run is a sequence of **shifts**, and `getLevel()` returns the shift number — difficulty follows the shift, not the score, so losing tips never makes the room easier. A shift ends when `shiftTips` reaches `shiftTarget(n)` = 100 + 40(n−1), or, for the first `SHIFT_TIMED_COUNT` (5) shifts, when its `SHIFT_LENGTH` 180 s clock runs out. The final `LAST_CALL_TIME` 15 s are **last call**: bar bell, `lastCall` lines, no new walk-ins, patience drains ×`LAST_CALL_PATIENCE` (1.5), the HUD clock turns red and blinks under 5 s. Shifts ≥ 6 are untimed.
+
+`endShift()` snapshots `shiftTally` and freezes the floor; `drawShiftTallyOverlay` shows it on a walnut board over `LevelDone.png` (DONE in cream if the target was met, OVER in red if the clock beat you; served / forgotten / clutch / doubles / rounds / hits / best shift) and waits for Space, `E` or the touch action (`startNextShift()`). That press is the run's natural stopping point. The HUD sign reads `TIPS shift/target` on its top line and `TOTAL n  m:ss` beside the pints.
+
+Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the shift number keeps climbing. Per shift: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — wider sight, faster repath, longer memory, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint.
 
 ### 12. Render passes
 
-`render()` runs explicit layers, farthest first:
+**The room is dark first and lit second.** `render()` runs explicit layers, farthest first:
 
 1. **backdrop** — flat dark fill for wherever the viewport exceeds the world.
-2. **room** — one `drawImage` out of `roomCanvas`, a world-sized offscreen canvas baked once at load by `drawGround()` + `drawArchitecture()`: plank floor with dithered grain and static wear, rear wall with windows and posters, side wainscoting, front wall and the door. Both functions take the target context as a parameter that deliberately shadows the screen `ctx`; they are only ever called against that offscreen canvas.
-3. **floor light** — `drawFloorLight()` composites prebaked Bayer-dithered glow canvases with `'lighter'`: warm pools under five hanging lamps, cool spill from the windows, and the door, which brightens while somebody is coming through it.
-4. **y-sorted scene** — furniture and every character in one pass sorted by `sortY`. The table's `sortY` intentionally uses the table top's own front edge, not the chair-inclusive footprint, so a customer on the south chair draws *in front of* their table (see the comment in `makeTable`). Entries come from a reused pool, so a busy frame allocates nothing.
-5. **foreground** — the lamp fixtures themselves, then dust motes.
-6. **grade** — a level-scaled midnight tint plus a dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes).
-7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
-8. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
-9. **HUD** — a compact pixel-font plate with level, score and the three-segment regenerating life bar.
-10. **state overlay** — either `assets/caught.jpg` with the final score/reaction plus the high-score table (or the name field, while one is being filed), or `assets/LevelDone.png` with the completed and incoming levels, cover-fit to the live internal resolution. The caught plate is sized from the rows it has to hold, so the table and the name field fit without overflowing it.
+2. **room** — one `drawImage` out of `roomCanvas`, a world-sized offscreen canvas baked once at load by `drawGround()` + `drawArchitecture()`: plank floor with dithered grain and static wear, rear wall with windows and posters, side wainscoting, front wall and the door, and `drawWallProps()`: the stone fireplace in the bar pocket (`FIREPLACE`), the stag over the rear wall, string lights on the crown rail, a coat stand and a barrel in the front corners, palms on the side walls — all on the wall bands or in dead corners, no colliders. Both functions take the target context as a parameter that deliberately shadows the screen `ctx`; they are only ever called against that offscreen canvas.
+3. **floor darkness** — `drawDarkness(DARK_FLOOR)`: a multiply over the room so the boards go near-black between lamps.
+4. **y-sorted scene** — furniture and every character in one pass sorted by `sortY`, drawn in three-quarter view: 9px panelled bar front with brass rail, tap fonts on the taps, the bottle gantry down the stem, the kitchen hatch, 5–8px table fronts with legs, chairs with backs placed away from the table, buttoned bench backs. Colliders are unchanged; only the drawing has depth. The table's `sortY` intentionally uses the table top's own front edge, not the chair-inclusive footprint, so a customer on the south chair draws *in front of* their table (see the comment in `makeTable`). Entries come from a reused pool, so a busy frame allocates nothing.
+5. **scene darkness** — `drawDarkness(DARK_SCENE)`: a lighter multiply over everything drawn so far, so people and furniture sit in the dark without vanishing.
+6. **floor light** — `drawFloorLight()` composites prebaked Bayer-dithered glow canvases with `'lighter'`: a wide warm pool and a hot core under each of seven pendant lamps with a long broken varnish streak, bottle light along every counter, candle glows, the fireplace (`FIRE_RGB`, breathing), cool window spill, the door (brighter while somebody comes through), and readability halos on the Doe and hunter.
+7. **foreground** — the pendant fixtures (green enamel shade, brass rim, bulb) hanging `LAMP_DROP` above their pools with a stepped additive cone between, then dust motes.
+8. **grade** — a light shift-scaled midnight tint plus a heavier dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes), then the hunter danger edge.
+9. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. Both are parchment cards painted by `drawParchmentPlate()`; the frame colour stays semantic (regular, carried, speaker accent) and the patience gauge is brass-capped. A ticket is compact (1px pad) while its patience is above 40% and it isn't yours, so the lamps stay the brightest thing on screen. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
+10. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
+11. **HUD** — a walnut pub sign hung on two brass chains from the top of the frame (`drawWalnutPlate` with `chains`): `SHIFT n` and `TIPS n` on the top line, and life as three pint glasses (`drawPint`) that drain from the top and refill. `hudRect` starts at (3, 0) and includes the chains, because it doubles as the bubble-layout obstacle.
+12. **state overlay** — either `assets/caught.jpg` with the final score/reaction plus the high-score ledger (or the name field, while one is being filed), or `assets/LevelDone.png` with the completed and incoming shifts, cover-fit to the live internal resolution (`drawSplashImage`). Both boards are `drawWalnutPlate` with brass rails and pixel-font headlines at `scale` 3 / 2 — there is no `ctx.fillText` anywhere in the game. The caught board is sized from the rows it has to hold, so the ledger, the ink-on-parchment name field and the speaker's quip note fit without overflowing it.
+
+All of that interface is built from one **material kit** (`UI` palette plus `fillClipped`, `drawRivet`, `drawWalnutPlate`, `drawParchmentPlate`, `drawPlateTail`, `drawBrassRule`, `drawCenteredText` in `game.js`): walnut, brass, parchment, clipped corners, no rounded cards. New UI should go through those painters rather than fresh `fillRect` styling, and `style.css` mirrors the same hexes so the DOM shell matches the canvas.
 
 Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and sway) is skipped entirely when `prefersReducedMotion` is set. `imageSmoothingEnabled = false` and pixelated CSS rendering are preserved throughout.
 
 ### 13. Page shell, input and touch
 
-`index.html` is a fullscreen shell: the canvas is the page, and the title, subtitle and key list live in a start/help overlay (`#overlay`, toggled by the `?` chip and `Escape`) rather than permanently consuming layout. `style.css` uses `100dvh` with a `100vh` fallback, blocks document scrolling and overscroll, honours safe-area insets, and paints the letterbox area as a deliberate dark surround.
+`index.html` is a fullscreen shell: the canvas is the page, and the title, subtitle and key list live in a start/help overlay (`#overlay`, toggled by the `?` chip and `Escape`) rather than permanently consuming layout. `style.css` uses `100dvh` with a `100vh` fallback, blocks document scrolling and overscroll, honours safe-area insets, and paints the letterbox area as the pub's own dark wainscoting under one amber lamp.
+
+The shell uses the same materials as the canvas UI: `.board` is a walnut plank (bevels, grain, ink outline) and `.riveted` adds brass corner rivets as backgrounds; the corner chips are `chip board` plaques with brass lettering (the fullscreen icon is four gradient-drawn brackets, not a glyph); the start panel is a `panel board riveted` sign with brass rails, chains drawn by its `::before`/`::after` (which is why its content scrolls inside `.panel-scroll` rather than the panel clipping itself), a parchment `.keys` menu card with brass `kbd` keycaps, and burgundy-leather `.primary` buttons. The touch stick is a beer mat with a brass knob and the action button a leather-and-brass bell. `#top-bar` sits above the overlay so sound and fullscreen stay reachable while paused.
 
 - **Keyboard**: WASD/arrows to move, `E` *or* `Space` to grab and deliver, `Space` to restart on the caught screen, `Escape` for the overlay.
 - **Touch**: a DOM overlay (`#touch`), not canvas-painted — a constrained virtual stick bottom-left and a large action button bottom-right, both on Pointer Events with per-widget pointer capture so movement and interaction work simultaneously. The stick's centre is cached on `pointerdown` so dragging never reads layout. Targets are ≥44 CSS px and only appear on a coarse pointer/touchscreen (or the first `touchstart`).
@@ -191,7 +243,7 @@ Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and swa
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/level-splash state, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
-It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
+It also clears `enteringName`/`nameInput`, the ghost, the waiter, the tray and double state, the hunter's state machine and order (he restarts `arriving` at the door), spills, dynamic blockers, the round, the shift (number, clock, tips, tally, stats) and the hit-stop/pint-knock timers. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
 ## Development scaffolding
 
@@ -199,8 +251,8 @@ It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new p
 
 | Helper | Use |
 | --- | --- |
-| `setScore(n)` / `getScore()` / `getLevel()` | Level is derived from score, so `setScore` is how you reach a level. |
-| `setLife(n)` / `getLife()` / `getLevelSplash()` | Inspect the damage/regen bar and current completed-level transition. |
+| `setScore(n)` / `getScore()` / `getLevel()` | Total tips; `getLevel()` is the shift number (use `setShift` to change it). |
+| `setLife(n)` / `getLife()` | Inspect the damage/regen bar. |
 | `getViewport()` / `getCamera()` | Current internal resolution, integer scale, orientation, camera origin. |
 | `reservedSeats()` / `freeGenericSeats()` | Inspect seat reservation. |
 | `forceRegularOrder(id, type?)` | Make a regular order now, optionally of a given type. |
@@ -208,6 +260,9 @@ It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new p
 | `computeCustomerPath` / `findBlockingObstacle` / `pointBlocked` | Check a layout edit hasn't sealed a seat off. |
 | `FURNITURE` / `BENCHES` | Every collider in one array — what a flood-fill reachability check runs over. |
 | `getGhost()` / `spawnGhost()` | Summon the apparition instead of waiting 35–80s for it. |
+| `getHunterState()` / `setHunterState(s, t?)` / `hunterCanSeePlayer()` / `hunterWantsPint()` | Drive the hunter's state machine, test his sight, make him order. |
+| `getShift()` / `setShift(n)` / `setShiftClock(t)` / `endShift()` / `startNextShift()` | Jump shifts, force last call, open and close the tally board. |
+| `getSpills()` / `getRound()` / `callRound()` / `startNazimWander()` | Nazim's consequences and the round, on demand. |
 | `getWaiter()` / `spawnWaiter()` | Send the waiter in now; the returned entity's `state`/`pose`/`mist` can be driven by hand. |
 | `loadHighScores()` / `saveHighScore()` / `clearHighScores()` / `getNameEntry()` | Inspect and wipe the stored table, and see the live name field. |
 | `regularState()` | Order, patience, mood, drinks, stage and pose for all three. |

@@ -5,57 +5,67 @@
 // and the offscreen canvases the lighting pass blits.
 // ============================================================================
 
-// A 32-bit neo-noir pub: burgundy, tobacco brown, warm amber, midnight blue,
-// muted green and dirty cream. Ramps are authored as explicit steps rather
-// than interpolated, so shading always lands on a colour that belongs here.
+// Corner Booth Stories: a warm neighborhood-pub palette built around forest
+// green, tomato red, honey yellow, muted blue and charcoal. The ramps remain
+// explicit so every shaded pixel belongs to the same compact color family.
 const PUB = {
-  // Floor: tobacco planks, four steps of one ramp so a board reads as a board.
-  floor: ['#6d4629', '#784d2e', '#5f3d24', '#835538'],
-  floorSeam: '#3b2415',
-  floorGrain: 'rgba(38,22,12,0.16)',
-  floorStain: 'rgba(30,16,8,0.30)',
+  // Floor: dark walnut boards receive their honey colour from local lamps,
+  // matching the reference's contrast instead of washing the whole room tan.
+  floor: ['#563827', '#62402b', '#70492f', '#4a3024', '#7a5032'],
+  floorSeam: '#2b1b17',
+  floorEdge: '#9a6338',
+  floorGrain: 'rgba(235,161,79,0.22)',
+  floorStain: 'rgba(30,18,17,0.38)',
 
   // Walls and rear architecture.
-  wallDark: '#2a1720',
-  wall: '#3a1f2a',
-  wallLit: '#4d2833',
-  wainscot: '#4a2f1c',
-  wainscotLit: '#6b4527',
-  baseboard: '#231409',
+  wallDark: '#171817',
+  wall: '#2e251f',
+  wallLit: '#5d3d28',
+  wainscot: '#35241d',
+  wainscotLit: '#68432a',
+  baseboard: '#110f0f',
 
   // Bar.
-  barTop: '#8a5730',
-  barTopLit: '#b57c46',
-  barTopHi: '#d8a367',
-  barFront: '#4a2c17',
-  barFrontLit: '#5d3a1f',
-  barFrontDark: '#2c1809',
-  brass: '#c9962f',
+  barTop: '#754324',
+  barTopLit: '#a86632',
+  barTopHi: '#e1a052',
+  barFront: '#42271f',
+  barFrontLit: '#704029',
+  barFrontDark: '#241714',
+  brass: '#d99a38',
 
   // Tables and chairs.
-  tableTop: '#7c4c2b',
-  tableTopLit: '#9c6438',
-  tableTopHi: '#c08b52',
-  tableEdge: '#3a2213',
-  tableShadow: 'rgba(20,10,6,0.32)',
-  chair: '#432a19',
-  chairLit: '#5f3d23',
+  tableTop: '#6b3f27',
+  tableTopLit: '#985c32',
+  tableTopHi: '#d48b45',
+  tableEdge: '#321d18',
+  tableShadow: 'rgba(13,10,10,0.52)',
+  chair: '#652b2b',
+  chairLit: '#a14439',
+  chairAlt: '#263d43',
+  chairAltLit: '#42636a',
 
   // Accents.
-  amber: '#e8a13a',
-  amberDim: '#a86f22',
-  midnight: '#16203a',
-  cool: '#4a6d9e',
-  coolPale: '#9dc0e0',
-  green: '#3f6049',
-  burgundy: '#5c2030',
-  cream: '#e8ddc0',
-  creamDim: '#b9ad91',
-  glass: '#cfe0e8',
-  bottleGreen: '#2f5138',
-  bottleAmber: '#8a5a1e',
-  bottleClear: '#8fa6ad',
-  ink: '#180f14',
+  amber: '#f0b84c',
+  amberDim: '#b87524',
+  midnight: '#102a3a',
+  cool: '#326685',
+  coolPale: '#8ec8d4',
+  green: '#294936',
+  greenLit: '#4f7654',
+  burgundy: '#8d342f',
+  tomato: '#bd4938',
+  cream: '#f1d9a8',
+  creamDim: '#bfa579',
+  paper: '#e5c78d',
+  glass: '#d8eef0',
+  bottleGreen: '#376a4c',
+  bottleAmber: '#a86822',
+  bottleClear: '#8bb0b8',
+  rugRed: '#6d2a2c',
+  rugGold: '#b77e32',
+  rugGreen: '#1e3c34',
+  ink: '#181515',
 };
 
 // Deterministic layout noise. Clutter should be in the same place on every
@@ -144,7 +154,7 @@ function makeVignetteCanvas(w, h, maxAlpha) {
       if ((scaled - level) * 16 > BAYER4[y & 3][x & 3]) level += 1;
       if (level <= 0) continue;
       const i = (y * cv.width + x) * 4;
-      data[i] = 8; data[i + 1] = 5; data[i + 2] = 12;
+      data[i] = 10; data[i + 1] = 20; data[i + 2] = 22;
       data[i + 3] = Math.round(Math.min(1, level / 5) * maxAlpha * 255);
     }
   }

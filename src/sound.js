@@ -108,6 +108,32 @@ const Sound = (function () {
         if (!allow(name, 0.12)) return;
         tone(115, 0.045, { type: 'square', volume: 0.035 });
         break;
+      case 'step':
+        // A boot on the boards, felt more than heard.
+        if (!allow(name, 0.2)) return;
+        tone(95, 0.06, { to: 60, type: 'triangle', volume: 0.07 });
+        break;
+      case 'bell':
+        // Last call: the bar bell, twice.
+        tone(1760, 0.18, { type: 'triangle', volume: 0.09 });
+        tone(2200, 0.12, { type: 'sine', volume: 0.05 });
+        tone(1760, 0.22, { type: 'triangle', volume: 0.09, delay: 0.28 });
+        tone(2200, 0.14, { type: 'sine', volume: 0.05, delay: 0.28 });
+        break;
+      case 'spill':
+        // Glass over, liquid out: a clink and a wet thud.
+        tone(1400, 0.05, { type: 'triangle', volume: 0.07 });
+        tone(180, 0.16, { to: 90, type: 'sine', volume: 0.08, delay: 0.05 });
+        break;
+      case 'whistle':
+        // The hunter spotting you: two rising notes, like a finger whistle.
+        tone(880, 0.09, { to: 1320, type: 'sine', volume: 0.09 });
+        tone(1320, 0.14, { to: 1760, type: 'sine', volume: 0.07, delay: 0.1 });
+        break;
+      case 'lost':
+        // Lost the trail: a slow, puzzled slide down.
+        tone(520, 0.22, { to: 330, type: 'triangle', volume: 0.06 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });

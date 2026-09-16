@@ -1,0 +1,418 @@
+{
+  "pieces": [
+    {
+      "kind": "bar",
+      "station": "taps",
+      "x": 1,
+      "y": 67,
+      "w": 71,
+      "h": 22
+    },
+    {
+      "kind": "bar",
+      "station": "shelf",
+      "x": 91,
+      "y": 109,
+      "w": 27,
+      "h": 90
+    },
+    {
+      "kind": "bar",
+      "station": "hatch",
+      "x": 1,
+      "y": 177,
+      "w": 87,
+      "h": 23
+    },
+    {
+      "kind": "table",
+      "name": "booth",
+      "cx": 62,
+      "cy": 40,
+      "w": 40,
+      "h": 22,
+      "seats": [
+        {
+          "side": "s",
+          "x": 62,
+          "y": 56,
+          "regular": "nazim"
+        },
+        {
+          "side": "w",
+          "x": 37,
+          "y": 40,
+          "regular": "sam"
+        },
+        {
+          "side": "e",
+          "x": 87,
+          "y": 40,
+          "regular": "gerald"
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "table1",
+      "cx": 152,
+      "cy": 68,
+      "w": 22,
+      "h": 65,
+      "seats": [
+        {
+          "side": "w",
+          "x": 136,
+          "y": 48.5,
+          "regular": null
+        },
+        {
+          "side": "w",
+          "x": 136,
+          "y": 61.5,
+          "regular": null
+        },
+        {
+          "side": "w",
+          "x": 136,
+          "y": 74.5,
+          "regular": null
+        },
+        {
+          "side": "w",
+          "x": 136,
+          "y": 87.5,
+          "regular": null
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "table2",
+      "cx": 180,
+      "cy": 210,
+      "w": 38,
+      "h": 32,
+      "seats": [
+        {
+          "side": "n",
+          "x": 180,
+          "y": 189,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 180,
+          "y": 231,
+          "regular": null
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "table3",
+      "cx": 180,
+      "cy": 269,
+      "w": 37,
+      "h": 33,
+      "seats": [
+        {
+          "side": "n",
+          "x": 180,
+          "y": 247.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 180,
+          "y": 290.5,
+          "regular": null
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "table4",
+      "cx": 58,
+      "cy": 258,
+      "w": 114,
+      "h": 29,
+      "seats": [
+        {
+          "side": "n",
+          "x": 23.799999999999997,
+          "y": 238.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 46.6,
+          "y": 238.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 69.4,
+          "y": 238.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 92.2,
+          "y": 238.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 23.799999999999997,
+          "y": 277.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 46.6,
+          "y": 277.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 69.4,
+          "y": 277.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 92.2,
+          "y": 277.5,
+          "regular": null
+        }
+      ]
+    },
+    {
+      "kind": "table",
+      "name": "table5",
+      "cx": 58,
+      "cy": 315,
+      "w": 114,
+      "h": 29,
+      "seats": [
+        {
+          "side": "n",
+          "x": 23.799999999999997,
+          "y": 295.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 46.6,
+          "y": 295.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 69.4,
+          "y": 295.5,
+          "regular": null
+        },
+        {
+          "side": "n",
+          "x": 92.2,
+          "y": 295.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 23.799999999999997,
+          "y": 334.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 46.6,
+          "y": 334.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 69.4,
+          "y": 334.5,
+          "regular": null
+        },
+        {
+          "side": "s",
+          "x": 92.2,
+          "y": 334.5,
+          "regular": null
+        }
+      ]
+    },
+    {
+      "kind": "wall-bench",
+      "cx": 8,
+      "cy": 43,
+      "w": 6,
+      "h": 55,
+      "seats": [
+        {
+          "side": "e",
+          "x": 16,
+          "y": 29.25
+        },
+        {
+          "side": "e",
+          "x": 16,
+          "y": 43
+        },
+        {
+          "side": "e",
+          "x": 16,
+          "y": 56.75
+        }
+      ]
+    },
+    {
+      "kind": "wall-bench",
+      "cx": 163,
+      "cy": 13,
+      "w": 60,
+      "h": 8,
+      "seats": [
+        {
+          "side": "s",
+          "x": 148,
+          "y": 22
+        },
+        {
+          "side": "s",
+          "x": 163,
+          "y": 22
+        },
+        {
+          "side": "s",
+          "x": 178,
+          "y": 22
+        }
+      ]
+    },
+    {
+      "kind": "wall-bench",
+      "cx": 191,
+      "cy": 68,
+      "w": 6,
+      "h": 71,
+      "seats": [
+        {
+          "side": "w",
+          "x": 183,
+          "y": 46.7
+        },
+        {
+          "side": "w",
+          "x": 183,
+          "y": 60.9
+        },
+        {
+          "side": "w",
+          "x": 183,
+          "y": 75.1
+        },
+        {
+          "side": "w",
+          "x": 183,
+          "y": 89.3
+        }
+      ]
+    },
+    {
+      "kind": "stool-row",
+      "cx": 152,
+      "cy": 151,
+      "w": 16,
+      "h": 74,
+      "seats": [
+        {
+          "side": "w",
+          "x": 139,
+          "y": 132.5
+        },
+        {
+          "side": "w",
+          "x": 139,
+          "y": 151
+        },
+        {
+          "side": "w",
+          "x": 139,
+          "y": 169.5
+        }
+      ]
+    },
+    {
+      "kind": "stool-row",
+      "cx": 51,
+      "cy": 222,
+      "w": 95,
+      "h": 14,
+      "seats": [
+        {
+          "side": "n",
+          "x": 27.25,
+          "y": 210
+        },
+        {
+          "side": "n",
+          "x": 51,
+          "y": 210
+        },
+        {
+          "side": "n",
+          "x": 74.75,
+          "y": 210
+        }
+      ]
+    }
+  ],
+  "lamps": [
+    {
+      "x": 40,
+      "y": 44
+    },
+    {
+      "x": 150,
+      "y": 96
+    },
+    {
+      "x": 42,
+      "y": 150
+    },
+    {
+      "x": 78,
+      "y": 128
+    },
+    {
+      "x": 150,
+      "y": 236
+    },
+    {
+      "x": 60,
+      "y": 296
+    },
+    {
+      "x": 150,
+      "y": 322
+    }
+  ],
+  "door": {
+    "x": 100,
+    "y": 357
+  },
+  "world": {
+    "w": 200,
+    "h": 360
+  },
+  "walls": {
+    "top": 16,
+    "bottom": 12,
+    "side": 7
+  }
+}

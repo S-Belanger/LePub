@@ -1,6 +1,6 @@
 # Le Pub: The Chase
 
-A compact pixel-art serving game where a waiter in a deer onesie works a crowded pub while a hunter stalks the room. Pick up the oldest waiting order at the bar, deliver it before the customer loses patience, and keep moving long enough to finish the next level.
+A compact pixel-art serving game where a waiter in a deer onesie works a crowded pub while a hunter stalks the room. Pick orders up at the right station, deliver them before the customer loses patience, and keep moving long enough to close the shift.
 
 **Live demo:** [lepub.vercel.app](https://lepub.vercel.app)
 
@@ -9,6 +9,16 @@ A compact pixel-art serving game where a waiter in a deer onesie works a crowded
 ## Art direction gallery
 
 Four visual redesign concepts live in [`concepts/`](concepts/). They use the same cast and gameplay scenario to compare cinematic, neon-noir, character-led, and arcade-first approaches without changing the playable build.
+
+The selected direction is documented in
+[`assets/art-direction/`](assets/art-direction/): a warm, crowded night pub
+translated into the existing straight-overhead, gameplay-first camera. The
+reference controls palette, materials, lighting, and decorative density—not
+the room projection or collision layout.
+
+The renderer uses a 2x internal art grid over the unchanged logical world, so
+fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
+light, and wood grain remain crisp without changing movement or collision.
 
 With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
 
@@ -34,12 +44,12 @@ Opening `index.html` directly also works in modern browsers, although serving th
 
 ## How to play
 
-1. Watch for order bubbles above seated customers and the three corner-table regulars.
-2. Move beside any section of the L-shaped bar and grab the oldest waiting order.
-3. Carry it to the highlighted customer. You can deliver beside the customer or anywhere close to their table.
-4. Deliver quickly for 10 points. Letting an order expire costs 15 points.
-5. Avoid the hunter. Contact removes one of three life segments and briefly shoves you to safety.
-6. Survive and keep serving. Every 100 points completes a level and makes the pub busier and the hunter more accurate.
+1. Watch for order tickets above seated customers, the three corner-table regulars — and, now and then, the hunter.
+2. Pick orders up at the station that makes them: beers and water at the **TAPS**, wine and cocktails at the **SHELF**, food from the **KITCHEN**. The tray holds two, but a full tray slows you down; land both without a hit for a double.
+3. Carry them to their customers. You can deliver beside the customer or anywhere close to their table.
+4. Tips scale with how fresh the order still is: 10 to 20, plus a clutch bonus for a last-second save. Letting an order expire costs 15.
+5. Avoid the hunter. He walks in a little after you start, prowls, and only chases once he's actually seen you. Contact removes one of three pints and briefly shoves you to safety. Buy him a pint and he sits it out for a while.
+6. Work the shift. The first five run three minutes with a last-call rush; every shift closes on a tally board, and each one makes the pub busier and the hunter sharper. Keep Nazim drinking for double tips — or let Gerald order him a water.
 
 Life begins regenerating after three hit-free seconds. A fully empty bar takes 20 seconds to refill, and the third hit before recovery ends the shift.
 
@@ -54,7 +64,9 @@ Life begins regenerating after three hit-free seconds. A fully empty bar takes 2
 | Restart after being caught | `Space` | On-screen restart/action button |
 | Fullscreen | Fullscreen button | Fullscreen button, where supported |
 
-The canvas adapts to landscape and portrait screens using integer pixel scaling, so the artwork remains crisp instead of being stretched across fractional pixels.
+The canvas adapts to landscape and portrait screens using integer CSS scaling
+over a 2x art backing store, so the finer pixel work remains crisp instead of
+being stretched across fractional pixels.
 
 ## The corner-table regulars
 
@@ -72,7 +84,7 @@ Their dialogue reacts to successful and missed deliveries, near misses, the hunt
 - **Patience:** each order bubble includes a green, amber, or red countdown bar.
 - **Delivery feedback:** score changes float above the affected customer, while order bubbles pop in and shrink away on a whole-pixel animation.
 - **Life and recovery:** three partially refillable segments, a short post-hit invulnerability window, collision-aware knockback, and visible player flicker.
-- **Difficulty:** higher levels add customers, speed up arrivals, improve the hunter's tracking, and deepen the night tint.
+- **Difficulty:** each shift adds customers, speeds up arrivals, widens the hunter's sight and sharpens his tracking, and deepens the night tint.
 - **Responsive presentation:** separate portrait and landscape viewports, camera clamping, safe-area-aware controls, and optional fullscreen.
 - **Sound:** lightweight synthesized Web Audio cues with no audio downloads; the mute preference is stored locally when browser storage is available.
 - **Reduced motion:** ambient dust, lamp flicker, and seated sway are disabled when the operating system requests reduced motion.
@@ -95,21 +107,33 @@ The game uses classic scripts that share one global scope. Their order in `index
 | `src/sound.js` | Lazy Web Audio initialization and synthesized sound cues |
 | `assets/` | Gameplay screenshot, game-over art, level-completion art, and the floor-plan reference |
 
-Static room art and lighting textures are baked into offscreen canvases. Sprite renders are cached by sprite, palette, and facing, while furniture and characters share one pooled y-sorted render pass.
+Static room art and lighting textures are baked into 2x offscreen canvases.
+Sprite renders are cached by sprite, palette, and facing; collision dimensions
+remain separate from visual sheets, while furniture and characters share one
+pooled y-sorted render pass.
 
 ## Development
 
 Edit the HTML, CSS, or JavaScript and refresh the browser. There is no compilation or generated bundle.
 
-There is currently no automated test suite. A quick syntax check from PowerShell is:
+Active work is checkpointed in [`HANDOFF.md`](HANDOFF.md). Repository-level
+continuity rules in [`AGENTS.md`](AGENTS.md) require updating that handoff after
+each meaningful milestone, so an interrupted session can resume safely.
+
+There is no build step or linter. Run the syntax and smoke checks from PowerShell:
 
 ```powershell
 node --check game.js
 Get-ChildItem src -Filter *.js | ForEach-Object { node --check $_.FullName }
+node tests/smoke.js
 git diff --check
 ```
 
-For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and crossing a 100-point level boundary.
+The dependency-free smoke test loads the production scripts in their real
+order, runs every customer seat route in and out, completes a waiter visit,
+and exercises the render pass against a lightweight canvas/DOM stand-in.
+
+For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and closing a shift on both the clock and the tips target.
 
 ### Debug console
 
