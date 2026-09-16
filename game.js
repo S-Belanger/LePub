@@ -642,11 +642,23 @@ function makeEntity(kind, x, y) {
     h: hitbox.h,
     speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : 54,
     flip: false,
+    facing: 'down',   // down | up | right | left — visual only, from movement
     legTimer: 0,
     legFrame: 0,
     moving: false,
     palette: null,
   };
+}
+
+// Visual facing from a movement vector: the dominant axis wins, a small
+// dead-zone stops diagonal flicker, and standing still keeps the last facing.
+// This never touches the movement vector itself.
+function faceToward(e, dx, dy) {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ax < 0.01 && ay < 0.01) return;
+  if (ax > ay * 1.15) e.facing = dx > 0 ? 'right' : 'left';
+  else if (ay > ax * 1.15) e.facing = dy > 0 ? 'down' : 'up';
+  // Near-diagonal: keep whatever it was.
 }
 
 // Walk cycle: flip between the idle and walk frames while moving, and stand
@@ -893,6 +905,7 @@ function updateCustomer(c, dt) {
       c.moving = false;
       if (c.state === 'entering') {
         c.state = 'sitting';
+        c.facing = seatFacing(c.seat);
         c.sitTimer = 30 + Math.random() * 20; // patient: 30-50s before giving up
         c.patienceDuration = c.sitTimer; // remembered so the patience bar can show a fraction
         c.orderTimer = 1 + Math.random() * 1.5;
@@ -914,6 +927,7 @@ function updateCustomer(c, dt) {
       if (!collidesAt(c, c.x, ny, ownTable)) c.y = ny;
       c.flip = dx < 0;
       c.moving = true;
+      faceToward(c, dx, dy);
     }
   } else if (c.state === 'sitting') {
     c.moving = false;
@@ -1247,9 +1261,16 @@ const prefersReducedMotion = window.matchMedia
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
   : false;
 
+// A seat's occupant faces the table: south chair looks up, west chair looks
+// right, and so on. Benches and stools face away from the wall they sit on.
+function seatFacing(seat) {
+  return seat.side === 's' ? 'up' : seat.side === 'n' ? 'down' : seat.side === 'w' ? 'right' : 'left';
+}
+
 function makeRegular(cfg) {
   const seat = SEATS.find(sx => sx.reserved && sx.regularId === cfg.id);
   const r = makeEntity(cfg.spriteKey, seat.x, seat.y);
+  r.facing = seatFacing(seat);
   r.isRegular = true;
   r.cfg = cfg;
   r.id = cfg.id;
@@ -1419,6 +1440,7 @@ function updateNazimWander(r, dt) {
     r.y = r.seat.y;
     r.wander = null;
     r.moving = false;
+    r.facing = seatFacing(r.seat);
     r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
     const at = dynamicBlockers.indexOf(r);
     if (at >= 0) dynamicBlockers.splice(at, 1);
@@ -1431,6 +1453,7 @@ function updateNazimWander(r, dt) {
   if (!collidesAt(r, r.x, ny, r.seat.table)) r.y = ny;
   r.flip = dx < 0;
   r.moving = true;
+  faceToward(r, dx, dy);
 }
 
 function updateRegulars(dt) {
@@ -2399,6 +2422,7 @@ function hunterFollowPath(speedScale) {
   }
   hunterDir = { x: dx / dist, y: dy / dist };
   hunterFacing = hunterDir;
+  faceToward(hunter, dx, dy);
   const step = tryMove(hunter, hunterDir.x * hunter.speed * speedScale * dt_, hunterDir.y * hunter.speed * speedScale * dt_);
   hunter.x = step.x;
   hunter.y = step.y;
@@ -2522,6 +2546,7 @@ function updateHunter(dt) {
         // The pause-and-look: turn on the spot.
         hunter.flip = Math.floor(hunterScanLookTimer * 4) % 2 === 0;
         hunterFacing = { x: hunter.flip ? -1 : 1, y: 0 };
+        hunter.facing = hunter.flip ? 'left' : 'right';
         return;
       }
       if (!hunterFollowPath(HUNTER_SCAN_SPEED) || hunterRubTimer > 1) {
@@ -2569,6 +2594,7 @@ function updateHunter(dt) {
 
       hunter.moving = hunterDir.x !== 0 || hunterDir.y !== 0;
       if (hunterDir.x !== 0) hunter.flip = hunterDir.x < 0;
+      faceToward(hunter, hunterDir.x, hunterDir.y);
 
       const hunterMove = tryMove(hunter, hunterDir.x * hunter.speed * dt, hunterDir.y * hunter.speed * dt);
       hunter.x = hunterMove.x;
@@ -2653,6 +2679,7 @@ function update(dt) {
   player.speed = (player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED) * spillSlowAt(player.x, player.y);
   player.moving = input.x !== 0 || input.y !== 0;
   if (input.x !== 0) player.flip = input.x < 0;
+  faceToward(player, input.x, input.y);
   const playerMove = tryMove(player, input.x * player.speed * dt, input.y * player.speed * dt);
   player.x = playerMove.x;
   player.y = playerMove.y;
@@ -3506,7 +3533,7 @@ function drawFloorLight(camX, camY) {
     // A wide soft pool, then a hot core: the reference's lamps have a bright
     // disc directly under the shade and a long soft skirt.
     drawGlow(glowFor(lamp.r, WARM_RGB, 0.26), lamp.x, lamp.y, k, camX, camY);
-    drawGlow(glowFor(Math.round(lamp.r * 0.4), HOT_RGB, 0.16), lamp.x, lamp.y - 2, k, camX, camY);
+    drawGlow(glowFor(Math.round(lamp.r * 0.4), HOT_RGB, 0.16), lamp.x, lamp.y, k, camX, camY);
     // Varnish reflection: a long broken streak straight under the bulb, the
     // way the boards throw a lamp back in the reference.
     const sx = Math.round((lamp.x - camX) * 2) / 2;
@@ -3597,10 +3624,10 @@ function drawBar(bar, camX, camY) {
   const x = Math.round(c.x - camX);
   const y = Math.round(c.y - camY);
   const horizontal = c.w >= c.h;
-  // Three-quarter view: the south edge of every counter is a tall front
-  // face; the long east side of the stem is a thinner side face.
-  const front = 9;
-  const side = horizontal ? 0 : 4;
+  // High overhead camera: the counter top dominates; a shallow front lip
+  // and a thin side face carry the depth (docs/overhaul/00-CAMERA-DIRECTION).
+  const front = 4;
+  const side = horizontal ? 0 : 2;
 
   ctx.fillStyle = PUB.tableShadow;
   ctx.fillRect(x + 2, y + c.h + 1, c.w, 4);
@@ -3637,19 +3664,11 @@ function drawBar(bar, camX, camY) {
   ctx.fillStyle = PUB.barFrontLit;
   ctx.fillRect(x + 1, fy, c.w - 2, 1);
   ctx.fillStyle = PUB.barFrontDark;
-  for (let px = x + 4; px < x + c.w - 3; px += 8) {
-    ctx.fillRect(px, fy + 2, 0.5, front - 4);
-    ctx.fillRect(px + 5, fy + 2, 0.5, front - 4);
-    ctx.fillRect(px, fy + 2, 5.5, 0.5);
-    ctx.fillRect(px, fy + front - 2.5, 5.5, 0.5);
-  }
-  ctx.fillRect(x + 1, fy + front - 1.5, c.w - 2, 1.5);
-  // Brass foot rail on little brackets.
-  ctx.fillStyle = PUB.brassDark || '#7d521a';
-  ctx.fillRect(x + 2, fy + front - 2.5, c.w - 4, 1);
+  for (let px = x + 4; px < x + c.w - 3; px += 8) ctx.fillRect(px, fy + 1, 0.5, front - 2);
+  ctx.fillRect(x + 1, fy + front - 1, c.w - 2, 1);
+  // Brass foot rail along the lip.
   ctx.fillStyle = PUB.brass;
-  ctx.fillRect(x + 2, fy + front - 3, c.w - 4, 1);
-  for (let px = x + 5; px < x + c.w - 3; px += 10) ctx.fillRect(px, fy + front - 2, 1, 1.5);
+  ctx.fillRect(x + 2, fy + front - 1.5, c.w - 4, 0.5);
 
   // Side face on the stem.
   if (side) {
@@ -3664,26 +3683,33 @@ function drawBar(bar, camX, camY) {
     drawBarProp(prop, camX, camY);
   }
   if (bar.station === 'taps') drawTapRow(x, y, topW);
-  if (bar.station === 'shelf') drawBottleGantry(x, y, topW, topH);
+  if (bar.station === 'shelf') drawBottleRows(x, y, topW, topH);
   if (bar.station === 'hatch') drawKitchenHatch(x, y, topW);
-  if (horizontal && c.w > 60) drawCounterPlant(x + topW - 8, y + 4);
   drawStationTag(bar, x, y, horizontal);
 }
 
 // A row of brass tap handles along the back edge of the taps counter.
 function drawTapRow(x, y, topW) {
-  for (let px = x + 10; px < x + topW - 12; px += 9) {
+  // Brass fonts seen from above: a round base plate, a short body and the
+  // handle pointing toward the customer side; a drip tray in front.
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x + 8, y + 9, topW - 16, 3);
+  ctx.fillStyle = '#4a4642';
+  ctx.fillRect(x + 8.5, y + 9.5, topW - 17, 2);
+  for (let px = x + 12; px < x + topW - 12; px += 9) {
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(px - 1.5, y + 1, 4, 3);          // font base
+    ctx.fillRect(px - 2.5, y + 3, 6, 6);
     ctx.fillStyle = PUB.brassDark || '#7d521a';
-    ctx.fillRect(px - 1, y - 4, 3, 5.5);           // font body
+    ctx.fillRect(px - 2, y + 3.5, 5, 5);
     ctx.fillStyle = PUB.brass;
-    ctx.fillRect(px - 1, y - 4, 1.5, 5);
-    ctx.fillRect(px - 0.5, y - 7, 2, 3.5);         // handle
-    ctx.fillStyle = PUB.cream;
-    ctx.fillRect(px - 0.5, y - 7, 1, 1);
+    ctx.fillRect(px - 1.5, y + 4, 3, 3);
+    ctx.fillStyle = '#f6d688';
+    ctx.fillRect(px - 1, y + 4, 1, 1);
+    // Handle: a coloured knob on a short stem toward the front.
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(px + 1.5, y - 2, 1, 1.5);         // spout
+    ctx.fillRect(px - 0.5, y + 6.5, 1.5, 3);
+    ctx.fillStyle = [PUB.burgundy, PUB.bottleGreen, PUB.ink][((px / 9) | 0) % 3];
+    ctx.fillRect(px - 1, y + 8, 2.5, 2);
   }
 }
 
@@ -3691,91 +3717,100 @@ function drawTapRow(x, y, topW) {
 // of lit bottles under a brass rail, hanging glasses along the top. This is
 // the reference's glowing bottle wall, moved onto the counter so the bar
 // stays free-standing.
-function drawBottleGantry(x, y, topW, topH) {
-  const gx = x + Math.round(topW / 2) - 4;
-  const gy = y + 6;
-  const gh = topH - 12;
-  ctx.fillStyle = PUB.ink;
-  ctx.fillRect(gx - 1, gy - 6, 10, gh + 7);
-  ctx.fillStyle = PUB.barFrontDark;
-  ctx.fillRect(gx, gy - 5, 8, gh + 5);
-  ctx.fillStyle = PUB.brass;
-  ctx.fillRect(gx - 1, gy - 6, 10, 1);                 // top rail
-  // Hanging glasses under the rail.
-  ctx.fillStyle = PUB.glass;
-  for (let py = gy - 4; py < gy + gh - 2; py += 6) {
-    ctx.fillRect(gx + 0.5, py, 1, 1.5);
-    ctx.fillRect(gx + 6.5, py, 1, 1.5);
-  }
-  // Shelves and bottles. Bottle colours from the room palette, each with a
-  // lit shoulder so the shelf reads as backlit.
-  const colours = [PUB.bottleAmber, PUB.bottleGreen, PUB.tomato, PUB.bottleClear, PUB.amber, PUB.burgundy];
+// Bottles standing on the stem counter, seen from above: a cap disc on a
+// short body, in two staggered rows, with a few glasses and an ice bucket.
+// The concept keeps the bar's glass where the light catches it, and from
+// this camera that is the counter top, not a gantry.
+function drawBottleRows(x, y, topW, topH) {
+  const colours = [PUB.bottleAmber, PUB.bottleGreen, PUB.tomato, PUB.bottleClear, PUB.amber, PUB.burgundy, '#5a2e6a'];
   let i = 0;
-  for (let py = gy - 1; py < gy + gh - 4; py += 5) {
-    ctx.fillStyle = PUB.barFront;
-    ctx.fillRect(gx, py + 4, 8, 1);                    // shelf
-    ctx.fillStyle = PUB.brassDark || '#7d521a';
-    ctx.fillRect(gx, py + 4, 8, 0.5);
-    for (let px = gx + 1.5; px < gx + 7; px += 2, i++) {
-      const col = colours[(i * 7 + (py | 0)) % colours.length];
-      ctx.fillStyle = col;
-      ctx.fillRect(px, py + 0.5, 1.5, 3.5);
-      ctx.fillStyle = '#fff2c8';
-      ctx.fillRect(px, py + 0.5, 0.5, 1);
+  for (let py = y + 6; py < y + topH - 8; py += 6, i++) {
+    for (let col = 0; col < 2; col++) {
+      const px = x + 5 + col * 9 + ((i & 1) ? 2 : 0);
+      const c = colours[(i * 3 + col * 5) % colours.length];
       ctx.fillStyle = PUB.ink;
-      ctx.fillRect(px + 0.5, py - 0.5, 0.5, 1);          // neck
+      ctx.fillRect(px - 0.5, py - 0.5, 4, 5);
+      ctx.fillStyle = c;
+      ctx.fillRect(px, py, 3, 4);
+      ctx.fillStyle = '#fff2c8';
+      ctx.fillRect(px, py, 1, 1.5);                       // shoulder catchlight
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(px + 1, py + 0.5, 1, 1);               // cap
+    }
+    if (i % 4 === 3) {
+      // A glass: a pale ring.
+      ctx.fillStyle = PUB.glass;
+      ctx.fillRect(x + topW - 7, py, 3, 3);
+      ctx.fillStyle = PUB.barTop;
+      ctx.fillRect(x + topW - 6, py + 1, 1, 1);
     }
   }
-  // A small lamp on the gantry throws light down the bottles.
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.09;
-  ctx.fillStyle = 'rgb(255,200,110)';
-  ctx.fillRect(gx - 4, gy - 6, 16, gh + 8);
-  ctx.globalAlpha = 0.07;
-  ctx.fillRect(gx - 1, gy - 4, 10, gh + 4);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
+  // Ice bucket near the far end.
+  const bx = x + Math.round(topW / 2) - 3, by = y + topH - 9;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(bx - 0.5, by - 0.5, 7, 7);
+  ctx.fillStyle = '#8a8f93';
+  ctx.fillRect(bx, by, 6, 6);
+  ctx.fillStyle = '#e6f2f6';
+  ctx.fillRect(bx + 1, by + 1, 4, 4);
+  ctx.fillStyle = PUB.bottleGreen;
+  ctx.fillRect(bx + 2, by + 1.5, 1.5, 2.5);
 }
 
 // The kitchen hatch: a warm serving window with plates under a heat lamp.
 function drawKitchenHatch(x, y, topW) {
-  const hx = x + Math.round(topW / 2) - 12;
+  // From above the hatch is a brass heat-lamp bar along the back edge with
+  // plates waiting under it: round plates, food on them, a chopping board.
+  const hx = x + Math.round(topW / 2) - 16;
   ctx.fillStyle = PUB.ink;
-  ctx.fillRect(hx - 1, y - 9, 26, 11);
-  ctx.fillStyle = '#5a2e1c';
-  ctx.fillRect(hx, y - 8, 24, 9);
-  ctx.fillStyle = '#7a4a2a';
-  ctx.fillRect(hx + 1, y - 7, 22, 6);
+  ctx.fillRect(hx - 1, y + 1.5, 34, 2.5);
   ctx.fillStyle = PUB.brass;
-  ctx.fillRect(hx + 2, y - 8, 20, 1);                   // heat lamp bar
+  ctx.fillRect(hx, y + 2, 32, 1.5);
   ctx.fillStyle = '#ffd27a';
-  for (let px = hx + 4; px < hx + 22; px += 6) ctx.fillRect(px, y - 7, 2, 1);
-  for (let px = hx + 3; px < hx + 21; px += 6) {
+  for (let px = hx + 3; px < hx + 30; px += 7) ctx.fillRect(px, y + 2, 2, 1.5);
+  for (let px = hx + 2; px < hx + 30; px += 8) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px - 0.5, y + 5.5, 6, 6);
     ctx.fillStyle = '#e9e2d0';
-    ctx.fillRect(px, y - 3, 4, 1.5);                    // plate
-    ctx.fillStyle = PUB.bottleAmber;
-    ctx.fillRect(px + 1, y - 4, 2, 1);                  // food
+    ctx.fillRect(px, y + 6, 5, 5);
+    ctx.fillStyle = '#c9c2b0';
+    ctx.fillRect(px + 0.5, y + 6.5, 4, 4);
+    ctx.fillStyle = [PUB.bottleAmber, '#5a8a3a', PUB.tomato, '#a9622f'][((px / 8) | 0) % 4];
+    ctx.fillRect(px + 1.5, y + 7.5, 2, 2);
   }
+  ctx.fillStyle = PUB.barFrontDark;                        // chopping board
+  ctx.fillRect(hx + 34, y + 5, 8, 6);
+  ctx.fillStyle = PUB.tableTopLit;
+  ctx.fillRect(hx + 34.5, y + 5.5, 7, 5);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.1;
+  ctx.globalAlpha = 0.08;
   ctx.fillStyle = 'rgb(255,200,110)';
-  ctx.fillRect(hx - 3, y - 9, 30, 14);
+  ctx.fillRect(hx - 3, y + 1, 46, 12);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 }
 
 // A small parchment tag on the counter naming the station, so the player can
 // read the bar's map from across the room.
+// A small brass plaque with the station name on the counter's front lip:
+// enough to teach the map, quiet enough not to be furniture.
 function drawStationTag(bar, x, y, horizontal) {
   const station = BAR_STATIONS[bar.station];
   if (!station) return;
   const c = bar.collider;
   const tw = fontTextWidth(station.label) + 4;
-  const th = FONT_H + 3;
-  const tx = horizontal ? x + Math.round(c.w / 2 - tw / 2) : x + Math.round(c.w / 2 - tw / 2);
-  const ty = horizontal ? y + 3 : y + Math.round(c.h / 2 - th / 2);
-  drawParchmentPlate(tx, ty, tw, th, UI.brassDark);
-  fontDrawText(ctx, station.label, tx + 2, ty + 2, UI.ink);
+  const th = FONT_H + 2;
+  // Left end of a horizontal counter, top end of the stem: away from the
+  // stools and the props.
+  const tx = horizontal ? x + 3 : x + Math.round(c.w / 2 - tw / 2);
+  const ty = horizontal ? y + Math.round((c.h - 4) / 2 - th / 2) + 1 : y + 3;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(tx - 0.5, ty - 0.5, tw + 1, th + 1);
+  ctx.fillStyle = PUB.brassDark || '#7d521a';
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(tx + 0.5, ty + 0.5, tw - 1, 0.5);
+  fontDrawText(ctx, station.label, tx + 2, ty + 1, PUB.cream);
 }
 
 function drawCounterPlant(x, y) {
@@ -3859,13 +3894,11 @@ function drawSeatChairs(table, camX, camY) {
     const backBottom = seat.side === 's';
     if (backOnTop) {
       ctx.fillStyle = PUB.ink;
-      ctx.fillRect(cx, seatY - 6, w, 6.5);
+      ctx.fillRect(cx, seatY - 2.5, w, 3);
       ctx.fillStyle = PUB.tableEdge;
-      ctx.fillRect(cx + 0.5, seatY - 5.5, w - 1, 5.5);
+      ctx.fillRect(cx + 0.5, seatY - 2, w - 1, 2);
       ctx.fillStyle = PUB.barTopLit;
-      ctx.fillRect(cx + 1, seatY - 5.5, w - 2, 0.5);
-      ctx.fillStyle = PUB.barFrontDark;
-      for (let px = cx + 2; px < cx + w - 1; px += 2) ctx.fillRect(px, seatY - 4.5, 0.5, 3.5);
+      ctx.fillRect(cx + 1, seatY - 2, w - 2, 0.5);
     }
     // Cushion with a lit top edge and tufting.
     ctx.fillStyle = PUB.ink;
@@ -3880,21 +3913,19 @@ function drawSeatChairs(table, camX, camY) {
     ctx.fillRect(cx + 0.5, seatY + 3.5, w - 1, 0.5);
     if (backBottom) {
       ctx.fillStyle = PUB.ink;
-      ctx.fillRect(cx, seatY + 3.5, w, 4);
+      ctx.fillRect(cx, seatY + 3.5, w, 3);
       ctx.fillStyle = PUB.tableEdge;
-      ctx.fillRect(cx + 0.5, seatY + 4, w - 1, 3);
+      ctx.fillRect(cx + 0.5, seatY + 4, w - 1, 2);
       ctx.fillStyle = PUB.barTopLit;
       ctx.fillRect(cx + 1, seatY + 4, w - 2, 0.5);
-      ctx.fillStyle = PUB.barFrontDark;
-      for (let px = cx + 2; px < cx + w - 1; px += 2) ctx.fillRect(px, seatY + 5, 0.5, 1.5);
     } else if (seat.side === 'w' || seat.side === 'e') {
       const bx = seat.side === 'e' ? cx + w - 1.5 : cx;
       ctx.fillStyle = PUB.ink;
-      ctx.fillRect(bx - 0.5, seatY - 5, 2.5, 9.5);
+      ctx.fillRect(bx - 0.5, seatY - 1.5, 2.5, 6.5);
       ctx.fillStyle = PUB.tableEdge;
-      ctx.fillRect(bx, seatY - 4.5, 1.5, 8.5);
+      ctx.fillRect(bx, seatY - 1, 1.5, 5.5);
       ctx.fillStyle = PUB.barTopLit;
-      ctx.fillRect(bx, seatY - 4.5, 1.5, 0.5);
+      ctx.fillRect(bx, seatY - 1, 1.5, 0.5);
     }
   }
 }
@@ -3922,13 +3953,13 @@ function drawBench(bench, camX, camY) {
   // A padded back along the wall side, buttoned, so it reads as a booth.
   if (bench.w > bench.h) {
     ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x, y - 4, bench.w, 5);
+    ctx.fillRect(x, y - 2.5, bench.w, 3);
     ctx.fillStyle = PUB.chair;
-    ctx.fillRect(x + 0.5, y - 3.5, bench.w - 1, 4);
+    ctx.fillRect(x + 0.5, y - 2, bench.w - 1, 2);
     ctx.fillStyle = PUB.chairLit;
-    ctx.fillRect(x + 1, y - 3.5, bench.w - 2, 0.5);
+    ctx.fillRect(x + 1, y - 2, bench.w - 2, 0.5);
     ctx.fillStyle = PUB.tableEdge;
-    for (let px = x + 4; px < x + bench.w - 3; px += 6) ctx.fillRect(px, y - 1.5, 1, 1);
+    for (let px = x + 4; px < x + bench.w - 3; px += 6) ctx.fillRect(px, y - 1, 1, 0.5);
   }
   ctx.fillStyle = PUB.tableEdge;
   ctx.fillRect(x + 1, y + bench.h - 2, bench.w - 2, 1.5);
@@ -3959,8 +3990,8 @@ function drawTable(table, camX, camY) {
 
   const x = sx - halfW;
   const y = sy - halfH;
-  // Three-quarter view: a real front face under the top, and legs.
-  const front = Math.min(8, Math.max(5, Math.round(table.h * 0.28)));
+  // High overhead: the top dominates; a shallow front lip is the depth cue.
+  const front = 3;
   ctx.fillStyle = PUB.tableEdge;
   ctx.fillRect(x + 1, y, table.w - 2, table.h);
   ctx.fillRect(x, y + 1, table.w, table.h - 2);
@@ -3969,16 +4000,7 @@ function drawTable(table, camX, camY) {
   ctx.fillStyle = PUB.barFrontLit;
   ctx.fillRect(x + 1, y + table.h - front, table.w - 2, 1);
   ctx.fillStyle = PUB.barFrontDark;
-  ctx.fillRect(x + 1, y + table.h - 1.5, table.w - 2, 1.5);
-  for (let px = x + 5; px < x + table.w - 4; px += 7) ctx.fillRect(px, y + table.h - front + 2, 0.5, front - 4);
-  // Legs, with the ink outline broken so they read as turned wood.
-  ctx.fillStyle = PUB.ink;
-  const legIn = Math.min(5, Math.round(table.w * 0.12));
-  ctx.fillRect(x + legIn, y + table.h - 1, 2.5, 3);
-  ctx.fillRect(x + table.w - legIn - 2.5, y + table.h - 1, 2.5, 3);
-  ctx.fillStyle = PUB.barFront;
-  ctx.fillRect(x + legIn + 0.5, y + table.h - 1, 1, 2.5);
-  ctx.fillRect(x + table.w - legIn - 2, y + table.h - 1, 1, 2.5);
+  ctx.fillRect(x + 1, y + table.h - 1, table.w - 2, 1);
 
   ctx.fillStyle = PUB.tableTop;
   ctx.fillRect(x + 1, y + 1, table.w - 2, table.h - front - 1);
@@ -4088,50 +4110,33 @@ function drawFurnitureItem(item, camX, camY) {
 function drawForeground(camX, camY) {
   for (const lamp of DECOR.lamps) {
     const x = Math.round(lamp.x - camX);
-    const fy = Math.round(lamp.y - camY);
-    const y = fy - LAMP_DROP;
-    if (x < -30 || fy < -30 || x > viewW + 30 || y > viewH + 30) continue;
+    const y = Math.round(lamp.y - camY);
+    if (x < -20 || y < -20 || x > viewW + 20 || y > viewH + 20) continue;
     const glow = lampIntensity(lamp);
-    // Light cone from the shade to the pool: three stepped trapezoids, additive.
+    // Seen from above, a pendant is its green enamel dome with a brass rim
+    // and the bulb burning through the middle, floating over the pool it
+    // throws. No cone, no cord: the camera looks straight down the wire.
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 4, y - 5, 8, 10);
+    ctx.fillRect(x - 5, y - 4, 10, 8);
+    ctx.fillStyle = '#1d3a2c';
+    ctx.fillRect(x - 3.5, y - 4, 7, 8);
+    ctx.fillRect(x - 4, y - 3, 8, 6);
+    ctx.fillStyle = '#2f5a42';
+    ctx.fillRect(x - 3.5, y - 4, 3, 2);
+    ctx.fillStyle = PUB.brass;
+    ctx.fillRect(x - 2, y - 2, 4, 4);
+    ctx.fillRect(x - 2.5, y - 1.5, 5, 3);
+    ctx.fillStyle = glow > 1 ? '#fff8e0' : '#ffe9b0';
+    ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
     ctx.globalCompositeOperation = 'lighter';
-    for (let band = 0; band < 3; band++) {
-      ctx.globalAlpha = 0.018 * glow;
-      ctx.fillStyle = 'rgb(255,200,110)';
-      const steps = 7;
-      for (let i = 0; i < steps; i++) {
-        const t = i / (steps - 1);
-        const halfW = 4 + t * (lamp.r * 0.55 - band * 4);
-        const yy = y + 3 + t * (LAMP_DROP - 4);
-        ctx.fillRect(Math.round(x - halfW), Math.round(yy), Math.round(halfW * 2), Math.ceil((LAMP_DROP - 4) / (steps - 1)) + 1);
-      }
-    }
+    ctx.globalAlpha = 0.16 * glow;
+    ctx.fillStyle = 'rgb(255,200,110)';
+    ctx.fillRect(x - 7, y - 7, 14, 14);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-
-    // The fixture: cord, a green enamel dome shade with a brass rim and the
-    // bulb showing under it. Bigger than before because it now hangs in the
-    // room rather than sitting on the floor plan.
-    ctx.fillStyle = PUB.ink;
-    ctx.fillRect(x - 0.5, y - 40, 1, 34);          // cord runs off the top
-    ctx.fillRect(x - 2, y - 7, 4, 1.5);            // cap
-    ctx.fillStyle = '#1d3a2c';
-    ctx.fillRect(x - 3.5, y - 5.5, 7, 1.5);
-    ctx.fillRect(x - 5.5, y - 4, 11, 1.5);
-    ctx.fillRect(x - 7, y - 2.5, 14, 1.5);
-    ctx.fillStyle = '#2f5a42';
-    ctx.fillRect(x - 3, y - 5.5, 3, 1);
-    ctx.fillRect(x - 5, y - 4, 4, 1);
-    ctx.fillRect(x - 6.5, y - 2.5, 5, 1);
-    ctx.fillStyle = PUB.brass;
-    ctx.fillRect(x - 7.5, y - 1, 15, 1);            // rim
-    ctx.fillStyle = PUB.brassLit || '#f6d688';
-    ctx.fillRect(x - 6, y - 1, 5, 0.5);
-    ctx.fillStyle = glow > 1 ? '#fff8e0' : '#ffe9b0';
-    ctx.fillRect(x - 2.5, y, 5, 2);                 // bulb
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x - 1, y, 2, 1);
-    ctx.fillStyle = PUB.amberDim;
-    ctx.fillRect(x - 1.5, y + 2, 3, 0.5);
   }
 
   if (prefersReducedMotion) return;
@@ -4203,8 +4208,19 @@ function pushDrawable(sortY, type, ref) {
   drawList.push(e);
 }
 
+// Directional sets ("dirs") key poses as "pose.facing" with a two-step walk
+// (walk/walkB); older sets use idle/walk and a horizontal flip.
 function spriteForEntity(e) {
   const set = SPRITES[e.kind];
+  if (set.dirs) {
+    const facing = e.facing || 'down';
+    let base;
+    if (e === player && e.tray.length) base = e.moving ? (e.legFrame === 1 ? 'carryWalk' : 'carryWalkB') : 'carry';
+    else if (e === hunter) base = e.moving ? (e.legFrame === 1 ? 'gunWalk' : 'gunWalkB') : 'gun';
+    else if (e.pose) base = e.pose.indexOf('slump') === 0 ? 'slump' : e.pose.indexOf('lean') === 0 ? 'lean' : 'idle';
+    else base = e.moving ? (e.legFrame === 1 ? 'walk' : 'walkB') : 'idle';
+    return set[base + '.' + facing] || set['idle.' + facing] || set.idle;
+  }
   if (e === player && e.tray.length) {
     return set[e.moving && e.legFrame === 1 ? 'carryWalk' : 'carry'] || set.idle;
   }
@@ -4221,8 +4237,9 @@ function entityHeadTop(e) {
 function drawEntity(e, camX, camY) {
   const set = SPRITES[e.kind];
   const sprite = spriteForEntity(e);
+  const flip = set.dirs ? false : e.flip;   // directional sets author left; no mirroring
   const stepLift = e.moving && e.legFrame === 1 ? -0.5 : 0;
-  const sx = e.x - camX - spriteAnchorX(sprite, e.flip) + (e.swayOffset || 0);
+  const sx = e.x - camX - spriteAnchorX(sprite, flip) + (e.swayOffset || 0);
   const sy = e.y - camY - spriteVisualH(sprite) + stepLift;
   const footX = Math.round(e.x - camX);
   const footY = Math.round(e.y - camY);
@@ -4239,18 +4256,17 @@ function drawEntity(e, camX, camY) {
     ctx.globalAlpha = 1;
   }
   // Layered cast/contact shadow: a soft offset mass plus the crisp foot lock.
-  ctx.globalAlpha = 0.46;
+  ctx.globalAlpha = 0.5;
   ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(footX - 4.5, footY + 0.5, 10, 1.5);
-  ctx.fillRect(footX - 2.5, footY + 2, 7, 0.5);
+  ctx.fillRect(footX - 7, footY - 3, 14, 4);
+  ctx.fillRect(footX - 8, footY - 2, 16, 2);
+  ctx.fillRect(footX - 5, footY + 1, 10, 1);
   ctx.globalAlpha = 1;
-  ctx.fillStyle = PUB.tableShadow;
-  ctx.fillRect(footX - 3.5, footY - 0.5, 7, 1);
   // Flicker the player after a hit so the temporary invulnerability is visible
   // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
   ctx.globalAlpha = flicker ? 0.4 : 1;
-  drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
+  drawSprite(sprite, e.palette || set.palette, sx, sy, flip);
   ctx.globalAlpha = 1;
 }
 

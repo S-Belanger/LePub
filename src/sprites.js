@@ -272,6 +272,7 @@ function makeCustomerPalette() {
     i: '#16110c',
     w: '#f5efe0',
     b: '#2a1a10',
+    x: '#2a1a10',
   };
 }
 
@@ -1154,12 +1155,300 @@ const CUSTOMER_HD = {
 };
 
 
+// ---- Overhead figures ---------------------------------------------------------
+// The camera is high and near-orthographic (docs/overhaul/00-CAMERA-DIRECTION):
+// a person is a head dome (hood, cap, hair, bald crown) over two shoulders,
+// with a sliver of face only where that camera would see it, hands at the
+// sides and two feet below. One generator paints every character from a
+// spec so the projection, contour weight and light direction are identical
+// across the cast; the spec carries the identity (antlers, cap brim, glasses,
+// beard, cardigan...). Sheets are 40x44 backing pixels (20x22 world units),
+// pixelSize 0.5, feet at the bottom; hitboxes are separate and unchanged.
+//
+// Directions are authored, not mirrored: 'left' mirrors the body and then
+// re-attaches props on the anatomical side, so the pint stays in the Doe's
+// left hand and the shotgun on the hunter's right shoulder.
+
+const OH_W = 40;
+const OH_H = 44;
+
+function ohGrid() {
+  return Array.from({ length: OH_H }, () => Array(OH_W).fill('.'));
+}
+function ohEllipse(g, cx, cy, rx, ry, ch) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+      if (x < 0 || y < 0 || x >= OH_W || y >= OH_H) continue;
+      const dx = (x + 0.5 - cx) / rx;
+      const dy = (y + 0.5 - cy) / ry;
+      if (dx * dx + dy * dy <= 1) g[y][x] = ch;
+    }
+  }
+}
+function ohRect(g, x, y, w, h, ch) {
+  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+    if (xx >= 0 && yy >= 0 && xx < OH_W && yy < OH_H) g[yy][xx] = ch;
+  }
+}
+function ohPut(g, x, y, ch) { if (x >= 0 && y >= 0 && x < OH_W && y < OH_H) g[y][x] = ch; }
+
+// Outline: every solid pixel bordering transparent gets 'i' pushed outward
+// (keeps the fill), so silhouettes read on the darkest board.
+function ohOutline(g) {
+  const out = g.map(r => r.slice());
+  for (let y = 0; y < OH_H; y++) for (let x = 0; x < OH_W; x++) {
+    if (g[y][x] !== '.') continue;
+    const n = (yy, xx) => yy >= 0 && xx >= 0 && yy < OH_H && xx < OH_W && g[yy][xx] !== '.' && g[yy][xx] !== 'i';
+    if (n(y - 1, x) || n(y + 1, x) || n(y, x - 1) || n(y, x + 1)) out[y][x] = 'i';
+  }
+  return out;
+}
+function ohMirror(g) { return g.map(r => r.slice().reverse()); }
+
+// Paints one figure. `dir` is down/up/right; left is derived by the caller.
+// `f` is the walk phase: 0 idle, 1/2 the two step frames. `opts.carry`
+// draws a held pint, `opts.gun` a shotgun across the back.
+function ohFigure(spec, dir, f, opts) {
+  const g = ohGrid();
+  const cx = 20;
+  const bob = f === 1 ? -1 : 0;
+  const B = spec.body;   // { coat, hand, feet, chest? }
+  const H = spec.head;   // { kind, color, seam?, brim?, flaps?, ears?, antlers?, hairSides? }
+  const F = spec.face;   // { skin, glasses?, beard? }
+  const side = dir === 'right';
+
+  // Feet: two ovals; stepping frames offset them.
+  const footY = 40 + bob;
+  const stepA = f === 1 ? -2 : f === 2 ? 2 : 0;
+  if (side) {
+    ohEllipse(g, cx + 3 + stepA, footY, 4, 2.2, B.feet);
+    ohEllipse(g, cx - 3 - stepA, footY + 1, 4, 2.2, B.feet);
+  } else {
+    ohEllipse(g, cx - 5, footY + stepA * 0.5, 3.2, 2.4, B.feet);
+    ohEllipse(g, cx + 5, footY - stepA * 0.5, 3.2, 2.4, B.feet);
+  }
+
+  // Body: shoulders as a wide ellipse under the head, arms as lumps.
+  const bodyY = 30 + bob;
+  if (side) {
+    ohEllipse(g, cx + 1, bodyY, 9, 7, B.coat);
+    ohEllipse(g, cx - 7, bodyY + 1, 3.5, 5, B.coat);          // far arm
+    ohEllipse(g, cx + 9, bodyY + 3, 3, 4.5, B.coat);          // near arm
+    ohEllipse(g, cx + 9, bodyY + 7, 2.2, 2, B.hand);
+    ohEllipse(g, cx - 7, bodyY + 6, 2, 1.8, B.hand);
+  } else {
+    ohEllipse(g, cx, bodyY, 12, 7.5, B.coat);
+    ohEllipse(g, cx - 12, bodyY + 3, 3.5, 5, B.coat);         // arms
+    ohEllipse(g, cx + 12, bodyY + 3, 3.5, 5, B.coat);
+    ohEllipse(g, cx - 12.5, bodyY + 8, 2.4, 2, B.hand);
+    ohEllipse(g, cx + 12.5, bodyY + 8, 2.4, 2, B.hand);
+    if (dir === 'down' && B.chest) ohEllipse(g, cx, bodyY + 4, 4.5, 3, B.chest);
+    if (dir === 'down' && B.vest) { ohRect(g, cx - 5, bodyY - 2, 10, 9, B.vest); }
+    if (dir === 'up' && B.back) ohRect(g, cx - 1, bodyY - 5, 2, 10, B.back);
+  }
+
+  // Plaid: a checker over the coat before the head goes on.
+  if (B.pattern) {
+    for (let y = 0; y < OH_H; y++) for (let x = 0; x < OH_W; x++) {
+      if (g[y][x] === B.coat && ((x >> 1) + (y >> 1)) % 2 === 0) g[y][x] = B.pattern;
+    }
+  }
+  // Head dome. A lean/slump pushes the head toward what the figure faces.
+  const lean = (opts && opts.lean) || 0;
+  const headY = 20 + bob + (dir === 'down' ? lean * 3 : dir === 'up' ? -lean * 3 : lean);
+  const hx = (side ? cx + 2 : cx) + (side ? lean * 3 : 0);
+  const rx = side ? 11 : 13;
+  const ry = 12;
+  ohEllipse(g, hx, headY, rx, ry, H.color);
+  if (H.kind === 'hood' && H.ears) {
+    if (side) { ohEllipse(g, hx - 9, headY - 2, 3, 3.5, H.color); ohEllipse(g, hx - 9, headY - 2, 1.5, 2, H.ears); }
+    else { ohEllipse(g, hx - 13, headY - 1, 3.5, 3.5, H.color); ohEllipse(g, hx + 13, headY - 1, 3.5, 3.5, H.color); ohEllipse(g, hx - 13, headY - 1, 1.8, 2, H.ears); ohEllipse(g, hx + 13, headY - 1, 1.8, 2, H.ears); }
+  }
+  if (H.kind === 'hood' && H.seam) {
+    // Centre seam of the hood, visible from above; angled on the side view.
+    for (let y = headY - ry + 2; y < headY + (dir === 'down' ? 3 : ry - 2); y++) ohPut(g, side ? hx - 2 : hx, y, H.seam);
+  }
+  if (H.kind === 'cap') {
+    // A ball cap from above: crown with radial seams, a brim on the facing
+    // side, and ear flaps hanging either side.
+    const c = H.color;
+    if (dir === 'down') { ohRect(g, hx - 10, headY + 8, 20, 4, c); ohRect(g, hx - 9, headY + 12, 18, 1, H.dark); }
+    if (side) { ohRect(g, hx + 6, headY + 3, 8, 3, c); ohRect(g, hx + 7, headY + 6, 7, 1, H.dark); }
+    for (let y = headY - ry + 1; y < headY + 6; y++) ohPut(g, hx, y, H.dark);
+    for (let x = hx - rx + 1; x < hx + rx; x++) ohPut(g, x, headY - 1, H.dark);
+    if (H.flaps) {
+      if (side) ohEllipse(g, hx - 5, headY + 9, 3, 4, H.flaps);
+      else { ohEllipse(g, hx - 12, headY + 6, 3, 4.5, H.flaps); ohEllipse(g, hx + 12, headY + 6, 3, 4.5, H.flaps); }
+    }
+    ohEllipse(g, hx, headY - 6, 1.5, 1.5, H.dark);              // button
+  }
+  if (H.kind === 'hair') {
+    // A parting and a few strands so the crown reads as hair, not a helmet.
+    for (let y = headY - ry + 2; y < headY + 4; y++) ohPut(g, hx + (side ? 3 : -3), y, H.dark);
+    ohPut(g, hx + 4, headY - 6, H.dark); ohPut(g, hx - 6, headY - 4, H.dark); ohPut(g, hx + 6, headY + 1, H.dark);
+  }
+  if (H.kind === 'bald') {
+    // Skin crown with grey sides.
+    ohEllipse(g, hx, headY - 3, rx - 4, ry - 5, F.skin);
+    if (side) ohEllipse(g, hx - 8, headY + 2, 3, 6, H.sides);
+    else { ohEllipse(g, hx - 10, headY + 3, 3.5, 6, H.sides); ohEllipse(g, hx + 10, headY + 3, 3.5, 6, H.sides); }
+  }
+  if (H.kind === 'flatcap') {
+    ohRect(g, hx - rx + 1, headY + 6, rx * 2 - 2, 3, H.color);   // the cap's overhang band
+    if (dir === 'down') ohRect(g, hx - 8, headY + 9, 16, 3, H.dark);   // peak
+    if (side) ohRect(g, hx + 7, headY + 5, 7, 3, H.dark);
+    for (let x = hx - rx + 3; x < hx + rx - 2; x += 5) ohPut(g, x, headY - 4, H.dark);
+  }
+
+  // Face sliver: what the camera sees under the front edge of the head.
+  if (dir === 'down') {
+    ohEllipse(g, hx, headY + 10, 8, 3.5, F.skin);
+    if (F.glasses) { ohRect(g, hx - 7, headY + 8, 6, 2, 'g'); ohRect(g, hx + 1, headY + 8, 6, 2, 'g'); ohRect(g, hx - 1, headY + 8, 2, 1, 'g'); ohPut(g, hx - 5, headY + 8, 'G'); ohPut(g, hx + 3, headY + 8, 'G'); }
+    else { ohPut(g, hx - 4, headY + 8, 'x'); ohPut(g, hx + 3, headY + 8, 'x'); }
+    if (F.beard) ohEllipse(g, hx, headY + 12, 7, 2.5, F.beard);
+    if (F.moustache) ohRect(g, hx - 5, headY + 10, 10, 2, F.moustache);
+    if (F.brows) { ohRect(g, hx - 7, headY + 7, 5, 1, F.brows); ohRect(g, hx + 2, headY + 7, 5, 1, F.brows); }
+  } else if (side) {
+    ohEllipse(g, hx + 7, headY + 6, 4, 5, F.skin);
+    if (F.glasses) { ohRect(g, hx + 5, headY + 4, 6, 2, 'g'); ohPut(g, hx + 8, headY + 4, 'G'); }
+    else ohPut(g, hx + 9, headY + 4, 'x');
+    if (F.beard) ohEllipse(g, hx + 7, headY + 10, 3.5, 3, F.beard);
+    if (F.moustache) ohRect(g, hx + 6, headY + 8, 5, 2, F.moustache);
+  }
+
+  // Antlers: two small tined branches rising above the hood.
+  if (H.antlers) {
+    const ax = side ? [hx - 4] : [hx - 8, hx + 8];
+    for (const x of ax) {
+      const baseY = headY - ry - 1;
+      for (let y = baseY; y > baseY - 7; y--) ohPut(g, x, y, 'n');
+      ohPut(g, x - 1, baseY - 3, 'n'); ohPut(g, x - 2, baseY - 4, 'n'); ohPut(g, x - 2, baseY - 5, 'n');
+      ohPut(g, x + 1, baseY - 5, 'n'); ohPut(g, x + 2, baseY - 6, 'n');
+      ohPut(g, x, baseY - 7, 'n');
+    }
+  }
+
+  // Props.
+  if (opts && opts.carry) {
+    // The pint sits in the anatomical LEFT hand — screen right when facing
+    // down, screen left when facing up, in front when facing right.
+    const px = dir === 'down' ? cx + 14 : dir === 'up' ? cx - 14 : cx + 12;
+    const py = dir === 'up' ? bodyY - 4 : bodyY + 4;
+    ohRect(g, px - 2, py - 3, 5, 6, 'b');
+    ohRect(g, px - 2, py - 4, 5, 1, 'q');
+    ohRect(g, px + 3, py - 2, 1, 3, 'u');
+    ohRect(g, px - 2, py - 3, 1, 5, 'B');
+  }
+  if (opts && opts.gun) {
+    // Barrel above the RIGHT shoulder (screen left facing down, screen right
+    // facing up), stock across the back toward the left hip.
+    if (dir === 'down') { ohRect(g, cx - 12, bodyY - 12, 2, 12, 'm'); ohRect(g, cx - 12, bodyY - 12, 2, 2, 'z'); }
+    else if (dir === 'up') { ohRect(g, cx + 10, bodyY - 12, 2, 12, 'm'); for (let i = 0; i < 10; i++) ohPut(g, cx + 9 - i, bodyY - 1 + i, 'y'); }
+    else { ohRect(g, cx - 6, bodyY - 14, 2, 12, 'm'); ohRect(g, cx - 6, bodyY - 14, 2, 2, 'z'); }
+  }
+
+  return ohOutline(g).map(r => r.join(''));
+}
+
+// A complete four-direction set for one spec. Left is a mirror of right with
+// props re-attached by re-painting right without props, mirroring, then
+// painting the props for 'left' explicitly.
+function ohSheetSet(spec, ramps, palette, propKinds) {
+  const set = { palette, dirs: true };
+  const poses = { idle: 0, walk: 1, walkB: 2 };
+  const variants = [{ key: '', opts: {} }];
+  for (const p of propKinds || []) {
+    if (p === 'lean') { variants.push({ key: 'lean', opts: { lean: 1 }, still: true }); variants.push({ key: 'slump', opts: { lean: 2 }, still: true }); }
+    else variants.push({ key: p, opts: { [p]: true } });
+  }
+  for (const v of variants) {
+    for (const pose in poses) {
+      if (v.still && pose !== 'idle') continue;
+      for (const dir of ['down', 'up', 'right', 'left']) {
+        let rows;
+        if (dir === 'left') {
+          const bodyOnly = ohFigure(spec, 'right', poses[pose], v.opts.lean ? { lean: v.opts.lean } : {});
+          const mirrored = ohMirror(bodyOnly.map(r => r.split('')));
+          // Re-paint props for the mirrored view.
+          if (v.opts.carry) {
+            const cx = 20, bodyY = 30 + (poses[pose] === 1 ? -1 : 0);
+            const px = cx - 12, py = bodyY + 4;
+            ohRect(mirrored, px - 2, py - 3, 5, 6, 'b'); ohRect(mirrored, px - 2, py - 4, 5, 1, 'q');
+            ohRect(mirrored, px - 3, py - 2, 1, 3, 'u'); ohRect(mirrored, px + 2, py - 3, 1, 5, 'B');
+          }
+          if (v.opts.gun) {
+            const cx = 20, bodyY = 30 + (poses[pose] === 1 ? -1 : 0);
+            ohRect(mirrored, cx + 4, bodyY - 14, 2, 12, 'm'); ohRect(mirrored, cx + 4, bodyY - 14, 2, 2, 'z');
+          }
+          rows = ohOutline(mirrored).map(r => r.join(''));
+        } else {
+          rows = ohFigure(spec, dir, poses[pose], v.opts);
+        }
+        const name = (v.key ? v.key + (pose === 'idle' ? '' : pose === 'walk' ? 'Walk' : 'WalkB') : pose) + '.' + dir;
+        set[name] = lightSprite(rows, ramps, OH_W, OH_H);
+      }
+    }
+  }
+  // Compatibility aliases so code that asks for `idle`/`walk` still works.
+  set.idle = set['idle.down'];
+  set.walk = set['walk.down'];
+  if (set['carry.down']) { set.carry = set['carry.down']; set.carryWalk = set['carryWalk.down']; }
+  return set;
+}
+
+// ---- The cast specs --------------------------------------------------------
+const OH_DOE_PALETTE = Object.assign({}, DOE_HD_PALETTE, { x: '#2a1a10' });
+const OH_DOE = ohSheetSet({
+  head: { kind: 'hood', color: 'd', seam: 'D', ears: 'f', antlers: true },
+  body: { coat: 'd', hand: 'k', feet: 's', chest: 'c' },
+  face: { skin: 'k', glasses: true, beard: 'e' },
+}, DOE_RAMPS, OH_DOE_PALETTE, ['carry']);
+
+const OH_HUNTER = ohSheetSet({
+  head: { kind: 'cap', color: 'o', dark: 'r', flaps: 'o' },
+  body: { coat: 'P', pattern: 'Q', hand: 'k', feet: 's', vest: 'v', back: 'v' },
+  face: { skin: 'k', glasses: true, beard: 'e' },
+}, HUNTER_RAMPS, Object.assign({}, HUNTER_HD_PALETTE, { x: '#2a1a10' }), ['gun']);
+
+const OH_NAZIM = ohSheetSet({
+  head: { kind: 'hair', color: 'h', dark: 'H' },
+  body: { coat: 'm', hand: 'k', feet: 'p' },
+  face: { skin: 'k', beard: 'b' },
+}, NAZIM_RAMPS, Object.assign({}, NAZIM_HD_PALETTE, { g: '#141414', G: '#cfe6ee', x: '#2a1a10' }), ['lean']);
+
+const OH_SAM = ohSheetSet({
+  head: { kind: 'flatcap', color: 'c', dark: 'C' },
+  body: { coat: 'M', hand: 'k', feet: 'p' },
+  face: { skin: 'k', glasses: true },
+}, SAM_RAMPS, Object.assign({}, SAM_HD_PALETTE, { G: '#cfe6ee', x: '#2a1a10' }), []);
+
+const OH_GERALD = ohSheetSet({
+  head: { kind: 'bald', color: 'k', sides: 'H' },
+  body: { coat: 'm', hand: 'k', feet: 'p' },
+  face: { skin: 'k', moustache: 'b', brows: 'G' },
+}, GERALD_RAMPS, Object.assign({}, GERALD_HD_PALETTE, { g: '#141414', x: '#2a1a10' }), []);
+
+const OH_CUSTOMER = ohSheetSet({
+  head: { kind: 'hair', color: 'h', dark: 'q' },
+  body: { coat: 'm', hand: 'k', feet: 's' },
+  face: { skin: 'k' },
+}, CUSTOMER_RAMPS, null, []);
+
+const OH_WAITER = ohSheetSet({
+  head: { kind: 'hair', color: 'h', dark: 'H' },
+  body: { coat: 'b', hand: 'k', feet: 's' },
+  face: { skin: 'k' },
+}, { h: ['H', 'h'], b: ['b', 'B'] }, Object.assign({}, WAITER_PALETTE, { i: '#16110c', x: '#2a1a10' }), []);
+
+
 const SPRITES = {
   // The two leads use the high-density sheets above; the coarse DOE_*/HUNTER_*
   // rows are kept as the authored reference for their silhouettes.
-  hunter: HUNTER_HD,
-  doe: DOE_HD,
-  customer: CUSTOMER_HD,
+  // Overhead sets (docs/overhaul/00-CAMERA-DIRECTION): four authored
+  // directions per pose. The frontal HD sheets stay defined as references.
+  hunter: OH_HUNTER,
+  doe: OH_DOE,
+  customer: OH_CUSTOMER,
   ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
   waiter: {
     idle: detailSprite(WAITER_IDLE, { h: ['H', 'h'], b: ['b', 'B'] }),
@@ -1168,7 +1457,7 @@ const SPRITES = {
     sprayB: detailSprite(WAITER_SPRAY_B, { h: ['H', 'h'], b: ['b', 'B'] }),
     palette: WAITER_PALETTE,
   },
-  nazim: NAZIM_HD,
-  sam: SAM_HD,
-  gerald: GERALD_HD,
+  nazim: OH_NAZIM,
+  sam: OH_SAM,
+  gerald: OH_GERALD,
 };

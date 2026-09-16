@@ -50,6 +50,35 @@ double-scaling, phases P0–P7 with evidence.
   renderer already has the 2× art backing. Pack's ART-PLAN is my §2b-less
   copy. "Jay" = the waiter.
 
+### P3 evidence — overhead proof in the real room (ARC-06, ARC-07, ARC-11, partial ARC-12)
+
+- `src/sprites.js`: `ohFigure`/`ohSheetSet` overhead figure generator
+  (40×44 backing, pixelSize 0.5, feet at the bottom): head dome by kind
+  (hood/cap/hair/bald/flatcap), face sliver only for down/side, shoulders,
+  hands, feet, outline pass, then `lightSprite`. Four authored directions;
+  'left' mirrors the body and re-attaches props on the anatomical side
+  (pint in the Doe's left hand, gun over the hunter's right shoulder).
+  `OH_DOE` (idle/walk/walkB + carry variants), `OH_HUNTER` (gun variants),
+  `OH_NAZIM` (+lean/slump = head toward the table), `OH_SAM`, `OH_GERALD`,
+  `OH_CUSTOMER` (palette variety kept, 'x' pupil key added). Waiter and
+  ghost still on the old sheets (ARC-12 gap).
+- `game.js`: `facing` on every entity from `faceToward(e, dx, dy)` (dominant
+  axis, 1.15 dead-zone, keeps last); player from input, hunter from his
+  direction/look, walk-ins from their step, seated from `seatFacing(seat)`
+  (s→up, n→down, w→right, e→left); Nazim faces his wander then the table.
+  `spriteForEntity` resolves `pose.facing` on `dirs` sets (2-step walk,
+  hunter always `gun*`, lean/slump); `drawEntity` never flips dir sets and
+  draws a round contact shadow. Movement vectors untouched.
+- Room re-projected: bar front 9→4 (side 2), tap fonts from above with a
+  drip tray, `drawBottleRows` (bottles standing on the stem, glasses, ice
+  bucket) replaces the gantry, hatch as heat-lamp bar + plates + board,
+  tables front 3 with no legs, chairs cushion + thin far-side rail, benches
+  thin back, pendants drawn as green shade discs over their pools (no cone,
+  no cord), station plaques small brass at the counter's left/top end.
+- Evidence: `assets/gameplay.png` (natural frame, camera −60,80),
+  scratchpad `review/sheet-overhead*.png` (cast at 6×). Smoke passes.
+  Colliders/routes/hitboxes unchanged (smoke's 40 routes).
+
 ### Plan for this session
 
 P1 metrics doc + raster frame draw; P2 `src/assets.js` (PNG+JSON v1 per the
