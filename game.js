@@ -882,6 +882,7 @@ function spawnCustomer() {
   seat.occupied = true;
   const c = makeEntity('customer', DOOR.x, DOOR.y);
   c.palette = makeCustomerPalette();
+  c.look = Math.floor(Math.random() * 3);
   c.state = 'entering';
   c.seat = seat;
   c.path = computeCustomerPath(DOOR, seat, seat.table);
@@ -4222,6 +4223,7 @@ function pushDrawable(sortY, type, ref) {
 function poseBase(e) {
   if (e === player && e.tray.length) return e.moving ? 'carryWalk' : 'carry';
   if (e === hunter) return e.moving ? 'gunWalk' : 'gun';
+  if (e.pose === 'spray' || e.pose === 'sprayB') return 'spray';
   if (e.pose) return e.pose.indexOf('slump') === 0 ? 'slump' : e.pose.indexOf('lean') === 0 ? 'lean' : 'idle';
   return e.moving ? 'walk' : 'idle';
 }
@@ -4236,8 +4238,15 @@ function rasterFrameFor(e) {
 
 // Directional sets ("dirs") key poses as "pose.facing" with a two-step walk
 // (walk/walkB); older sets use idle/walk and a horizontal flip.
-function spriteForEntity(e) {
+// A walk-in's head shape is chosen at spawn (`look`), from the family's
+// variant sets; everyone else has one set.
+function spriteSetFor(e) {
   const set = SPRITES[e.kind];
+  return set.variants && e.look != null ? set.variants[e.look % set.variants.length] : set;
+}
+
+function spriteForEntity(e) {
+  const set = spriteSetFor(e);
   if (set.dirs) {
     const facing = e.facing || 'down';
     let base = poseBase(e);
@@ -4260,10 +4269,10 @@ function entityHeadTop(e) {
 }
 
 function drawEntity(e, camX, camY) {
-  const set = SPRITES[e.kind];
+  const set = spriteSetFor(e);
   const sprite = spriteForEntity(e);
   const flip = set.dirs ? false : e.flip;   // directional sets author left; no mirroring
-  const stepLift = e.moving && e.legFrame === 1 ? -0.5 : 0;
+  const stepLift = (e.moving && e.legFrame === 1) || e.pose === 'sprayB' ? -0.5 : 0;
   const sx = e.x - camX - spriteAnchorX(sprite, flip) + (e.swayOffset || 0);
   const sy = e.y - camY - spriteVisualH(sprite) + stepLift;
   const footX = Math.round(e.x - camX);

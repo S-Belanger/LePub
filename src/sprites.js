@@ -1339,6 +1339,12 @@ function ohFigure(spec, dir, f, opts) {
     ohRect(g, px + 3, py - 2, 1, 3, 'u');
     ohRect(g, px - 2, py - 3, 1, 5, 'B');
   }
+  if (opts && opts.spray) {
+    // Spray bottle held out ahead: nozzle at the far end, toward the counter.
+    if (side) { ohRect(g, cx + 11, bodyY + 1, 6, 3, 'b'); ohRect(g, cx + 17, bodyY + 1, 1, 2, 'B'); ohRect(g, cx + 12, bodyY, 3, 1, 'B'); }
+    else if (dir === 'down') { ohRect(g, cx + 13, bodyY + 6, 3, 6, 'b'); ohRect(g, cx + 13, bodyY + 12, 3, 1, 'B'); }
+    else { ohRect(g, cx - 15, bodyY - 8, 3, 6, 'b'); ohRect(g, cx - 15, bodyY - 9, 3, 1, 'B'); }
+  }
   if (opts && opts.gun) {
     // Barrel above the RIGHT shoulder (screen left facing down, screen right
     // facing up), stock across the back toward the left hip.
@@ -1379,6 +1385,10 @@ function ohSheetSet(spec, ramps, palette, propKinds) {
           if (v.opts.gun) {
             const cx = 20, bodyY = 30 + (poses[pose] === 1 ? -1 : 0);
             ohRect(mirrored, cx + 4, bodyY - 14, 2, 12, 'm'); ohRect(mirrored, cx + 4, bodyY - 14, 2, 2, 'z');
+          }
+          if (v.opts.spray) {
+            const cx = 20, bodyY = 30 + (poses[pose] === 1 ? -1 : 0);
+            ohRect(mirrored, cx - 16, bodyY + 1, 6, 3, 'b'); ohRect(mirrored, cx - 17, bodyY + 1, 1, 2, 'B'); ohRect(mirrored, cx - 14, bodyY, 3, 1, 'B');
           }
           rows = ohOutline(mirrored).map(r => r.join(''));
         } else {
@@ -1436,9 +1446,33 @@ const OH_CUSTOMER = ohSheetSet({
 
 const OH_WAITER = ohSheetSet({
   head: { kind: 'hair', color: 'h', dark: 'H' },
-  body: { coat: 'b', hand: 'k', feet: 's' },
-  face: { skin: 'k' },
-}, { h: ['H', 'h'], b: ['b', 'B'] }, Object.assign({}, WAITER_PALETTE, { i: '#16110c', x: '#2a1a10' }), []);
+  body: { coat: 't', hand: 'k', feet: 's', chest: 'a' },
+  face: { skin: 'k', glasses: true },
+}, { h: ['H', 'h'], t: ['t', 's'], a: ['m', 'a'] }, Object.assign({}, WAITER_PALETTE, { i: '#16110c', x: '#2a1a10', G: '#cfe6ee' }), ['spray']);
+
+// Walk-ins come in three head shapes over the six palette looks: hair, a
+// flat cap in the trouser colour, a round cap in the shirt's dark tone.
+const OH_CUSTOMER_VARIANTS = [
+  OH_CUSTOMER,
+  ohSheetSet({ head: { kind: 'flatcap', color: 'p', dark: 's' }, body: { coat: 'm', hand: 'k', feet: 's' }, face: { skin: 'k' } }, CUSTOMER_RAMPS, null, []),
+  ohSheetSet({ head: { kind: 'cap', color: 'v', dark: 's' }, body: { coat: 'm', hand: 'k', feet: 's' }, face: { skin: 'k' } }, CUSTOMER_RAMPS, null, []),
+];
+OH_CUSTOMER.variants = OH_CUSTOMER_VARIANTS;
+
+// The ghost from above: a translucent oval with two dark eyes and a wispy
+// trailing edge. Drawn at 1 unit per pixel with alpha, outside the palette
+// policy on purpose.
+const OH_GHOST = buildSprite([
+  R('.', 3, 'g', 8, '.', 3),
+  R('.', 1, 'g', 12, '.', 1),
+  R('g', 14),
+  R('g', 3, 'e', 2, 'g', 4, 'e', 2, 'g', 3),
+  R('g', 3, 'e', 2, 'g', 4, 'e', 2, 'g', 3),
+  R('g', 14),
+  R('.', 1, 'g', 12, '.', 1),
+  R('.', 2, 'g', 3, '.', 1, 'g', 3, '.', 1, 'g', 2, '.', 2),
+  R('.', 3, 'g', 1, '.', 3, 'g', 1, '.', 3, 'g', 1, '.', 2),
+]);
 
 
 const SPRITES = {
@@ -1449,14 +1483,8 @@ const SPRITES = {
   hunter: OH_HUNTER,
   doe: OH_DOE,
   customer: OH_CUSTOMER,
-  ghost: { idle: GHOST_IDLE, walk: GHOST_IDLE, palette: GHOST_PALETTE },
-  waiter: {
-    idle: detailSprite(WAITER_IDLE, { h: ['H', 'h'], b: ['b', 'B'] }),
-    walk: detailSprite(WAITER_WALK, { h: ['H', 'h'], b: ['b', 'B'] }),
-    spray: detailSprite(WAITER_SPRAY, { h: ['H', 'h'], b: ['b', 'B'] }),
-    sprayB: detailSprite(WAITER_SPRAY_B, { h: ['H', 'h'], b: ['b', 'B'] }),
-    palette: WAITER_PALETTE,
-  },
+  ghost: { idle: OH_GHOST, walk: OH_GHOST, palette: GHOST_PALETTE },
+  waiter: OH_WAITER,
   nazim: OH_NAZIM,
   sam: OH_SAM,
   gerald: OH_GERALD,

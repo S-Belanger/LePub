@@ -107,6 +107,19 @@ double-scaling, phases P0–P7 with evidence.
   atlases report `ready`; frame work median 2.7 ms / p95 10.6 ms (baseline
   1.9–3.0 / 7.6–10.6).
 
+### P4 evidence — full cast on the overhead camera (ARC-11, ARC-12)
+
+- Waiter: `OH_WAITER` (tee, apron chest, glasses) with a `spray` prop
+  variant; `poseBase` maps spray/sprayB → `spray.<facing>`, the squeeze is a
+  half-unit lift; nozzle offsets unchanged (bottle nozzle sits at +8/−6).
+  Ghost: `OH_GHOST` overhead blob (alpha, outside palette policy by design).
+  Walk-ins: `OH_CUSTOMER.variants` = hair / flat cap / round cap chosen per
+  spawn (`c.look`), on top of the six palette looks; `spriteSetFor(e)`.
+- Atlases re-exported with the waiter (6 families). Smoke + assets tests
+  pass. Remaining art gap: order icons and the carried-pint attachment are
+  unchanged (already on the backing grid); regulars' blush is invisible from
+  above by design (they face the table).
+
 ### Plan for this session
 
 P1 metrics doc + raster frame draw; P2 `src/assets.js` (PNG+JSON v1 per the

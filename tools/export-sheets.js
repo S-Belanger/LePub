@@ -15,7 +15,7 @@ const path = require('path');
 
 const repo = path.join(__dirname, '..');
 const outDir = path.join(repo, 'assets', 'sprites');
-const families = process.argv.slice(2).length ? process.argv.slice(2) : ['doe', 'hunter', 'nazim', 'sam', 'gerald'];
+const families = process.argv.slice(2).length ? process.argv.slice(2) : ['doe', 'hunter', 'nazim', 'sam', 'gerald', 'waiter'];
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
 const server = http.createServer((req, res) => {
