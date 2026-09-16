@@ -4,6 +4,42 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
+## START HERE (2026-09-15 20:55) — next session begins with an asset ZIP
+
+State: branch `feat/regulars-responsive-pixel-polish` at `f558490`, in sync with
+origin, 20+ commits ahead of `main`; PR #3 is a draft with every step
+commented. Latest preview: <https://lepub-1c2rh2lms-maisoncastros-projects.vercel.app>
+(Vercel login). `node tests/smoke.js` passes. Nothing uncommitted.
+
+What shipped this session: pub-material UI; the ten design changes
+(stations, tips, tray, hunter states + A*, buy-him-a-pint, Nazim's
+consequences, the round, timed shifts + tally, juice); night lighting;
+three-quarter furniture; the cast at backing resolution; perimeter props.
+Read the checkpoints below (newest first *within* the 16:58 section) for
+details.
+
+**The user will post a ZIP of GPT-generated art** (room painting and/or
+furniture pieces, character sheets) made from `docs/ART-PLAN.md` and
+`assets/art-direction/floor-plan.png`, and later a **second room layout**.
+Do this, in order:
+
+1. Unzip to the scratchpad; inventory every file (sizes, transparency,
+   frame rows). Compare against the spec tables in `docs/ART-PLAN.md` §2/§2b
+   and write down the deltas — the zip wins, the spec bends.
+2. Build `src/assets.js`: PNG + JSON frame maps, feet anchors, per-asset
+   fallback to the existing procedural art. Raise the internal resolution to
+   640×360 via a single `WORLD_SCALE` (see ART-PLAN §1). Keep colliders,
+   routes and every gameplay number identical in feel.
+3. Turn the room literals (`BAR_SEGMENTS`, `TABLES`, `BENCHES`, lamps,
+   props, door) into a room definition so the second layout is a data file;
+   render its plan with scratchpad `render-plan.js` (copy lives in this
+   ledger's history if the scratchpad is gone: it reads `__debug` and draws
+   the plan on a canvas at 4 px/unit).
+4. Wire the Doe sheet first (style sample), capture, compare with the
+   reference, then the rest. Checkpoint here after each asset lands.
+
+Do not change `assets/art-direction/floor-plan.png` — the user approved it.
+
 ## 2026-09-15 16:58 America/Toronto — session resumed in Claude Code; UI rehaul started
 
 ### Context recovered after the Codex session was cut off
