@@ -120,6 +120,45 @@ double-scaling, phases P0–P7 with evidence.
   unchanged (already on the backing grid); regulars' blush is invisible from
   above by design (they face the table).
 
+### P5/P6/P7 evidence — reactions, shell, integration (ARC-08/09/10/13/14)
+
+- P5 (ARC-09): `REACTIONS`/`react`/`tickReactions`/`squashFor` — hit
+  (0.32 s recoil squash, rides the existing `HIT_STOP`, no second freeze),
+  serve (0.26 s lift on `completeDelivery`), spotted (0.22 s stretch on
+  `hunterNoticesPlayer`); hunter's pint drawn from the existing `drinking`
+  state. Feet-anchored scale in `drawSprite`/`drawRasterFrame`; a hit
+  outranks a celebration; cleared by `resetGame`; suppressed under
+  reduced-motion. Smoke: a delivery starts `serve` without moving the
+  player, hit outranks serve, restart clears. Perfect-service, hunter damage,
+  fatigue, knockback: deliberately not added (no such mechanics).
+- P5 lighting (ARC-08): unchanged from the 20:10 tone-down (pools 0.26, hot
+  cores 0.16, cones removed with the overhead pendants); shade discs add a
+  0.16 additive square only. Dark/busy readability: review frame + mobile
+  capture (both leads readable between pools via outline + halo 0.14/0.1).
+- P6 (ARC-10): HUD inventory unchanged (shift, tips/target, total, clock,
+  pints); tickets compact/urgent/carried; station plaques small brass;
+  shell scanlines 0.12→0.05. Touch/desktop captures in scratchpad `shots/`.
+- P7 (ARC-13/14): perf after everything — median 1.9–3.1 ms, p95 7.4–12.6 ms
+  (baseline 1.9–3.0 / 7.6–10.6; same scenario, 600 frames, 1280×720 @4×,
+  shift-6 crowd, hunter chasing). Tests: `node tests/smoke.js` and
+  `node tests/assets.js` pass; `git diff --check` clean. Docs: CLAUDE.md
+  §3/§4/§10/§12, art-direction README status, README test note,
+  `assets/gameplay.png` = current natural frame.
+
+### Remaining gaps (honest list)
+
+- Production art: every atlas in `assets/sprites/` is the *generated*
+  overhead art exported as PNG. Hand-cleaned sheets (from the pack's
+  references, cleaned in Aseprite to the contract) are still to be made;
+  they replace the files one-for-one, same layout (40×44 cells, pivot
+  (20,44), density 2) or any layout the JSON describes.
+- Floor/walls are still procedural boards; a painted tile set is the next
+  material step. No rain on the windows. Order icons unchanged.
+- Nazim's blush/eye stage cues are invisible from above while he faces the
+  table (lean/slump/sway carry his state instead).
+- Marker placement does not yet reserve the touch-control corners.
+- Second room: needs the layout data-file refactor described on 09-15.
+
 ### Plan for this session
 
 P1 metrics doc + raster frame draw; P2 `src/assets.js` (PNG+JSON v1 per the

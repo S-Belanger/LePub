@@ -311,17 +311,17 @@ function bakedSprite(sprite, palette, flipX) {
   return pair[key];
 }
 
-function drawSprite(sprite, palette, screenX, screenY, flipX) {
+// `squash` ({x, y} scale factors, optional) is the reaction layer's only
+// handle on a sprite: the feet stay put and the body compresses or lifts.
+function drawSprite(sprite, palette, screenX, screenY, flipX, squash) {
   const pixelSize = sprite.pixelSize || 1;
-  const x = Math.round(screenX * ART_SCALE) / ART_SCALE;
-  const y = Math.round(screenY * ART_SCALE) / ART_SCALE;
-  ctx.drawImage(
-    bakedSprite(sprite, palette, !!flipX),
-    x,
-    y,
-    sprite.w * pixelSize,
-    sprite.h * pixelSize,
-  );
+  const w = sprite.w * pixelSize;
+  const h = sprite.h * pixelSize;
+  const sxScale = squash ? squash.x : 1;
+  const syScale = squash ? squash.y : 1;
+  const x = Math.round((screenX + (w - w * sxScale) / 2) * ART_SCALE) / ART_SCALE;
+  const y = Math.round((screenY + (h - h * syScale)) * ART_SCALE) / ART_SCALE;
+  ctx.drawImage(bakedSprite(sprite, palette, !!flipX), x, y, w * sxScale, h * syScale);
 }
 
 function spriteVisualW(sprite) { return sprite.w * (sprite.pixelSize || 1); }
@@ -1815,6 +1815,8 @@ function resetGame() {
   hitStopTimer = 0;
   pintKnockTimer = 0;
   pintKnockIndex = -1;
+  player.reaction = null;
+  hunter.reaction = null;
   shift = 1;
   shiftClock = 0;
   shiftTips = 0;
@@ -1911,6 +1913,7 @@ function completeDelivery(target) {
   removeFromTray(target);
   const { tip, clutch } = deliveryTip(target);
   earnTips(tip);
+  react(player, 'serve');
   shiftStats.deliveries++;
   if (clutch) shiftStats.clutch++;
   Sound.play('deliver');
@@ -2415,6 +2418,7 @@ function hunterNoticesPlayer() {
   setHunterState('chase');
   hunterLastSeenTimer = 0;
   showHunterAlert('!', 0.9);
+  react(hunter, 'spotted');
   Sound.play('whistle');
   Dialogue.trigger('hunterSpotted', null);
 }
@@ -2761,8 +2765,9 @@ function update(dt) {
     if (t.ttl <= 0) floatingTexts.splice(i, 1);
   }
 
-  // Leg animation timers.
+  // Leg animation timers, and the reaction timers that ride on them.
   for (const e of [player, hunter, ...customers]) tickLegs(e, dt);
+  tickReactions(dt);
   if (waiter) tickLegs(waiter, dt);
 
   // Life regen: only once a few hit-free seconds have passed, and never
@@ -2792,6 +2797,7 @@ function update(dt) {
     shiftStats.hits++;
     hitStopTimer = HIT_STOP;
     pintKnockTimer = PINT_KNOCK_TIME;
+    react(player, 'hit');
     pintKnockIndex = Math.min(LIFE_SEGMENT_COUNT - 1, Math.floor(life * LIFE_SEGMENT_COUNT + 1e-6));
 
     if (life <= 1e-9) {
@@ -4301,20 +4307,61 @@ function drawEntity(e, camX, camY) {
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
   ctx.globalAlpha = flicker ? 0.4 : 1;
   const frame = rasterFrameFor(e);
-  if (frame) drawRasterFrame(frame, e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift);
-  else drawSprite(sprite, e.palette || set.palette, sx, sy, flip);
+  const squash = squashFor(e);
+  if (frame) drawRasterFrame(frame, e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift, squash);
+  else drawSprite(sprite, e.palette || set.palette, sx, sy, flip, squash);
   ctx.globalAlpha = 1;
+  // The hunter's pint while he sits one out: the existing drinking state,
+  // shown in his hand.
+  if (e === hunter && hunterState === 'drinking') {
+    const icon = ORDER_ICONS['beer-blond'];
+    drawSprite(icon.sprite, icon.palette, e.x - camX + 5, e.y - camY - 12, false);
+  }
 }
 
 // Draws an atlas frame with its pivot at world point (wx, wy): source rect in
 // image pixels, destination in world units (pixels ÷ authored density), the
 // origin snapped to the backing grid like every procedural sprite.
-function drawRasterFrame(frame, wx, wy) {
+function drawRasterFrame(frame, wx, wy, squash) {
   const d = frame.density;
-  const x = Math.round((wx - frame.pivot.x / d) * ART_SCALE) / ART_SCALE;
-  const y = Math.round((wy - frame.pivot.y / d) * ART_SCALE) / ART_SCALE;
-  ctx.drawImage(frame.image, frame.rect.x, frame.rect.y, frame.rect.width, frame.rect.height,
-    x, y, frame.rect.width / d, frame.rect.height / d);
+  const w = frame.rect.width / d;
+  const h = frame.rect.height / d;
+  const sxScale = squash ? squash.x : 1;
+  const syScale = squash ? squash.y : 1;
+  const x = Math.round((wx - frame.pivot.x / d * sxScale) * ART_SCALE) / ART_SCALE;
+  const y = Math.round((wy - frame.pivot.y / d * syScale) * ART_SCALE) / ART_SCALE;
+  ctx.drawImage(frame.image, frame.rect.x, frame.rect.y, frame.rect.width, frame.rect.height, x, y, w * sxScale, h * syScale);
+}
+
+// ---- Reactions (presentation only) ------------------------------------------
+// A reaction is a short timer on an entity, set where the game commits an
+// outcome (a hit, a delivery, the hunter spotting you) and read only here.
+// It changes how the sprite is drawn — a squash, a lift — never where the
+// entity is, what it scores or whether it can move. The existing hit-stop is
+// reused, not stacked.
+const REACTIONS = {
+  hit: { time: 0.32, squash: t => ({ x: 1 + 0.18 * t, y: 1 - 0.22 * t }) },          // recoil, settles
+  serve: { time: 0.26, squash: t => ({ x: 1 - 0.06 * Math.sin(t * Math.PI), y: 1 + 0.1 * Math.sin(t * Math.PI) }) },  // a lift
+  spotted: { time: 0.22, squash: t => ({ x: 1 - 0.08 * t, y: 1 + 0.14 * t }) },       // a startle stretch
+};
+function react(e, kind) {
+  const def = REACTIONS[kind];
+  if (!def) return;
+  // A hit outranks a celebration; nothing outranks a hit in progress.
+  if (e.reaction && e.reaction.kind === 'hit' && kind !== 'hit') return;
+  e.reaction = { kind, t: def.time };
+}
+function tickReactions(dt) {
+  for (const e of [player, hunter]) {
+    if (!e.reaction) continue;
+    e.reaction.t -= dt;
+    if (e.reaction.t <= 0) e.reaction = null;
+  }
+}
+function squashFor(e) {
+  if (!e.reaction || prefersReducedMotion) return null;
+  const def = REACTIONS[e.reaction.kind];
+  return def.squash(clamp(e.reaction.t / def.time, 0, 1));
 }
 
 // No contact shadow and no flicker handling — the ghost isn't standing on the

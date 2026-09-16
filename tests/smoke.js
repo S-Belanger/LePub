@@ -396,6 +396,29 @@ function run() {
   if (debug.getHunterState().state !== 'lost') throw new Error('The ghost passing through the hunter should spook him.');
   debug.resetGame();
 
+  // Reactions ride on real events and never move anyone: a delivery lifts the
+  // Doe, a hit outranks a celebration, and the timers clear on restart.
+  debug.resetGame();
+  const seatR = debug.SEATS.find(s => !s.reserved && !s.occupied);
+  for (const s of debug.SEATS) s.occupied = s !== seatR;
+  debug.spawnCustomer();
+  for (const s of debug.SEATS) s.occupied = false;
+  seatR.occupied = true;
+  const cR = debug.customers[debug.customers.length - 1];
+  cR.state = 'sitting'; cR.x = cR.seat.x; cR.y = cR.seat.y; cR.path = null; cR.sitTimer = 40; cR.patienceDuration = 40; cR.orderType = 'wine'; cR.orderPlacedAt = 0; cR.orderAppearAt = 0;
+  cR.beingCarried = true; debug.player.tray.length = 0; debug.player.tray.push({ type: 'wine', customer: cR });
+  debug.player.x = cR.x; debug.player.y = cR.y + 6;
+  const beforeX = debug.player.x;
+  debug.handleInteract();
+  if (!debug.player.reaction || debug.player.reaction.kind !== 'serve') throw new Error('A delivery should start the serve reaction.');
+  if (debug.player.x !== beforeX) throw new Error('A reaction must not move the player.');
+  vm.runInContext("react(player, 'hit')", context);
+  vm.runInContext("react(player, 'serve')", context);
+  if (debug.player.reaction.kind !== 'hit') throw new Error('A hit must outrank a celebration.');
+  debug.render();
+  debug.resetGame();
+  if (debug.player.reaction) throw new Error('Restart should clear reactions.');
+
   // Shifts: the clock runs, last call arms in the final seconds and stops
   // new walk-ins, the tally board freezes the floor until a press, and the
   // next shift starts from zero with the target raised.
@@ -470,7 +493,7 @@ function run() {
   });
 
   rasterCheck.then(() => console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, shifts, and render pass with HUD, tally and caught boards; raster atlas path.`)).catch(err => { console.error(err); process.exit(1); });
+    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, reactions, shifts, and render pass with HUD, tally and caught boards; raster atlas path.`)).catch(err => { console.error(err); process.exit(1); });
 }
 
 run();

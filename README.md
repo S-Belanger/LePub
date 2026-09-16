@@ -133,7 +133,7 @@ The dependency-free smoke test loads the production scripts in their real
 order, runs every customer seat route in and out, completes a waiter visit,
 and exercises the render pass against a lightweight canvas/DOM stand-in.
 
-For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and closing a shift on both the clock and the tips target.
+Run `node tests/assets.js` for the raster asset registry. For browser testing, exercise both a wide desktop viewport and a portrait mobile viewport. Useful checks include resizing during a run, simultaneous movement and touch interaction, restarting after a catch, muting before and after the first sound, and closing a shift on both the clock and the tips target.
 
 ### Debug console
 

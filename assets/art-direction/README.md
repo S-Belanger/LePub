@@ -24,14 +24,16 @@ Translate its visual language into the game rather than copying its camera:
 `floor-plan.png` / `floor-plan.json` are the room as the game plays it,
 rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
 
-## Status (2026-09-15)
+## Status (2026-09-16)
 
-Implemented: night base with additive pendant pools and cones, varnish
-streaks, lit bar/gantry/hatch and fireplace; three-quarter furniture fronts,
-chair backs, bench backs; the whole cast authored at backing resolution with
-faces; perimeter props; walnut/brass/parchment UI. Still to do: the waiter and
-ghost at backing resolution, more walk-in variety (hats, hair shapes), rain on
-the windows, and a real back-bar once the architectural plan lands.
+The camera is now the high overhead of `overhead/gameplay-modernization-concept.png`
+(see `../../docs/overhaul/00-CAMERA-DIRECTION.md`, which supersedes the
+three-quarter wording below): the whole cast is generated overhead with four
+directions and shipped as atlases in `../sprites/`; furniture, counter props
+and pendants are drawn for that camera over the same colliders; night
+lighting and the fireplace stay. Still to do: hand-cleaned production sheets
+replacing the generated atlases file-for-file, rain on the windows, painted
+floor/wall tiles in place of the procedural boards, and the second room.
 
 ## Acceptance check
 

@@ -50,7 +50,7 @@ async function main() {
     const result = await page.evaluate((kind) => {
       const set = window.__debug.SPRITES[kind];
       if (!set || !set.dirs) return null;
-      const bases = ['idle', 'walk', 'carry', 'carryWalk', 'gun', 'gunWalk', 'lean', 'slump'];
+      const bases = ['idle', 'walk', 'carry', 'carryWalk', 'gun', 'gunWalk', 'lean', 'slump', 'spray'];
       const dirs = ['down', 'up', 'right', 'left'];
       const frames = [];       // { id, sprite }
       const animations = {};

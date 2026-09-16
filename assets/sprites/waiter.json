@@ -163,6 +163,54 @@
         "x": 20,
         "y": 44
       }
+    },
+    "spray.down.0": {
+      "rect": {
+        "x": 160,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "spray.up.0": {
+      "rect": {
+        "x": 200,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "spray.right.0": {
+      "rect": {
+        "x": 240,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
+    },
+    "spray.left.0": {
+      "rect": {
+        "x": 280,
+        "y": 44,
+        "width": 40,
+        "height": 44
+      },
+      "pivot": {
+        "x": 20,
+        "y": 44
+      }
     }
   },
   "animations": {
@@ -251,6 +299,42 @@
         {
           "frameId": "walk.left.1",
           "durationMs": 140
+        }
+      ]
+    },
+    "spray.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "spray.down.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "spray.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "spray.up.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "spray.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "spray.right.0",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "spray.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "spray.left.0",
+          "durationMs": 1000
         }
       ]
     }
