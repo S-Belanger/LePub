@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#0b0a10">
+<meta name="theme-color" content="#100e0e">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Le Pub: The Chase</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,15 +19,17 @@
 
     <!-- Corner controls. Kept quiet until touched/hovered. -->
     <div id="top-bar">
-      <button id="btn-help" type="button" class="chip" aria-label="Help">?</button>
-      <button id="btn-sound" type="button" class="chip sound" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
-      <button id="btn-fullscreen" type="button" class="chip" aria-label="Toggle fullscreen">&#9974;</button>
+      <button id="btn-help" type="button" class="chip board" aria-label="Help">?</button>
+      <button id="btn-sound" type="button" class="chip board sound" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
+      <button id="btn-fullscreen" type="button" class="chip board full" aria-label="Toggle fullscreen"></button>
     </div>
 
     <!-- Start / help overlay. Replaces the old permanent title block. -->
     <div id="overlay" class="overlay">
-      <div class="panel">
+      <div class="panel board riveted">
+        <div class="panel-scroll">
         <h1>LE PUB</h1>
+        <p class="strap">THE CHASE</p>
         <p class="subtitle">Une chasse sans piti&eacute;&hellip; serve the regulars, dodge the hunter.</p>
         <ul class="keys">
           <li><span>Move</span><kbd>WASD</kbd><kbd>Arrows</kbd><em class="touch-only">left stick</em></li>
@@ -35,7 +38,8 @@
           <li><span>Restart</span><kbd>Space</kbd><em class="touch-only">on-screen button</em></li>
         </ul>
         <button id="btn-start" type="button" class="primary">START SHIFT</button>
-        <p class="hint">Nazim, Sam and Gerald are always at the corner table.</p>
+        <p class="hint">Beers at the TAPS, wine at the SHELF, food from the KITCHEN. The tray holds two.<br>Nazim, Sam and Gerald are always at the corner table.</p>
+        </div>
       </div>
     </div>
 
@@ -58,6 +62,7 @@
   <script src="src/dialogue.js"></script>
   <script src="src/regulars.js"></script>
   <script src="src/sound.js"></script>
+  <script src="src/assets.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
