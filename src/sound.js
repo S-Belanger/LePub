@@ -99,6 +99,26 @@ const Sound = (function () {
         if (!allow(name, 0.1)) return;
         tone(230, 0.2, { to: 105, type: 'sawtooth', volume: 0.08 });
         break;
+      // A shot handed across the table: a bright four-note run, the only
+      // fanfare in the game that climbs past the level-up chord — being
+      // untouchable should sound like more than another ten points.
+      case 'jameson':
+        tone(523, 0.08, { type: 'triangle', volume: 0.1 });
+        tone(659, 0.08, { type: 'triangle', volume: 0.1, delay: 0.07 });
+        tone(880, 0.09, { type: 'triangle', volume: 0.11, delay: 0.14 });
+        tone(1047, 0.24, { type: 'triangle', volume: 0.1, delay: 0.22 });
+        break;
+      // Bouncing the hunter off while untouchable. Rate-limited because the
+      // two can stay overlapped for several frames of contact.
+      case 'jamesonBounce':
+        if (!allow(name, 0.18)) return;
+        tone(392, 0.09, { to: 1047, type: 'square', volume: 0.09 });
+        break;
+      // The shot wearing off: the same run, downward and quieter.
+      case 'jamesonEnd':
+        tone(880, 0.09, { type: 'triangle', volume: 0.07 });
+        tone(587, 0.16, { type: 'triangle', volume: 0.06, delay: 0.08 });
+        break;
       case 'levelUp':
         tone(392, 0.1, { type: 'square', volume: 0.08 });
         tone(523, 0.12, { type: 'square', volume: 0.08, delay: 0.09 });

@@ -154,6 +154,22 @@ const DIALOGUE_LINES = [
   // Rare, understated decency — always immediately after the cruelty.
   { who: 'gerald', category: 'ambient', nazim: ['drunk', 'gone'], rare: true, text: "Idiot. ...Bring him a water, would you." },
   { who: 'gerald', category: 'ambient', nazim: ['gone'], rare: true, text: "He's insufferable. Don't let him walk home." },
+
+  // ---------------------------------------------------------------- JAMESON
+  // A customer has just handed the deer a shot and he's briefly untouchable.
+  // The booth watches it happen, so these are reactions to the room, not
+  // explanations of the mechanic: nobody here says "invincible".
+  { who: 'nazim', category: 'jameson', stage: ['sober', 'warm'], text: "A free one. For him. Naturally." },
+  { who: 'nazim', category: 'jameson', stage: ['buzzed'], text: "Whiskey. The good kind of decision." },
+  { who: 'nazim', category: 'jameson', stage: ['drunk'], text: "He gets Jameson. I get patience." },
+  { who: 'nazim', category: 'jameson', stage: ['gone'], text: "Pour one for the antlers. They've earned it." },
+  { who: 'sam', category: 'jameson', text: "Somebody tipped. In whiskey." },
+  { who: 'sam', category: 'jameson', text: "He's glowing. That's not the lamps." },
+  { who: 'sam', category: 'jameson', text: "Go on then. Run at the hat." },
+  { who: 'sam', category: 'jameson', rare: true, text: "Irish courage. Literally.", weight: 0.8 },
+  { who: 'gerald', category: 'jameson', text: "One shot and he thinks he's immortal." },
+  { who: 'gerald', category: 'jameson', text: "That's not a tip. That's an enabler." },
+  { who: 'gerald', category: 'jameson', nazim: ['drunk', 'gone'], text: "Wrong man got the Jameson." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------
@@ -290,6 +306,20 @@ const DIALOGUE_EXCHANGES = [
     lines: [
       { who: 'gerald', text: "Round two. Try the walking this time.", delay: 0 },
       { who: 'sam', text: "He can't hear you. He's new again.", delay: 1.6 },
+    ],
+  },
+  {
+    category: 'jameson',
+    lines: [
+      { who: 'sam', text: "He drank it in one.", delay: 0 },
+      { who: 'gerald', text: "On shift. Marvellous.", delay: 1.3 },
+    ],
+  },
+  {
+    category: 'jameson', nazim: ['buzzed', 'drunk', 'gone'],
+    lines: [
+      { who: 'nazim', text: "Where's mine?", delay: 0 },
+      { who: 'gerald', text: "Behind you. Five of them.", delay: 1.4 },
     ],
   },
 ];

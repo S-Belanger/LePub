@@ -128,13 +128,27 @@ Gerald's escalation is content-side: his lines about Nazim declare a `nazim: [..
 
 Delivery works next to the customer *or* anywhere near their table's collider (`nearRect`). If the target stops wanting the order, `update()` retargets it — **but only among walk-ins**. Silently re-pointing a drink at a different named regular would make ownership ambiguous, so a regular's order always has to be picked up for them on purpose. If no walk-in wants the stranded item, it is dropped so the player cannot get stuck carrying an undeliverable order. The validity check includes `orderType`, because a regular's order can lapse while they stay in their seat, whereas for a walk-in leaving is the only way out.
 
+#### The Jameson
+
+Roughly one **alcoholic** delivery in ten (`JAMESON_CHANCE`) comes back as a shot for the player: `grantJameson()` sets `jamesonTimer` to `JAMESON_DURATION` (10s), during which the hunter cannot take a life segment. Food never qualifies, so the real rate sits a little under the nominal chance. The roll lives in `completeDelivery()` next to the points, which is what keeps it tied to a trip that actually landed, and it fires for walk-ins and regulars alike.
+
+While it is up:
+
+- **Contact runs backwards.** The catch check still detects the overlap, but instead of costing life it shoves the *hunter* clear (`JAMESON_BOUNCE_FORCE`, rate-limited by `JAMESON_BOUNCE_COOLDOWN` so a sustained overlap isn't a buzz).
+- **The hunter flees.** `pickNewHunterDirection()` reverses its base angle and keeps everything else — jitter, speed, pause chance — so it reads as the same animal in retreat. `hunterSlide` is cleared every frame of the effect: the wall following exists to close distance, and leaving it on would let the hunter use it to hold station.
+- **The tint is palette-driven.** `DOE_JAMESON_PALETTES` (three prebuilt objects in `src/sprites.js`) are cycled by `jamesonPaletteFor()`. Prebuilt rather than mixed per frame because `drawSprite` bakes one canvas per palette *object identity* — a fresh palette every frame would be a fresh bake every frame. Over the last `JAMESON_WARN_TIME` the cycle alternates with the ordinary palette so the effect visibly runs out, and `prefersReducedMotion` pins it to one steady tint.
+- **The aura is a lamp.** `drawFloorLight()` blits the same prebaked `glowFor()` canvas the lamps use under the player, so it composites as room lighting rather than an overlay.
+- **The HUD grows a row.** `jamesonRowHeight()` is folded into `measureHud()`, so the taller plate is also what the dialogue layout avoids for exactly as long as the shot lasts.
+
+Refresh, not stack: a second shot restarts the clock. `jamesonTimer` and `jamesonBounceTimer` are cleared in `resetGame()`.
+
 ### 8. Dialogue
 
 A reactive layer on top of gameplay. It never pauses the chase, blocks input, or holds up a frame.
 
 - **Content** (`src/dialogue-content.js`) is separate from selection. A line is `{ who, category, text, weight?, stage?, nazim?, rare? }`; an exchange is `{ category, lines: [{who, text, delay}], ... }`. `stage` gates Nazim's own lines; `nazim` gates anyone's line on Nazim's *current* stage. Roughly 3–12 words per line so they're readable on the move.
 - **Scheduling** (`src/dialogue.js`) does weighted selection, a global cooldown (shorter for high-priority categories), a per-character cooldown scaled by mood, bounded recent-line history globally and per character, a `MAX_ACTIVE` cap of two bubbles, and a delay queue so replies land while the game runs. `CATEGORY_PRIORITY` lets a real gameplay reaction outrank ambient chatter and flush queued filler.
-- **Triggers** are fired from `game.js` at the moments they describe (`onRegularOrdered`, `onRegularGaveUp`, `onRegularServed`, the catch check, the abandonment branch in `updateCustomer`) plus `updateDialogueTriggers()` for the genuinely time-based ones (idle, carrying too long, near miss, hunter near the booth, two waiting, level up, whiffed interactions).
+- **Triggers** are fired from `game.js` at the moments they describe (`onRegularOrdered`, `onRegularGaveUp`, `onRegularServed`, `grantJameson`, the catch check, the abandonment branch in `updateCustomer`) plus `updateDialogueTriggers()` for the genuinely time-based ones (idle, carrying too long, near miss, hunter near the booth, two waiting, level up, whiffed interactions).
 - **`Dialogue.reset()` is called from `resetGame()`**, so a restart cancels everything queued or on screen; `resetDialogueTriggers()` clears the edge-detection state alongside it.
 - **Rendering** is `drawDialogueBubbles()`. Placement tries, in order: clear above the speaker's order bubble; straight above their head; pinned to the top of the camera; and only then hanging off the shoulder facing away from the booth. Bubbles are nudged sideways before vertically when two are on screen, and the HUD's footprint is fed in as an obstacle so a line can never sit on the score.
 
@@ -148,7 +162,7 @@ The hunter is still not a pathfinder, and the floor plan's bar leaves a couple o
 
 ### 10. Life and capture
 
-Contact with the hunter removes one of three life segments instead of ending the run immediately. A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
+Contact with the hunter removes one of three life segments instead of ending the run immediately — unless a Jameson is in the player, in which case the hunter is the one that bounces (see above). A 1.5-second invulnerability window and a collision-aware shove give the player room to escape; the sprite flickers while protected. Regeneration begins after three hit-free seconds and takes 20 seconds to refill an empty bar. Only the final hit sets `caught`, plays the caught cue and triggers the room's caught dialogue.
 
 **High scores** live in `localStorage` under `lepub_highscores` (top 5, `{name, score}`; plain numbers from older saves are normalized on read, and every access is wrapped because storage can throw outright). Being caught with a score calls `beginNameEntry()`: while `enteringName` is true the caught screen shows a name field instead of the restart prompt, and the keydown handler takes the keyboard outright so no other shortcut can eat a letter or drop the score. The DOM restart button is hidden for the same reason (`syncCaughtDom`). Typing a name needs a keyboard, so on a touch device (`canTypeName()`) the score is filed unnamed rather than showing a field nobody can fill.
 
@@ -168,7 +182,7 @@ Level is *derived* from score (`getLevel() = floor(score / LEVEL_UP_SCORE) + 1`,
 6. **grade** — a level-scaled midnight tint plus a dithered vignette (`makeVignetteCanvas`, rebuilt only when the viewport size changes).
 7. **order bubbles**, then **dialogue bubbles** — above the grade, so a patience bar is never dimmed. `drawOrderBubbleFor()` picks whichever bubble a person warrants: the live order growing in, or the one just dealt with shrinking out. The pop is three discrete steps (`noteOrderPlaced` / `noteOrderCleared` / `tickOrderExit` keep the timing, shared by both populations) so it animates on whole pixels rather than easing through fractional sizes.
 8. **floating score text** (`+10`/`-15`), pixel font, fading as it drifts up.
-9. **HUD** — a compact pixel-font plate with level, score and the three-segment regenerating life bar.
+9. **HUD** — a compact pixel-font plate with level, score and the three-segment regenerating life bar, plus the Jameson countdown while one is running.
 10. **state overlay** — either `assets/caught.jpg` with the final score/reaction plus the high-score table (or the name field, while one is being filed), or `assets/LevelDone.png` with the completed and incoming levels, cover-fit to the live internal resolution. The caught plate is sized from the rows it has to hold, so the table and the name field fit without overflowing it.
 
 Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and sway) is skipped entirely when `prefersReducedMotion` is set. `imageSmoothingEnabled = false` and pixelated CSS rendering are preserved throughout.
@@ -185,13 +199,13 @@ Ambient animation (`updateAmbient`, `lampIntensity`, the regulars' blink and swa
 
 ### 14. Sound
 
-`src/sound.js` synthesizes short Web Audio cues for orders, pickup, delivery, penalties, level-ups and being caught. It creates its `AudioContext` lazily from the first start/action gesture so browser autoplay rules are respected, and degrades to silence when Web Audio is unavailable. The SFX chip and `M` key toggle sound; the choice persists in `localStorage` when storage is available. Automatic cues have tiny per-event rate limits so simultaneous customer events do not stack into an abrasive burst.
+`src/sound.js` synthesizes short Web Audio cues for orders, pickup, delivery, penalties, level-ups, the Jameson (grant, bounce and wearing off) and being caught. It creates its `AudioContext` lazily from the first start/action gesture so browser autoplay rules are respected, and degrades to silence when Web Audio is unavailable. The SFX chip and `M` key toggle sound; the choice persists in `localStorage` when storage is available. Automatic cues have tiny per-event rate limits so simultaneous customer events do not stack into an abrasive burst.
 
 ### 15. `resetGame()`
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/level-splash state, `customers`, `floatingTexts`, `player.carrying`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
-It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
+It also clears `enteringName`/`nameInput`, the Jameson timers, the ghost and the waiter. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
 ## Development scaffolding
 
@@ -201,6 +215,7 @@ It also clears `enteringName`/`nameInput`, the ghost and the waiter. **Any new p
 | --- | --- |
 | `setScore(n)` / `getScore()` / `getLevel()` | Level is derived from score, so `setScore` is how you reach a level. |
 | `setLife(n)` / `getLife()` / `getLevelSplash()` | Inspect the damage/regen bar and current completed-level transition. |
+| `getJameson()` / `giveJameson(seconds?)` | Hand over the shot without a delivery, or with a shorter clock to watch it expire. |
 | `getViewport()` / `getCamera()` | Current internal resolution, integer scale, orientation, camera origin. |
 | `reservedSeats()` / `freeGenericSeats()` | Inspect seat reservation. |
 | `forceRegularOrder(id, type?)` | Make a regular order now, optionally of a given type. |

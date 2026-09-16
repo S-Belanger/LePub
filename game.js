@@ -542,6 +542,23 @@ const LIFE_REGEN_DURATION = 20; // seconds for a fully-drained bar to refill
 let hitInvulnTimer = 0;
 let regenDelayTimer = 0;
 
+// ---- The Jameson: roughly one drink delivery in ten comes back as a shot for
+// the deer, and for JAMESON_DURATION afterwards the hunter cannot touch him —
+// the star from Mario, poured. It deliberately stacks with nothing: a second
+// shot restarts the clock rather than extending it, so the effect can never be
+// farmed into a permanently safe run.
+//
+// Only alcoholic orders qualify (a plate of food doesn't come with a whiskey),
+// which puts the real rate a little under the nominal chance.
+const JAMESON_CHANCE = 0.1;
+const JAMESON_DURATION = 10;
+const JAMESON_WARN_TIME = 3;      // last seconds, where the tint starts strobing
+const JAMESON_BOUNCE_COOLDOWN = 0.4; // between shoves, so contact isn't a buzz
+const JAMESON_BOUNCE_FORCE = 40;
+let jamesonTimer = 0;
+let jamesonBounceTimer = 0;
+function jamesonActive() { return jamesonTimer > 0; }
+
 // ---- Levels: every LEVEL_UP_SCORE points ramps up difficulty (more
 // customers, a hungrier hunter). Level is derived from score rather than
 // tracked separately, so a restart resets it for free. Scaling is capped at
@@ -1333,6 +1350,8 @@ function resetGame() {
   life = LIFE_MAX;
   hitInvulnTimer = 0;
   regenDelayTimer = 0;
+  jamesonTimer = 0;
+  jamesonBounceTimer = 0;
   highestLevelReached = 1;
   levelSplashTimer = 0;
   splashLevel = null;
@@ -1390,10 +1409,25 @@ function findOldestPendingOrder() {
   return best;
 }
 
+// The customer pushes a shot back across the table. Refresh, not stack: the
+// clock restarts at full, and `hunterSlide` is dropped so the hunter re-aims
+// on the next frame and turns tail immediately rather than finishing a wall
+// follow it committed to while it was still the one doing the chasing.
+function grantJameson(from) {
+  jamesonTimer = JAMESON_DURATION;
+  jamesonBounceTimer = 0;
+  hunterSlide = null;
+  hunterChangeTimer = 0;
+  Sound.play('jameson');
+  addFloatingText(from.x, from.y - from.h - 4, 'JAMESON!', PUB.amber);
+  Dialogue.trigger('jameson', null);
+}
+
 // A delivery that actually landed. Everything a completed order awards happens
 // here and nowhere else — notably Nazim's drink count, so mashing the interact
 // button can never advance his night without a trip to the bar.
 function completeDelivery(target) {
+  const type = target.orderType;
   target.served = true;
   target.beingCarried = false;
   player.carrying = null;
@@ -1401,13 +1435,17 @@ function completeDelivery(target) {
   Sound.play('deliver');
   addFloatingText(target.x, target.y - target.h - 4, '+' + POINTS_PER_DELIVERY, '#3ddc61');
 
+  // Rolled here, alongside the points, so it can only ever come from a trip
+  // that actually landed — and for regulars as well as walk-ins, since a
+  // grateful Nazim buying a round is the whole joke.
+  if (isAlcoholicOrder(type) && Math.random() < JAMESON_CHANCE) grantJameson(target);
+
   if (!target.isRegular) {
     noteOrderCleared(target);
     target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
     return;
   }
 
-  const type = target.orderType;
   target.mood = clampMood(target.mood + 0.35);
   let stageChanged = false;
   if (target.id === 'nazim' && isAlcoholicOrder(type)) {
@@ -1745,7 +1783,11 @@ function pickNewHunterDirection() {
     hunterDir = { x: 0, y: 0 };
   } else {
     const jitterMax = Math.max(Math.PI / 12, Math.PI / 3 - lvl * (Math.PI / 36)); // 60deg -> 15deg
-    const baseAngle = Math.atan2(player.y - hunter.y, player.x - hunter.x);
+    // While the deer is on a Jameson the same aim is simply reversed: the
+    // hunter keeps its jitter, its speed and its habits, and spends the ten
+    // seconds putting the room between them.
+    const toPlayer = Math.atan2(player.y - hunter.y, player.x - hunter.x);
+    const baseAngle = jamesonActive() ? toPlayer + Math.PI : toPlayer;
     const jitter = (Math.random() - 0.5) * jitterMax;
     hunterDir = { x: Math.cos(baseAngle + jitter), y: Math.sin(baseAngle + jitter) };
   }
@@ -1924,6 +1966,19 @@ function update(dt) {
   for (const e of [player, hunter, ...customers]) tickLegs(e, dt);
   if (waiter) tickLegs(waiter, dt);
 
+  // The Jameson counting itself down. Sliding is dropped for its duration so
+  // the wall-following that exists to close distance can't be used to keep it.
+  if (jamesonBounceTimer > 0) jamesonBounceTimer -= dt;
+  if (jamesonTimer > 0) {
+    jamesonTimer -= dt;
+    hunterSlide = null;
+    if (jamesonTimer <= 0) {
+      jamesonTimer = 0;
+      Sound.play('jamesonEnd');
+      hunterChangeTimer = 0;   // back on the hunt without waiting out the timer
+    }
+  }
+
   // Life regen: only once a few hit-free seconds have passed, and never
   // while already fully caught (game over).
   if (hitInvulnTimer > 0) hitInvulnTimer -= dt;
@@ -1941,7 +1996,22 @@ function update(dt) {
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
+  const touching = dist < (player.w + hunter.w) / 2.4;
+
+  // On a Jameson the collision still happens, it just runs the other way:
+  // the hunter is the one shoved clear, and the player walks through.
+  if (touching && jamesonActive()) {
+    if (jamesonBounceTimer <= 0) {
+      jamesonBounceTimer = JAMESON_BOUNCE_COOLDOWN;
+      const away = dist > 0.001 ? Math.atan2(-dy, -dx) : Math.random() * Math.PI * 2;
+      const knock = tryMove(hunter, Math.cos(away) * JAMESON_BOUNCE_FORCE, Math.sin(away) * JAMESON_BOUNCE_FORCE);
+      hunter.x = knock.x;
+      hunter.y = knock.y;
+      hunterSlide = null;
+      hunterChangeTimer = 0;
+      Sound.play('jamesonBounce');
+    }
+  } else if (hitInvulnTimer <= 0 && touching) {
     life = Math.max(0, life - LIFE_HIT_FRACTION);
     hitInvulnTimer = LIFE_HIT_INVULN;
     regenDelayTimer = LIFE_REGEN_DELAY;
@@ -2093,6 +2163,7 @@ function glowFor(radius, rgb, alpha) {
 
 const WARM_RGB = [255, 186, 96];
 const COOL_RGB = [120, 168, 226];
+const JAMESON_RGB = [255, 214, 120];
 
 // Rebuilt only when the viewport changes size.
 let vignetteCanvas = null;
@@ -2337,6 +2408,15 @@ function drawFloorLight(camX, camY) {
     if (d < 40) doorBusy = Math.max(doorBusy, 1 - d / 40);
   }
   drawGlow(glowFor(24, COOL_RGB, 0.18), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+
+  // A pool of its own under the deer while the shot is in him: same prebaked
+  // glow the lamps use, so it reads as part of the room's lighting rather
+  // than an effect pasted on top. It fades out with the last two seconds.
+  if (jamesonActive()) {
+    const fade = clamp(jamesonTimer / 2, 0, 1);
+    const pulse = prefersReducedMotion ? 0.8 : 0.66 + 0.34 * Math.abs(Math.sin(gameTime * 6));
+    drawGlow(glowFor(20, JAMESON_RGB, 0.34), player.x, player.y - 3, fade * pulse, camX, camY);
+  }
 }
 
 // ---- Furniture --------------------------------------------------------------
@@ -2556,6 +2636,20 @@ function pushDrawable(sortY, type, ref) {
   drawList.push(e);
 }
 
+// The Jameson tint, or null for everyone and every other moment. The cycle
+// runs on gameTime rather than a dedicated phase so it stops dead with the
+// rest of the simulation during the level splash, and it steps through whole
+// palettes rather than easing a colour, which is what keeps it pixel art.
+// Over the last JAMESON_WARN_TIME it alternates with the ordinary palette, so
+// the effect visibly runs out instead of simply stopping.
+function jamesonPaletteFor(e) {
+  if (e !== player || !jamesonActive()) return null;
+  if (prefersReducedMotion) return DOE_JAMESON_PALETTES[1];
+  const step = Math.floor(gameTime * 9);
+  if (jamesonTimer < JAMESON_WARN_TIME && step % 2 === 0) return null;
+  return DOE_JAMESON_PALETTES[step % DOE_JAMESON_PALETTES.length];
+}
+
 function drawEntity(e, camX, camY) {
   const set = SPRITES[e.kind];
   // Seated regulars pick a named pose; movers use the walk cycle.
@@ -2571,7 +2665,7 @@ function drawEntity(e, camX, camY) {
   // as well as mechanical. Whole-frame stepping keeps the pixel-art feel.
   const flicker = e === player && hitInvulnTimer > 0 && Math.floor(hitInvulnTimer * 10) % 2 === 0;
   ctx.globalAlpha = flicker ? 0.4 : 1;
-  drawSprite(sprite, e.palette || set.palette, sx, sy, e.flip);
+  drawSprite(sprite, jamesonPaletteFor(e) || e.palette || set.palette, sx, sy, e.flip);
   ctx.globalAlpha = 1;
 }
 
@@ -2711,9 +2805,15 @@ function lifeBarWidth() {
   return LIFE_SEGMENT_COUNT * LIFE_SEG_W + (LIFE_SEGMENT_COUNT - 1) * LIFE_SEG_GAP;
 }
 
+// The Jameson row only exists while the shot does, so the plate grows for ten
+// seconds and shrinks back. measureHud is what the dialogue layout treats as
+// an obstacle, so the taller plate pushes bubbles down for exactly as long.
+const JAMESON_BAR_H = 3;
+function jamesonRowHeight() { return jamesonActive() ? JAMESON_BAR_H + 3 : 0; }
+
 function measureHud() {
   hudRect.w = Math.max(fontTextWidth('LEVEL ' + getLevel() + '  SCORE ' + score) + 6, lifeBarWidth() + 6);
-  hudRect.h = FONT_H + LIFE_SEG_H + 10;
+  hudRect.h = FONT_H + LIFE_SEG_H + 10 + jamesonRowHeight();
   return hudRect;
 }
 
@@ -2848,6 +2948,21 @@ function drawHud() {
       ctx.fillStyle = fill > 0.5 ? '#c74b3c' : '#e8620c';
       ctx.fillRect(x, barY, Math.ceil(LIFE_SEG_W * fill), LIFE_SEG_H);
     }
+  }
+
+  // The shot's remaining seconds: one unbroken amber bar under the life
+  // segments, blinking through its last stretch alongside the sprite tint so
+  // the two warnings agree.
+  if (jamesonActive()) {
+    const jx = hud.x + 3;
+    const jy = barY + LIFE_SEG_H + 3;
+    const jw = lifeBarWidth();
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(jx - 1, jy - 1, jw + 2, JAMESON_BAR_H + 2);
+    const blink = jamesonTimer < JAMESON_WARN_TIME && !prefersReducedMotion &&
+      Math.floor(gameTime * 9) % 2 === 0;
+    ctx.fillStyle = blink ? PUB.amberDim : PUB.amber;
+    ctx.fillRect(jx, jy, Math.ceil(jw * clamp(jamesonTimer / JAMESON_DURATION, 0, 1)), JAMESON_BAR_H);
   }
 }
 
@@ -3070,6 +3185,13 @@ window.__debug = {
   setScore: (v) => { score = v; },              // level is derived from score
   getLife: () => life,
   setLife: (v) => { life = clamp(v, 0, LIFE_MAX); },
+  getJameson: () => ({ active: jamesonActive(), remaining: +jamesonTimer.toFixed(2) }),
+  // No delivery needed: hands the shot over as if the player were standing.
+  giveJameson: (seconds) => {
+    grantJameson(player);
+    if (seconds != null) jamesonTimer = Math.max(0, seconds);
+    return jamesonTimer;
+  },
   getLevelSplash: () => ({ timer: levelSplashTimer, level: splashLevel }),
   getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
   getCamera,

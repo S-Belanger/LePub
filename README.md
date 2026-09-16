@@ -43,6 +43,10 @@ Opening `index.html` directly also works in modern browsers, although serving th
 
 Life begins regenerating after three hit-free seconds. A fully empty bar takes 20 seconds to refill, and the third hit before recovery ends the shift.
 
+### The Jameson
+
+About one drink delivery in ten comes back as a shot for the deer. For the next ten seconds he glows whiskey-gold, the hunter cannot touch him — anyone who tries is bounced off — and the hunter spends the time running the other way. An amber bar under the life segments counts the shot down, and both it and the glow blink through the last three seconds. A second shot restarts the clock rather than stacking on top of it, and food orders never come with one.
+
 ### Controls
 
 | Action | Keyboard | Touch |

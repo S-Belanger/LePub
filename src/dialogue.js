@@ -15,6 +15,7 @@ const Dialogue = (function () {
   // ambient line that's still cooling down, and to drop queued ambient chatter.
   const CATEGORY_PRIORITY = {
     caught: 5,
+    jameson: 4,
     stageChanged: 4,
     nearMiss: 4,
     served: 3,

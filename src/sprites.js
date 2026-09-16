@@ -39,6 +39,19 @@ const DOE_PALETTE = {
   s: '#2a2018', // feet
 };
 
+// A Jameson from a grateful customer leaves the doe briefly untouchable, and
+// the sprite says so: the same rows painted through a ring of whiskey-gold
+// palettes, cycled a few times a second. They're prebuilt rather than mixed
+// per frame because drawSprite caches one baked canvas per palette *object*,
+// so three fixed objects cost three bakes for the whole run and a freshly
+// mixed palette every frame would cost one bake every frame.
+function doeTint(over) { return Object.assign({}, DOE_PALETTE, over); }
+const DOE_JAMESON_PALETTES = [
+  doeTint({ n: '#e0a850', f: '#f8e8b8', h: '#d8b058', k: '#f6cc96', e: '#6e4820', d: '#8a5a20', c: '#f0e0b0', s: '#3a2814' }),
+  doeTint({ n: '#ffd870', f: '#fff4c8', h: '#f0c86a', k: '#ffd9a0', e: '#8a5c28', d: '#b8802c', c: '#fff0c0', s: '#4a3418' }),
+  doeTint({ n: '#fff0b0', f: '#ffffff', h: '#ffe49a', k: '#ffe9c8', e: '#a8763a', d: '#e0a840', c: '#fffbe0', s: '#665028' }),
+];
+
 const DOE_IDLE = buildSprite([
   R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler tips (taller rack)
   R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler base
