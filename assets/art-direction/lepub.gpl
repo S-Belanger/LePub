@@ -1,0 +1,34 @@
+GIMP Palette
+Name: LePub ART-PLAN palette
+Columns: 6
+# Exact 30-color palette transcribed from ART-PLAN.md
+ 22  17  12	outline / ink #16110c
+ 24  21  21	outline / ink #181515
+ 86  56  39	walnut boards #563827
+ 98  64  43	walnut boards #62402b
+112  73  47	walnut boards #70492f
+ 74  48  36	walnut boards #4a3024
+122  80  50	walnut boards #7a5032
+ 59  34  25	walnut furniture #3b2219
+ 92  54  38	walnut furniture #5c3626
+ 34  19  15	walnut furniture #22130f
+117  67  36	bar top / lit wood #754324
+168 102  50	bar top / lit wood #a86632
+225 160  82	bar top / lit wood #e1a052
+125  82  26	brass #7d521a
+217 154  56	brass #d99a38
+246 214 136	brass #f6d688
+ 78  29  26	burgundy leather #4e1d1a
+141  52  47	burgundy leather #8d342f
+179  74  63	burgundy leather #b34a3f
+ 41  73  54	forest green #294936
+ 79 118  84	forest green #4f7654
+184 117  36	amber lamp #b87524
+240 184  76	amber lamp #f0b84c
+255 244 214	amber lamp #fff4d6
+229 199 141	parchment / cream #e5c78d
+241 217 168	parchment / cream #f1d9a8
+245 227 185	parchment / cream #f5e3b9
+ 16  42  58	cool window #102a3a
+ 50 102 133	cool window #326685
+142 200 212	cool window #8ec8d4

@@ -4,6 +4,60 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
+## 2026-09-16 15:30 — P0: overhead overhaul pack received; discovery and baseline
+
+The user delivered `LePub-Character-Reference-Pack.zip` (Astra's plan). Binding
+docs copied to `docs/overhaul/` (camera direction, architectural plan,
+checklist, reactions); the two overhead references to
+`assets/art-direction/overhead/`; the 30-colour palette to
+`assets/art-direction/lepub.gpl`. Direction in force, superseding my
+three-quarter pass: **high overhead camera** (crowns/hats/shoulders,
+foreshortened bodies, dominant tabletops, shallow fronts), materials and
+lighting from the pub painting, preserve all geometry/rules/events, four
+cardinal directions, reactions from existing events only, compact UI, no
+double-scaling, phases P0–P7 with evidence.
+
+### P0 evidence (ARC-01/02/10/11/13/14)
+
+- Repo map: see CLAUDE.md (verified this session). Scripts: classic globals in
+  `index.html` order; no bundler. Loop in `game.js` `loop()`; `update(dt)`
+  gates on `caught`, `shiftTally`, `hitStopTimer`.
+- Units: world 200×360; logical viewport 320×180 / 180×320 (clamped
+  160–320 × 144–360); `ART_SCALE` 2 applied once (`ctx.setTransform`) →
+  backing viewW×2; CSS = viewW×`pixelScale` (integer, 4 at 1280×720). No DPR
+  handling (browser upscales the pixelated canvas). `pixelSize 0.5` sheets:
+  1 authored px = 1 backing px = 0.5 world unit → 64 px cell = 32 units,
+  48 px silhouette = 24 units. Hitboxes in `ENTITY_HITBOXES`, independent of
+  art. No pointer→world mapping exists (touch is DOM) — ARC-02 pointer tests
+  are N/A.
+- Geometry IDs: `BAR_SEGMENTS[i].station` (taps/shelf/hatch), `TABLES[0]`
+  booth, `SEATS` with `side`/`regularId`, `BENCHES`, `DOOR`, `DECOR.lamps`.
+- Authoritative events: `completeDelivery` (tip/clutch/double/round/hunter),
+  `regularGiveUp`/walk-in abandonment, the hit block in `update()` (already
+  has `HIT_STOP` 0.08 s + pint knock), `hunterNoticesPlayer` / lost /
+  `hunterServed` → drinking, `addSpill`, `endShift`/`startNextShift`,
+  `tryCallRound`/`noteRoundDelivery`, ghost spook.
+- HUD inventory: shift, tips/target, total, clock (+last call), 3 pints,
+  tickets (compact/urgent/carried) with patience gauge, dialogue placards,
+  start/help overlay, caught board + ledger + name entry, tally board,
+  restart button, ?/SFX/fullscreen chips, touch stick + action.
+- Baseline: `node tests/smoke.js` passes (no known failures). Captures:
+  scratchpad `review/review-frame.png` (= `assets/gameplay.png` at
+  `ad61922`), `shots/*`. Perf (headless Edge, 1280×720, 320×180 @4×, shift
+  6 crowd, hunter chasing, 600 frames update+render): median 1.9–3.0 ms,
+  p95 7.6–10.6 ms (scratchpad `perf.js`).
+- Discrepancies vs the pack: it assumes a possible world×2 — not needed; the
+  renderer already has the 2× art backing. Pack's ART-PLAN is my §2b-less
+  copy. "Jay" = the waiter.
+
+### Plan for this session
+
+P1 metrics doc + raster frame draw; P2 `src/assets.js` (PNG+JSON v1 per the
+pack's vocabulary, validation, decode, fallback, tests); P3 overhead Doe +
+hunter + overhead furniture/lamp/counter-props proof at native size; P4 cast;
+P5 reactions on existing events; P6 UI (tiny station plaques, scanlines
+down); P7 perf/docs/captures/push.
+
 ## START HERE (2026-09-15 20:55) — next session begins with an asset ZIP
 
 State: branch `feat/regulars-responsive-pixel-polish` at `f558490`, in sync with
