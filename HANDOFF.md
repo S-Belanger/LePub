@@ -145,6 +145,12 @@ double-scaling, phases P0–P7 with evidence.
   §3/§4/§10/§12, art-direction README status, README test note,
   `assets/gameplay.png` = current natural frame.
 
+### 17:05 — pushed and previewed
+
+- Branch at `f45c112`, in sync with origin. Preview
+  <https://lepub-373i6kp3n-maisoncastros-projects.vercel.app>; summary posted on
+  PR #3.
+
 ### Remaining gaps (honest list)
 
 - Production art: every atlas in `assets/sprites/` is the *generated*
