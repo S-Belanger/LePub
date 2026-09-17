@@ -170,6 +170,20 @@ const DIALOGUE_LINES = [
   { who: 'gerald', category: 'jameson', text: "One shot and he thinks he's immortal." },
   { who: 'gerald', category: 'jameson', text: "That's not a tip. That's an enabler." },
   { who: 'gerald', category: 'jameson', nazim: ['drunk', 'gone'], text: "Wrong man got the Jameson." },
+
+  // ---------------------------------------------------------------- BLADDER
+  // The other cost of all those free shots. bladderFull fires the moment the
+  // clock starts; bathroomRelief when he makes it; wetPants when he doesn't.
+  { who: 'nazim', category: 'bladderFull', text: "He's doing the little dance now." },
+  { who: 'sam', category: 'bladderFull', text: "Three whiskeys in. Physics is due." },
+  { who: 'gerald', category: 'bladderFull', text: "Go. Now. We'll hold the fort." },
+  { who: 'nazim', category: 'bathroomRelief', text: "And he's back. Lighter, somehow." },
+  { who: 'sam', category: 'bathroomRelief', text: "Cutting it fine. But cut." },
+  { who: 'gerald', category: 'bathroomRelief', text: "Bladder: one. Dignity: barely." },
+  { who: 'nazim', category: 'wetPants', text: "Oh no. Oh, no no no." },
+  { who: 'sam', category: 'wetPants', text: "That's a whole new stain on his night." },
+  { who: 'gerald', category: 'wetPants', text: "And there it is. Slower than the hunter, this time." },
+  { who: 'gerald', category: 'wetPants', rare: true, text: "In front of everyone, too. Beautiful.", weight: 0.7 },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------

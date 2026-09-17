@@ -52,6 +52,11 @@ const DOE_JAMESON_PALETTES = [
   doeTint({ n: '#fff0b0', f: '#ffffff', h: '#ffe49a', k: '#ffe9c8', e: '#a8763a', d: '#e0a840', c: '#fffbe0', s: '#665028' }),
 ];
 
+// The bladder losing its race against the clock: a single darkened palette
+// (no cycling needed, it isn't a warning — it's already happened) staining
+// the onesie and chest patch for a few seconds.
+const DOE_WET_PALETTE = doeTint({ d: '#4a4234', c: '#a89870', s: '#1c1710' });
+
 const DOE_IDLE = buildSprite([
   R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler tips (taller rack)
   R('.', 5, 'n', 1, '.', 4, 'n', 1, '.', 5), // antler base
@@ -547,6 +552,75 @@ const WAITER_SPRAY_B = buildSprite([
   ...WAITER_SPRAY.rows.slice(15),
 ]);
 
+// --- Busboy: the one who comes to mop up after an accident. Dark hair, a
+// goatee, no glasses or chain — reads as a different member of staff from
+// the waiter at a glance even sharing the same silhouette. The mop is folded
+// into the existing 14-wide frame rather than widened like the waiter's
+// spray: just a couple of columns on his right side switch from apron/leg
+// colors to the mop's, so the two poses read as a small side-to-side wipe
+// without needing a second baked width.
+const BUSBOY_PALETTE = {
+  '.': null,
+  h: '#241a12', // dark hair
+  k: '#e2b78d', // skin
+  e: '#201812', // eyes
+  j: '#1c1410', // goatee
+  t: '#4a5c48', // work shirt
+  a: '#9b9284', // apron
+  p: '#2c2620', // trousers
+  s: '#1a1512', // shoes
+  M: '#8a6a3c', // mop handle
+  m: '#d8d2c0', // mop head
+};
+
+const BUSBOY_IDLE = buildSprite([
+  '....hhhhhh....',
+  '...hhhhhhhh...',
+  '..hhhhhhhhhh..',
+  '..hkkkkkkkkh..',
+  '..kkkkkkkkkk..',
+  '..k.ee..ee.k..',
+  '...kkkkkkkk...',
+  '....kjjjjk....',
+  '.....kjjk.....',
+  '..tttttttttt..',
+  '.tttttttttttt.',
+  '.ttaaaaaaaatt.',
+  '.ktaaaaaaaatk.',
+  '..aaaaaaaaaa..',
+  '...ppp..ppp...',
+  '...ppp..ppp...',
+  '...sss..sss...',
+]);
+
+const BUSBOY_WALK = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 14),
+  '..ppp....ppp..',
+  '.ppp......ppp.',
+  'sss........sss',
+]);
+
+// Mopping: the same 14-wide frame, with the mop leaning down his right side
+// from hand to floor. MOP_B nudges it one column over so alternating between
+// the two reads as a short wipe rather than a held pose.
+const BUSBOY_MOP = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 12),
+  '.ktaaaaaaaatM.',
+  '..aaaaaaaaaaM.',
+  '...ppp..ppp.m.',
+  '...ppp..ppp.m.',
+  '...sss..sss.m.',
+]);
+
+const BUSBOY_MOP_B = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 12),
+  '.ktaaaaaaaMk.',
+  '..aaaaaaaaaM..',
+  '...ppp..pppm..',
+  '...ppp..pppm..',
+  '...sss..sssm..',
+]);
+
 const SPRITES = {
   hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
   doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
@@ -556,6 +630,11 @@ const SPRITES = {
     idle: WAITER_IDLE, walk: WAITER_WALK,
     spray: WAITER_SPRAY, sprayB: WAITER_SPRAY_B,
     palette: WAITER_PALETTE,
+  },
+  busboy: {
+    idle: BUSBOY_IDLE, walk: BUSBOY_WALK,
+    mop: BUSBOY_MOP, mopB: BUSBOY_MOP_B,
+    palette: BUSBOY_PALETTE,
   },
   nazim: {
     idle: NAZIM_IDLE, walk: NAZIM_IDLE, idleB: NAZIM_BLINK, talk: NAZIM_TALK,

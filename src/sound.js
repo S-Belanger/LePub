@@ -128,6 +128,32 @@ const Sound = (function () {
         if (!allow(name, 0.12)) return;
         tone(115, 0.045, { type: 'square', volume: 0.035 });
         break;
+      // A glass goes over on the bar: a sharp high crack followed by a
+      // scatter of quieter, detuned clinks as the pieces settle.
+      case 'glassBreak':
+        if (!allow(name, 0.2)) return;
+        tone(1800, 0.05, { to: 900, type: 'square', volume: 0.08 });
+        tone(1300, 0.06, { type: 'triangle', volume: 0.05, delay: 0.03 });
+        tone(2100, 0.04, { type: 'triangle', volume: 0.04, delay: 0.05 });
+        tone(950, 0.08, { type: 'triangle', volume: 0.035, delay: 0.09 });
+        break;
+      // Making it to the bathroom in time: a quick descending relief, playful
+      // rather than triumphant — it's a bodily function, not a delivery.
+      case 'bathroomRelief':
+        tone(700, 0.07, { to: 420, type: 'sine', volume: 0.09 });
+        tone(520, 0.09, { to: 300, type: 'sine', volume: 0.07, delay: 0.06 });
+        break;
+      // The clock running out: a low, embarrassed sputter.
+      case 'wetPants':
+        tone(180, 0.06, { type: 'square', volume: 0.08 });
+        tone(140, 0.05, { type: 'square', volume: 0.07, delay: 0.05 });
+        tone(100, 0.14, { to: 60, type: 'sawtooth', volume: 0.08, delay: 0.1 });
+        break;
+      // A puddle mopped up: a couple of damp, hollow slaps.
+      case 'mop':
+        tone(320, 0.06, { to: 220, type: 'sine', volume: 0.06 });
+        tone(260, 0.07, { to: 180, type: 'sine', volume: 0.05, delay: 0.09 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });
