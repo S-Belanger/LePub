@@ -621,6 +621,80 @@ const BUSBOY_MOP_B = buildSprite([
   '...sss..sssm..',
 ]);
 
+// --- Alex: a wandering regular who occasionally bursts in to drop into a full
+// split in the middle of the floor, stopping traffic for whoever runs into
+// him before picking himself back up. Drawn from a photo reference: dark
+// swept hair, a short full beard, a wide grin — dressed down from the
+// waiter's service look into a t-shirt and shorts, since he's here to
+// stretch, not to work.
+//
+// idle/walk match the waiter/busboy's 14-wide convention (14 head/torso rows
+// then 3 leg rows) so he reads as one more member of the cast at a glance.
+// split is a separate, wider (22px) frame: the legs run out sideways along
+// the floor instead of down, which is also what makeSplitCollider in game.js
+// keys off to block the corridor he lands in.
+const ALEX_PALETTE = {
+  '.': null,
+  h: '#2a1a10', // dark hair
+  H: '#4a3018', // swept-back highlight
+  k: '#e3ac7c', // skin
+  g: '#1c1c22', // glasses frame
+  w: '#8fa8bd', // lens catchlight
+  e: '#201410', // eyes, behind the lens
+  j: '#141110', // short beard — black, a shade cooler/darker than the hair so it still reads as its own shape
+  m: '#f7f2e4', // grin
+  t: '#2f6f6a', // t-shirt
+  p: '#4a4a52', // shorts
+  s: '#e8e4d8', // sneakers
+};
+
+const ALEX_IDLE = buildSprite([
+  '....hhhhhh....',
+  '...hHHhhhhh...',
+  '..hhHHhhhhhh..',
+  '..hkkkkkkkkh..',
+  '..ggggkkgggg..',
+  '..gwegkkgweg..',
+  '...kkkkkkkk...',
+  '...jkmmmmkj...',
+  '....jjjjjj....',
+  '..tttttttttt..',
+  '.tttttttttttt.',
+  '.tttttttttttt.',
+  '...pppppppp...',
+  '...pp....pp...',
+  '...kk....kk...',
+  '...ss....ss...',
+  '...ss....ss...',
+]);
+
+const ALEX_WALK = buildSprite([
+  ...ALEX_IDLE.rows.slice(0, 14),
+  '..kk......kk..',
+  '.kk........kk.',
+  'ss..........ss',
+]);
+
+// The split: head and torso padded out to 22px so the arms have somewhere to
+// go, legs run flat along the last row instead of down — shoes at the outer
+// edges, a gap at the centre for the floor between them.
+const ALEX_SPLIT = buildSprite([
+  '....' + '....hhhhhh....' + '....',
+  '....' + '...hHHhhhhh...' + '....',
+  '....' + '..hhHHhhhhhh..' + '....',
+  '....' + '..hkkkkkkkkh..' + '....',
+  '....' + '..ggggkkgggg..' + '....',
+  '....' + '..gwegkkgweg..' + '....',
+  '....' + '...kkkkkkkk...' + '....',
+  '....' + '...jkmmmmkj...' + '....',
+  '....' + '....jjjjjj....' + '....',
+  '..kk' + '..tttttttttt..' + 'kk..', // arms out for balance
+  '....' + '.tttttttttttt.' + '....',
+  '....' + '...pppppppp...' + '....',
+  '....' + '...pppppppp...' + '....',
+  'sskkkkkkkk..kkkkkkkkss',              // legs run flat, floor gap at centre
+]);
+
 const SPRITES = {
   hunter: { idle: HUNTER_IDLE, walk: HUNTER_WALK, palette: HUNTER_PALETTE },
   doe: { idle: DOE_IDLE, walk: DOE_WALK, palette: DOE_PALETTE },
@@ -635,6 +709,11 @@ const SPRITES = {
     idle: BUSBOY_IDLE, walk: BUSBOY_WALK,
     mop: BUSBOY_MOP, mopB: BUSBOY_MOP_B,
     palette: BUSBOY_PALETTE,
+  },
+  alex: {
+    idle: ALEX_IDLE, walk: ALEX_WALK,
+    split: ALEX_SPLIT,
+    palette: ALEX_PALETTE,
   },
   nazim: {
     idle: NAZIM_IDLE, walk: NAZIM_IDLE, idleB: NAZIM_BLINK, talk: NAZIM_TALK,

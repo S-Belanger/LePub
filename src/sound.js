@@ -154,6 +154,22 @@ const Sound = (function () {
         tone(320, 0.06, { to: 220, type: 'sine', volume: 0.06 });
         tone(260, 0.07, { to: 180, type: 'sine', volume: 0.05, delay: 0.09 });
         break;
+      // The hunter stepping on a stray pack: a lazy, unbothered exhale.
+      case 'smokeBreak':
+        tone(220, 0.1, { to: 160, type: 'sine', volume: 0.07 });
+        tone(180, 0.16, { to: 120, type: 'sine', volume: 0.05, delay: 0.09 });
+        break;
+      // Back on the hunt: the same exhale, reversed and a touch sharper.
+      case 'smokeBreakEnd':
+        tone(160, 0.08, { to: 260, type: 'triangle', volume: 0.06 });
+        break;
+      // Alex dropping into a split in the middle of the floor: a quick,
+      // theatrical little fanfare — he's proud of this.
+      case 'alexSplit':
+        tone(440, 0.06, { type: 'triangle', volume: 0.09 });
+        tone(659, 0.07, { type: 'triangle', volume: 0.09, delay: 0.05 });
+        tone(880, 0.12, { type: 'triangle', volume: 0.09, delay: 0.1 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });

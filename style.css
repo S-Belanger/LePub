@@ -288,6 +288,18 @@ kbd {
 }
 .action.active { opacity: 1; transform: scale(0.94); }
 
+/* Smaller and set apart from the main action button — a secondary, rarer
+   button rather than a second thing to reach for on every delivery. */
+.action.drop {
+  right: calc(112px + var(--safe-r));
+  bottom: calc(46px + var(--safe-b));
+  width: 56px;
+  height: 56px;
+  font-size: 13px;
+  background: radial-gradient(circle at 50% 40%, rgba(150,142,128,0.85) 0%, rgba(90,84,74,0.8) 100%);
+  border: 2px solid rgba(60, 56, 48, 0.9);
+}
+
 /* `touch-only` hints stay hidden unless the touch UI is live. */
 .touch-only { display: none; }
 body.touch .touch-only { display: inline; }
