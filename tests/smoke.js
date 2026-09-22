@@ -75,7 +75,7 @@ function createRuntime() {
   const elements = new Map();
   const ids = [
     'stage', 'top-bar', 'btn-help', 'btn-sound', 'btn-fullscreen', 'overlay',
-    'btn-start', 'caught-actions', 'btn-restart', 'touch', 'stick', 'btn-action',
+    'btn-start', 'caught-actions', 'btn-restart', 'touch', 'stick', 'btn-action', 'btn-drop',
   ];
   for (const id of ids) elements.set(id, new Element(id));
   elements.set('game', new Canvas('game'));
@@ -468,6 +468,79 @@ function run() {
   debug.resetGame();
   debug.render();
 
+  // Main's additions must coexist with the shift/tray/hunter architecture.
+  const evalGame = source => vm.runInContext(source, context);
+  debug.resetGame();
+  evalGame('paused = false');
+  for (let i = 0; i < 5; i++) {
+    debug.forceRegularOrder('sam', 'food');
+    evalGame("completeDelivery(regularById.get('sam'))");
+  }
+  assert(debug.getCigaretteReserve() === 1, 'Five deliveries should grant a held pack.');
+  debug.endShift();
+  debug.dropCigarette();
+  assert(debug.getCigaretteReserve() === 1, 'The tally must freeze pack drops too.');
+  debug.startNextShift();
+  debug.dropCigarette();
+  assert(debug.cigarettePacks.length === 1 && debug.getCigaretteReserve() === 0, 'Drop consumes exactly one held pack.');
+
+  debug.resetGame();
+  evalGame('paused = false; hitInvulnTimer = 999; player.x = 180; player.y = 320; hunter.x = 145; hunter.y = 320');
+  debug.setHunterState('scanning');
+  debug.hunterWantsPint();
+  debug.player.tray.push({ customer: debug.hunter, type: debug.hunter.orderType });
+  debug.fillCigaretteReserve(1);
+  debug.dropCigarette();
+  debug.cigarettePacks[0].x = debug.hunter.x;
+  debug.cigarettePacks[0].y = debug.hunter.y;
+  debug.update(0.001);
+  assert(debug.getSmokeBreak().state === 'leaving', 'Stepping on a pack must interrupt the hunter.');
+  assert(debug.player.tray.length === 0 && debug.hunter.orderType === null, 'Leaving hunter must release his order and carried pint.');
+  for (let i = 0; i < 200 && debug.getSmokeBreak().state === 'leaving'; i++) debug.update(0.05);
+  assert(debug.getSmokeBreak().state === 'outside', 'Smoke route must reach the door.');
+  debug.render();
+  debug.giveSmokeBreak(0.01, true);
+  debug.update(0.05);
+  assert(debug.getSmokeBreak().state === 'returning', 'Expired smoke break must route him back.');
+  for (let i = 0; i < 200 && debug.getSmokeBreak().state === 'returning'; i++) debug.update(0.05);
+  assert(debug.getSmokeBreak().state === null && debug.getHunterState().state === 'scanning', 'Returning hunter must resume a valid patrol.');
+
+  debug.resetGame();
+  evalGame('paused = false; player.x = 145; player.y = 320; hunter.x = 148; hunter.y = 320');
+  debug.setHunterState('chase');
+  debug.giveJameson();
+  const protectedLife = debug.getLife();
+  debug.update(0.01);
+  assert(debug.getLife() === protectedLife && Math.hypot(debug.hunter.x - debug.player.x, debug.hunter.y - debug.player.y) > 10, 'Jameson must bounce the hunter without costing life.');
+  debug.giveJameson(); debug.giveJameson();
+  assert(debug.getBladder().level === 3 && debug.getBladder().urgent > 0, 'Three shots must start the bathroom timer.');
+  debug.player.x = debug.BATHROOM.x; debug.player.y = debug.BATHROOM.y;
+  debug.update(0.01);
+  assert(debug.getBladder().level === 0 && debug.getBladder().puddles === 0, 'Reaching the bathroom must relieve the bladder.');
+  debug.fillBladder();
+  evalGame('player.x = 145; player.y = 320; bladderUrgentTimer = 0.01; score = 50; shiftTips = 50; hitInvulnTimer = 999');
+  debug.update(0.02);
+  assert(debug.getBladder().puddles === 1 && debug.getBladder().wet > 0, 'A missed bathroom timer must leave a puddle.');
+  assert(debug.getScore() === 30 && debug.getShift().tips === 30, 'Bathroom penalties must update total and shift tips together.');
+  debug.render();
+  debug.spawnBusboy();
+  debug.getBusboy().line = 'Du coup !';
+  debug.render();
+  for (let i = 0; i < 300 && debug.wetPantsPuddles.length; i++) evalGame('gameTime += 0.05; updateBusboy(0.05)');
+  assert(debug.wetPantsPuddles.length === 0, 'Busboy must reach and mop a reachable puddle.');
+
+  debug.spawnAlex();
+  const alex = debug.getAlex();
+  assert(alex, 'Alex should find a floor position.');
+  Object.assign(alex, { x: 145, y: 320, path: [{ x: 145, y: 320 }], pathIndex: 0 });
+  evalGame('updateAlex(0.01)');
+  assert(alex.state === 'splitting' && evalGame('FURNITURE.includes(alex.blocker)'), 'Alex split must add its collider.');
+  debug.render();
+  evalGame('updateAlex(ALEX_SPLIT_TIME + 0.01)');
+  assert(alex.state === 'leaving' && !evalGame("FURNITURE.some(f => f.type === 'alex')"), 'Alex must remove the blocker when standing up.');
+  debug.resetGame();
+  assert(!debug.getJameson().active && debug.getBladder().level === 0 && !debug.getBusboy() && !debug.getAlex() && debug.getSmokeBreak().state === null && !debug.cigarettePacks.length, 'Restart must clear all incoming run state.');
+
   // Raster path: with a ready atlas the Doe draws from it (frame lookup
   // succeeds and render() survives drawImage with a source rect); without one
   // he falls back to the procedural sheet. Fake I/O, no network.
@@ -489,6 +562,12 @@ function run() {
     const frame = vm.runInContext('rasterFrameFor(player)', context);
     if (!frame || frame.rect.width !== 40) throw new Error('Doe should draw from the atlas frame.');
     debug.render();
+    debug.giveJameson();
+    const tinted = vm.runInContext('statusRasterFrame(rasterFrameFor(player), player)', context);
+    assert(tinted.image !== frame.image && tinted.pivot === frame.pivot, 'Jameson raster tint must preserve the illustrated frame pivot.');
+    debug.render();
+    vm.runInContext('wetPantsTimer = 2', context);
+    debug.render();
     if (vm.runInContext('rasterFrameFor(hunter)', context) !== null) throw new Error('Hunter has no atlas and must fall back.');
     // Directional sheets have lean.up/slump.up, not the old bare aliases.
     // Checking only set.lean silently erased both intoxication silhouettes.
@@ -500,7 +579,7 @@ function run() {
   });
 
   rasterCheck.then(() => console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +
-    `${debug.regularState().length} regulars, waiter visit, and serving loop, hunter states, Nazim's night, the round, the ghost's spook, reactions, shifts, and render pass with HUD, tally and caught boards; raster atlas path.`)).catch(err => { console.error(err); process.exit(1); });
+    `${debug.regularState().length} regulars, waiter visit, serving, hunter states, Nazim, round, ghost, reactions, shifts, Jameson, bathroom, smoke routes, busboy, Alex and reset; HUD/tally/caught rendering and raster status effects.`)).catch(err => { console.error(err); process.exit(1); });
 }
 
 run();

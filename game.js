@@ -98,6 +98,8 @@ const ENTITY_HITBOXES = {
   customer: { w: 14, h: 13 },
   ghost: { w: 12, h: 10 },
   waiter: { w: 14, h: 17 },
+  busboy: { w: 14, h: 17 },
+  alex: { w: 14, h: 17 },
   nazim: { w: 14, h: 15 },
   sam: { w: 14, h: 15 },
   gerald: { w: 14, h: 15 },
@@ -273,6 +275,13 @@ for (const cfg of REGULARS) {
 // Customers walk in from this point at the bottom wall.
 const DOOR = { x: WORLD_W / 2, y: WORLD_H - 3 };
 
+// The bathroom, for the bladder mechanic below: no extra floor space, just a
+// marked spot in the existing gap on the right side of the room — the open
+// floor right of TABLES[3] (bottom edge y=293.5) and short of the back wall,
+// the first thing on the right after walking in through DOOR. Clear of every
+// collider in that pocket.
+const BATHROOM = { x: 180, y: 320 };
+
 // ---- Sprite rendering -------------------------------------------------------
 // Sprite geometry and palettes live in src/sprites.js; this is the single
 // generic renderer for that rows+palette format.
@@ -414,6 +423,8 @@ const CUSTOMER_FOOTPRINT = footprintFor('customer');
 // the hunter searches a 4px grid: four times the cells, still cheap for a
 // route recomputed every second or so.
 const HUNTER_FOOTPRINT = footprintFor('hunter', 4);
+const BUSBOY_FOOTPRINT = footprintFor('busboy');
+const ALEX_FOOTPRINT = footprintFor('alex');
 
 // Exact line-segment/AABB test. Sampling a fixed number of points can skip a
 // thin chair collider on a long diagonal, which made the smoothing pass turn
@@ -642,7 +653,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: hitbox.w,
     h: hitbox.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : 54,
+    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : 54,
     flip: false,
     facing: 'down',   // down | up | right | left — visual only, from movement
     legTimer: 0,
@@ -745,6 +756,137 @@ const LIFE_REGEN_DELAY = 3;
 const LIFE_REGEN_DURATION = 20; // seconds for a fully-drained bar to refill
 let hitInvulnTimer = 0;
 let regenDelayTimer = 0;
+
+// ---- The Jameson: roughly two out of every five drink deliveries comes back
+// as a shot for the deer, and for JAMESON_DURATION afterwards the hunter
+// cannot touch him — the star from Mario, poured. It deliberately stacks with
+// nothing: a second shot restarts the clock rather than extending it, so the
+// effect can never be farmed into a permanently safe run.
+//
+// Only alcoholic orders qualify (a plate of food doesn't come with a whiskey),
+// which puts the real rate a little under the nominal chance.
+const JAMESON_CHANCE = 0.4;
+const JAMESON_DURATION = 10;
+const JAMESON_WARN_TIME = 3;      // last seconds, where the tint starts strobing
+const JAMESON_BOUNCE_COOLDOWN = 0.4; // between shoves, so contact isn't a buzz
+const JAMESON_BOUNCE_FORCE = 40;
+let jamesonTimer = 0;
+let jamesonBounceTimer = 0;
+function jamesonActive() { return jamesonTimer > 0; }
+
+// ---- The bladder: a comic consequence for stacking up Jamesons. Every shot
+// fills it a third; once full, the deer has BLADDER_TIME_LIMIT seconds to
+// reach the bathroom (BATHROOM, declared with the world furniture) or he wets
+// himself — a score penalty and a brief, purely cosmetic recolor, nothing
+// that touches the chase itself.
+const BLADDER_MAX = 3;
+const BLADDER_TIME_LIMIT = 60;
+const BLADDER_REACH_RADIUS = 14;
+const WET_PANTS_DURATION = 6;
+const WET_PANTS_PENALTY = 20;
+const WET_PANTS_SCARE_RADIUS = 28; // walk-ins this close to the puddle bail
+let bladderLevel = 0;
+let bladderUrgentTimer = 0; // >0 once full: seconds left to reach the bathroom
+let wetPantsTimer = 0;      // >0 briefly after an accident — just the sprite tint
+// Every accident leaves its own puddle, and unlike the tint it doesn't fade —
+// it's a stain on the floor, not a status effect, and stays for the rest of
+// the run (cleared on resetGame()) still scaring off anyone who gets close.
+const wetPantsPuddles = [];
+function bladderFull() { return bladderLevel >= BLADDER_MAX; }
+
+// ---- Cigarette packs: every CIGARETTES_EVERY completed deliveries (walk-in
+// or regular, same counter) the player pockets a pack, up to
+// CIGARETTE_RESERVE_MAX held at once. Pressing the drop key drops one at the
+// player's own feet as a trap — nothing rolls onto the floor on its own. If
+// the hunter's own patrol steps on a dropped pack he stops the chase outright
+// for a smoke break, same length no matter how many turn up (refresh, not
+// stack — see grantSmokeBreak, same policy as the Jameson).
+const CIGARETTES_EVERY = 5;
+const CIGARETTE_RESERVE_MAX = 3;
+const CIGARETTE_PICKUP_RADIUS = 8;
+const SMOKE_BREAK_DURATION = 15;
+// A dropped pack left untouched doesn't sit there forever — it's clutter,
+// not furniture. The last stretch fades it out rather than popping it away,
+// so it doesn't vanish out from under the player's nose without warning.
+const CIGARETTE_PACK_TTL = 25;
+const CIGARETTE_PACK_FADE_TIME = 4;
+let deliveriesSinceCigarette = 0;
+let cigaretteReserve = 0;       // packs the player is currently holding
+const cigarettePacks = []; // { x, y, ttl } — packs actually dropped on the floor
+
+// He can't smoke inside: stepping on a pack routes him out through DOOR
+// (same route customers use) rather than freezing him on the spot. 'leaving'
+// and 'returning' are a walk like any other routed walk-on, and only
+// 'outside' is a plain timer with the hunter off the floor entirely — not
+// drawn, not collidable, nowhere for the player to even find him.
+let hunterSmokeState = null;   // null | 'leaving' | 'outside' | 'returning'
+let hunterSmokeOutsideTimer = 0;
+let hunterSmokeReturnSpot = null; // where he was standing when he left
+// Safety net for a route blocked by a new obstacle after planning. Smoke
+// paths use the hunter's own footprint; only sustained lack of movement
+// consumes this timeout, so a long successful walk is never cut short.
+const HUNTER_SMOKE_STUCK_TIMEOUT = 6;
+let hunterSmokeTravelTimer = 0;
+function hunterOnSmokeBreak() { return hunterSmokeState !== null; }
+
+// Drops one held pack at the player's feet. No-op with nothing in reserve.
+function dropCigarette() {
+  if (caught || paused || shiftTally || cigaretteReserve <= 0) return;
+  cigaretteReserve--;
+  cigarettePacks.push({ x: player.x, y: player.y, ttl: CIGARETTE_PACK_TTL });
+  Sound.play('pickup');
+  addFloatingText(player.x, player.y - player.h - 4, 'PACK DROPPED', '#c9c2b3');
+}
+
+// Stepping on a pack. Already on the way out (or already outside): refresh
+// the outside timer rather than restarting the whole walk, same "refresh not
+// stack" policy as the Jameson. Mid-walk in either direction, a second pack
+// underfoot changes nothing until he's actually outside to refresh.
+function grantSmokeBreak() {
+  if (hunterSmokeState === 'outside') { hunterSmokeOutsideTimer = SMOKE_BREAK_DURATION; return; }
+  if (hunterSmokeState) return;
+  hunterSmokeState = 'leaving';
+  clearHunterOrder();
+  removeFromTray(hunter);
+  setHunterState('scanning');
+  hunterAlert = null;
+  hunterSlide = null;
+  hunterRubTimer = 0;
+  hunterSmokeTravelTimer = 0;
+  hunterSmokeReturnSpot = { x: hunter.x, y: hunter.y };
+  hunter.path = computeCustomerPath(hunter, reachablePoint(hunter, DOOR), null, HUNTER_FOOTPRINT);
+  hunter.pathIndex = 0;
+  Sound.play('smokeBreak');
+  addFloatingText(hunter.x, hunter.y - hunter.h - 4, 'SMOKE BREAK', '#c9c2b3');
+}
+
+// Same routed walk as the waiter's/busboy's, just against `hunter` instead —
+// used for both legs of the smoke break (see grantSmokeBreak/update).
+function hunterFollowSmokePath(dt) {
+  const target = hunter.path[hunter.pathIndex];
+  if (!target) return true;
+  const oldX = hunter.x, oldY = hunter.y;
+  const dx = target.x - hunter.x;
+  const dy = target.y - hunter.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1.5) {
+    hunter.x = target.x;
+    hunter.y = target.y;
+    if (hunter.pathIndex < hunter.path.length - 1) { hunter.pathIndex++; return false; }
+    hunter.moving = false;
+    return true;
+  }
+  const step = Math.min(dist, hunter.speed * dt);
+  const nx = clamp(hunter.x + (dx / dist) * step, hunter.w / 2, WORLD_W - hunter.w / 2);
+  if (!collidesAt(hunter, nx, hunter.y)) hunter.x = nx;
+  const ny = clamp(hunter.y + (dy / dist) * step, hunter.h / 2, WORLD_H - hunter.h / 2);
+  if (!collidesAt(hunter, hunter.x, ny)) hunter.y = ny;
+  hunter.flip = dx < 0;
+  faceToward(hunter, dx, dy);
+  if (Math.hypot(hunter.x - oldX, hunter.y - oldY) > 0.01) hunterSmokeTravelTimer = 0;
+  hunter.moving = true;
+  return false;
+}
 
 // ---- Shifts: the run is a sequence of shifts, and difficulty (more
 // customers, a hungrier hunter) follows the shift number rather than the
@@ -995,6 +1137,27 @@ function updateSpills(dt) {
   }
 }
 
+// A walk-in who got too close to the puddle: whether they were still on
+// their way to a seat or already sitting, they're done with this place.
+// Only unserved *sitting* customers cost anything — someone still walking in
+// never had an order to abandon, they just turn around.
+function scareOffCustomer(c) {
+  c.seat.occupied = false;
+  if (c.state === 'sitting' && !c.served && c.orderType) {
+    loseTips(FORGOTTEN_PENALTY);
+    shiftStats.forgotten++;
+    removeFromTray(c);
+    addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
+    noteOrderCleared(c);
+    Sound.play('penalty');
+    Dialogue.trigger('abandoned', null);
+  }
+  c.state = 'leaving';
+  c.path = computeCustomerPath(c, reachablePoint(c, DOOR), c.seat.table);
+  c.pathIndex = 0;
+  c.moving = true;
+}
+
 // ---- Ghost: a purely aesthetic apparition. Every few minutes it drifts in
 // a straight line across the pub, through walls and furniture alike (no
 // collision, no interaction with score/hunter/player), and vanishes off the
@@ -1067,6 +1230,12 @@ const WAITER_SPARK_COUNT = 18;
 // White-hot cores first: the bar top is already a row of amber glassware, and
 // a yellow spark sitting on it reads as one more bottle.
 const WAITER_SPARK_COLORS = ['#ffffff', '#fff6c2', '#ffd24a', '#ff8a24'];
+// Every so often a pull of the trigger sends a glass over the edge instead of
+// (or alongside) the usual sparks — purely cosmetic, same as the sparks: no
+// score, hunter or dialogue hook, just something to notice.
+const WAITER_BREAK_CHANCE = 0.16;
+const WAITER_SHARD_COUNT = 10;
+const WAITER_SHARD_COLORS = ['#dff6ff', '#a9dced', '#7fb8cc', '#ffffff'];
 // Nozzle offset from his feet, in the spray pose: the bottle sits in the
 // sprite's outer columns, so the mist has to start out there too. Mirrored
 // with him when he faces the other way.
@@ -1099,6 +1268,8 @@ function spawnWaiter() {
   waiter.flash = null;
   waiter.mist = [];
   waiter.sparks = [];
+  waiter.shards = [];
+  waiter.breakTimer = 0;
   return waiter;
 }
 
@@ -1149,6 +1320,30 @@ function waiterSquirt() {
   }
   waiter.squeezeTimer = WAITER_SQUEEZE_TIME;
   waiter.sparkTimer = WAITER_SPARK_DELAY;
+  if (waiter.breakTimer <= 0 && Math.random() < WAITER_BREAK_CHANCE) {
+    // Same flight time as the sparks, plus a beat — the crash lands a hair
+    // after the water hits, as if it's the jet that knocked it over.
+    waiter.breakTimer = WAITER_SPARK_DELAY + 0.08 + Math.random() * 0.12;
+  }
+}
+
+// A glass goes over: a spray of shards off the counter top, no jet required.
+function waiterBreakGlass() {
+  const dir = waiter.flip ? -1 : 1;
+  const ix = waiter.x + dir * (10 + Math.random() * 12);
+  const iy = WAITER_COUNTER.y + WAITER_COUNTER.h - 2;
+  for (let i = 0; i < WAITER_SHARD_COUNT; i++) {
+    const ttl = 0.4 + Math.random() * 0.5;
+    waiter.shards.push({
+      x: ix, y: iy,
+      vx: (Math.random() - 0.5) * 70,
+      vy: -50 - Math.random() * 40,
+      size: Math.random() < 0.4 ? 2 : 1,
+      color: WAITER_SHARD_COLORS[Math.floor(Math.random() * WAITER_SHARD_COLORS.length)],
+      ttl, maxTtl: ttl,
+    });
+  }
+  Sound.play('glassBreak');
 }
 
 // ...and a moment later it lands. Sparks come off the counter top itself, out
@@ -1207,6 +1402,10 @@ function updateWaiter(dt) {
       waiter.sparkTimer -= dt;
       if (waiter.sparkTimer <= 0) waiterSparkBurst();
     }
+    if (waiter.breakTimer > 0) {
+      waiter.breakTimer -= dt;
+      if (waiter.breakTimer <= 0) waiterBreakGlass();
+    }
     waiter.sprayTimer -= dt;
     if (waiter.sprayTimer <= 0) {
       waiter.state = 'leaving';
@@ -1240,6 +1439,304 @@ function updateWaiter(dt) {
     k.x += k.vx * dt;
     k.y += k.vy * dt;
     k.vy += 150 * dt;
+  }
+  // Shards fall like the sparks but don't fade as fast — glass on the floor
+  // reads better lingering a beat than snapping out.
+  for (let i = waiter.shards.length - 1; i >= 0; i--) {
+    const s = waiter.shards[i];
+    s.ttl -= dt;
+    if (s.ttl <= 0) { waiter.shards.splice(i, 1); continue; }
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.vy += 140 * dt;
+  }
+}
+
+// ---- Busboy: cleans up after the bladder mechanic. Every accident leaves a
+// puddle (see wetPantsPuddles); a while after the *first* one appears he's
+// sent in, mops each one in turn, and leaves once the floor is clear again.
+// He's an ordinary floor-standing character like the waiter — no bespoke
+// draw pass needed, drawEntity already picks 'mop'/'mopB' up as a pose — the
+// only extra is the occasional line over his head.
+//
+// Like the waiter he is pure scenery: no orders, no seat, no score of his
+// own, no effect on the chase. `busboy` is null whenever nobody is on it.
+let busboy = null;
+const BUSBOY_DISPATCH_DELAY_MIN = 6;  // seconds after a puddle appears before he's sent
+const BUSBOY_DISPATCH_DELAY_MAX = 16;
+let busboyDispatchDelay = BUSBOY_DISPATCH_DELAY_MIN + Math.random() * (BUSBOY_DISPATCH_DELAY_MAX - BUSBOY_DISPATCH_DELAY_MIN);
+const BUSBOY_MOP_TIME = 3; // seconds spent on each puddle
+const BUSBOY_LINE_MIN = 6;
+const BUSBOY_LINE_MAX = 14;
+const BUSBOY_LINE_TTL = 2.4;
+const BUSBOY_LINE_TEXT = 'Du coup !';
+// A puddle can land anywhere the player happened to be standing, unlike a
+// seat or the waiter's station, which are always placed with clearance. A
+// spot that's valid for the player isn't guaranteed valid for the busboy's
+// own footprint, and the routed walk (same as customers/the waiter) has no
+// wall-following fallback if the direct approach clips something. Rather
+// than risk him parked at the door forever, any attempt — walking to a
+// puddle or back out — gets a time budget; blowing it abandons that puddle
+// (marked so he doesn't keep re-targeting it) instead of freezing him.
+const BUSBOY_STUCK_TIMEOUT = 18;
+
+function spawnBusboy() {
+  const target = wetPantsPuddles.find(p => !p.unreachable);
+  // Nothing to send him to (or every puddle left has already beaten him
+  // once). Real callers only reach this once there's a fresh one; this guard
+  // is for __debug.spawnBusboy().
+  if (!target) return null;
+  busboy = makeEntity('busboy', DOOR.x, DOOR.y);
+  busboy.state = 'entering';
+  busboy.target = target;
+  busboy.path = computeCustomerPath(DOOR, reachablePoint(busboy, target), null, BUSBOY_FOOTPRINT);
+  busboy.pathIndex = 0;
+  busboy.travelTimer = 0;
+  busboy.mopTimer = 0;
+  busboy.line = null;
+  busboy.lineTtl = 0;
+  busboy.lineTimer = BUSBOY_LINE_MIN + Math.random() * (BUSBOY_LINE_MAX - BUSBOY_LINE_MIN);
+  return busboy;
+}
+
+// Same routed walk as the waiter's, just against `busboy` instead.
+function busboyFollowPath(dt) {
+  const target = busboy.path[busboy.pathIndex];
+  const dx = target.x - busboy.x;
+  const dy = target.y - busboy.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 1.5) {
+    busboy.x = target.x;
+    busboy.y = target.y;
+    if (busboy.pathIndex < busboy.path.length - 1) { busboy.pathIndex++; return false; }
+    busboy.moving = false;
+    return true;
+  }
+  const step = Math.min(dist, busboy.speed * dt);
+  const nx = clamp(busboy.x + (dx / dist) * step, busboy.w / 2, WORLD_W - busboy.w / 2);
+  if (!collidesAt(busboy, nx, busboy.y)) busboy.x = nx;
+  const ny = clamp(busboy.y + (dy / dist) * step, busboy.h / 2, WORLD_H - busboy.h / 2);
+  if (!collidesAt(busboy, busboy.x, ny)) busboy.y = ny;
+  busboy.flip = dx < 0;
+  busboy.moving = true;
+  return false;
+}
+
+// Sends him toward whichever puddle is still both present and not already
+// given up on, or out the door if there's nothing left he can reach.
+function busboySendToNextPuddleOrLeave() {
+  const next = wetPantsPuddles.find(p => !p.unreachable);
+  if (next) {
+    busboy.target = next;
+    busboy.path = computeCustomerPath(busboy, reachablePoint(busboy, next), null, BUSBOY_FOOTPRINT);
+    busboy.pathIndex = 0;
+    busboy.travelTimer = 0;
+    busboy.state = 'entering';
+  } else {
+    busboy.pose = null; // back to the walk cycle
+    busboy.state = 'leaving';
+    busboy.path = computeCustomerPath(busboy, reachablePoint(busboy, DOOR), null, BUSBOY_FOOTPRINT);
+    busboy.pathIndex = 0;
+    busboy.travelTimer = 0;
+  }
+}
+
+function updateBusboy(dt) {
+  if (!busboy) {
+    if (wetPantsPuddles.some(p => !p.unreachable)) {
+      busboyDispatchDelay -= dt;
+      if (busboyDispatchDelay <= 0) spawnBusboy();
+    } else {
+      busboyDispatchDelay = BUSBOY_DISPATCH_DELAY_MIN + Math.random() * (BUSBOY_DISPATCH_DELAY_MAX - BUSBOY_DISPATCH_DELAY_MIN);
+    }
+    return;
+  }
+
+  if (busboy.state === 'entering') {
+    busboy.travelTimer += dt;
+    if (busboyFollowPath(dt)) {
+      busboy.state = 'mopping';
+      busboy.mopTimer = BUSBOY_MOP_TIME;
+    } else if (busboy.travelTimer > BUSBOY_STUCK_TIMEOUT) {
+      busboy.target.unreachable = true;
+      busboySendToNextPuddleOrLeave();
+    }
+  } else if (busboy.state === 'mopping') {
+    busboy.moving = false;
+    busboy.pose = Math.floor(gameTime * 3) % 2 === 0 ? 'mop' : 'mopB';
+    busboy.mopTimer -= dt;
+    if (busboy.mopTimer <= 0) {
+      const idx = wetPantsPuddles.indexOf(busboy.target);
+      if (idx !== -1) wetPantsPuddles.splice(idx, 1);
+      Sound.play('mop');
+      busboySendToNextPuddleOrLeave();
+    }
+  } else if (busboy.state === 'leaving') {
+    busboy.travelTimer += dt;
+    if (busboyFollowPath(dt) || busboy.travelTimer > BUSBOY_STUCK_TIMEOUT) {
+      busboy = null;
+      busboyDispatchDelay = BUSBOY_DISPATCH_DELAY_MIN + Math.random() * (BUSBOY_DISPATCH_DELAY_MAX - BUSBOY_DISPATCH_DELAY_MIN);
+      return;
+    }
+  }
+
+  // A word to himself now and then, purely a flourish — no hook into the
+  // Dialogue module, which is built around the named regulars' mood/cooldown
+  // state and has nothing to do with a walk-on like this one.
+  busboy.lineTimer -= dt;
+  if (busboy.lineTimer <= 0 && !busboy.line) {
+    busboy.line = BUSBOY_LINE_TEXT;
+    busboy.lineTtl = BUSBOY_LINE_TTL;
+    busboy.lineTimer = BUSBOY_LINE_MIN + Math.random() * (BUSBOY_LINE_MAX - BUSBOY_LINE_MIN);
+  }
+  if (busboy.line) {
+    busboy.lineTtl -= dt;
+    if (busboy.lineTtl <= 0) busboy.line = null;
+  }
+}
+
+// ---- Alex: wanders in every so often, drops flat into a full split
+// somewhere out on the floor, and holds it — a temporary wall for whoever's
+// nearby. Like the waiter/busboy he's pure scenery walking a routed path;
+// unlike them, while he's down he adds a real collider of his own to
+// FURNITURE, so he can block the player's escape route or the hunter's
+// pursuit exactly like a table would, for as long as the split lasts. `alex`
+// is null whenever he isn't on the floor.
+let alex = null;
+const ALEX_INTERVAL_MIN = 30;
+const ALEX_INTERVAL_MAX = 75;
+let alexDelay = ALEX_INTERVAL_MIN + Math.random() * (ALEX_INTERVAL_MAX - ALEX_INTERVAL_MIN);
+const ALEX_SPLIT_TIME = 5;
+// The blocking box: wide enough to actually close a corridor, low and flat
+// like a body on the floor rather than a standing character's footprint.
+const ALEX_SPLIT_W = 22;
+const ALEX_SPLIT_H = 7;
+// A random spot on the floor has no guaranteed route the way a seat does —
+// same problem the busboy has with a puddle wherever the player happened to
+// be standing. Same fix: a time budget on getting there or back, so a bad
+// draw abandons the attempt instead of freezing him mid-floor.
+const ALEX_STUCK_TIMEOUT = 12;
+
+// The staff pocket the bar's L wraps around — the same one the waiter works
+// (see WAITER_COUNTER/pickWaiterStation). It's open floor, not a collider, so
+// collidesAt alone wouldn't keep a random spot out of it; a customer would
+// never end up back here, and neither should Alex. Bounded by the short
+// counter's bottom edge, the stem's left edge and the foot's top edge.
+const BAR_STAFF_AREA = {
+  x: 0,
+  y: BAR_SEGMENTS[0].collider.y + BAR_SEGMENTS[0].collider.h,
+  w: BAR_SEGMENTS[1].collider.x,
+  h: BAR_SEGMENTS[2].collider.y - (BAR_SEGMENTS[0].collider.y + BAR_SEGMENTS[0].collider.h),
+};
+
+// Same random-then-retry placement as spawnCigarettePack, against the split's
+// own footprint rather than a customer's — and kept off the strip right in
+// front of the door so he doesn't plant himself in his own entrance. Doesn't
+// know a "corridor" from open floor; landing somewhere that actually pinches
+// a route is just the odds of a floor this furnished.
+function pickAlexSpot() {
+  const dummy = { w: ALEX_SPLIT_W, h: ALEX_SPLIT_H };
+  for (let i = 0; i < 30; i++) {
+    const x = clamp(Math.random() * WORLD_W, dummy.w / 2 + 2, WORLD_W - dummy.w / 2 - 2);
+    const y = clamp(Math.random() * WORLD_H, dummy.h / 2 + 2, WORLD_H - dummy.h / 2 - 2);
+    if (y > WORLD_H - 24) continue; // clear of the doorway itself
+    const box = { x: x - dummy.w / 2, y: y - dummy.h / 2, w: dummy.w, h: dummy.h };
+    if (rectsOverlap(box, BAR_STAFF_AREA)) continue;
+    if (!collidesAt(dummy, x, y)) return { x, y };
+  }
+  return null;
+}
+
+function spawnAlex() {
+  const spot = pickAlexSpot();
+  if (!spot) return null; // floor's too busy this attempt; try again next roll
+  alex = makeEntity('alex', DOOR.x, DOOR.y);
+  alex.state = 'entering';
+  alex.spot = spot;
+  alex.path = computeCustomerPath(DOOR, reachablePoint(alex, spot), null, ALEX_FOOTPRINT);
+  alex.pathIndex = 0;
+  alex.travelTimer = 0;
+  alex.splitTimer = 0;
+  alex.blocker = null; // the FURNITURE entry while he's down, else null
+  return alex;
+}
+
+// Same routed walk as the waiter's/busboy's, just against `alex` instead.
+function alexFollowPath(dt) {
+  const target = alex.path[alex.pathIndex];
+  const dx = target.x - alex.x;
+  const dy = target.y - alex.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1.5) {
+    alex.x = target.x;
+    alex.y = target.y;
+    if (alex.pathIndex < alex.path.length - 1) { alex.pathIndex++; return false; }
+    alex.moving = false;
+    return true;
+  }
+  const step = Math.min(dist, alex.speed * dt);
+  const nx = clamp(alex.x + (dx / dist) * step, alex.w / 2, WORLD_W - alex.w / 2);
+  if (!collidesAt(alex, nx, alex.y)) alex.x = nx;
+  const ny = clamp(alex.y + (dy / dist) * step, alex.h / 2, WORLD_H - alex.h / 2);
+  if (!collidesAt(alex, alex.x, ny)) alex.y = ny;
+  alex.flip = dx < 0;
+  alex.moving = true;
+  return false;
+}
+
+function updateAlex(dt) {
+  if (!alex) {
+    alexDelay -= dt;
+    if (alexDelay <= 0) {
+      spawnAlex();
+      alexDelay = ALEX_INTERVAL_MIN + Math.random() * (ALEX_INTERVAL_MAX - ALEX_INTERVAL_MIN);
+    }
+    return;
+  }
+
+  if (alex.state === 'entering') {
+    alex.travelTimer += dt;
+    if (alexFollowPath(dt)) {
+      alex.state = 'splitting';
+      alex.pose = 'split';
+      alex.moving = false;
+      alex.splitTimer = ALEX_SPLIT_TIME;
+      // A real collider, live in FURNITURE for as long as he's down — this is
+      // what actually blocks the player and the hunter, not the sprite.
+      alex.blocker = {
+        type: 'alex',
+        sortY: alex.y,
+        collider: {
+          x: alex.x - ALEX_SPLIT_W / 2,
+          y: alex.y - ALEX_SPLIT_H / 2,
+          w: ALEX_SPLIT_W,
+          h: ALEX_SPLIT_H,
+        },
+      };
+      FURNITURE.push(alex.blocker);
+      Sound.play('alexSplit');
+    } else if (alex.travelTimer > ALEX_STUCK_TIMEOUT) {
+      // Couldn't find his own way in — bail rather than stand there forever;
+      // he'll try again on the next roll.
+      alex = null;
+    }
+  } else if (alex.state === 'splitting') {
+    alex.splitTimer -= dt;
+    if (alex.splitTimer <= 0) {
+      if (alex.blocker) {
+        const idx = FURNITURE.indexOf(alex.blocker);
+        if (idx !== -1) FURNITURE.splice(idx, 1);
+        alex.blocker = null;
+      }
+      alex.pose = null; // back to the walk cycle
+      alex.state = 'leaving';
+      alex.path = computeCustomerPath(alex, reachablePoint(alex, DOOR), null, ALEX_FOOTPRINT);
+      alex.pathIndex = 0;
+      alex.travelTimer = 0;
+    }
+  } else if (alex.state === 'leaving') {
+    alex.travelTimer += dt;
+    if (alexFollowPath(dt) || alex.travelTimer > ALEX_STUCK_TIMEOUT) alex = null;
   }
 }
 
@@ -1828,6 +2325,19 @@ function resetGame() {
   shiftTally = null;
   bestShiftTips = 0;
   resetShiftStats();
+  jamesonTimer = 0;
+  jamesonBounceTimer = 0;
+  bladderLevel = 0;
+  bladderUrgentTimer = 0;
+  wetPantsTimer = 0;
+  wetPantsPuddles.length = 0;
+  cigarettePacks.length = 0;
+  deliveriesSinceCigarette = 0;
+  cigaretteReserve = 0;
+  hunterSmokeState = null;
+  hunterSmokeOutsideTimer = 0;
+  hunterSmokeReturnSpot = null;
+  hunterSmokeTravelTimer = 0;
   score = 0;
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
@@ -1841,6 +2351,16 @@ function resetGame() {
   waiter = null;
   waiterLevel = 0;
   waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
+  busboy = null;
+  busboyDispatchDelay = BUSBOY_DISPATCH_DELAY_MIN + Math.random() * (BUSBOY_DISPATCH_DELAY_MAX - BUSBOY_DISPATCH_DELAY_MIN);
+  // A restart mid-split would otherwise leave his blocker stuck in FURNITURE
+  // forever with nothing left to clear it.
+  if (alex && alex.blocker) {
+    const idx = FURNITURE.indexOf(alex.blocker);
+    if (idx !== -1) FURNITURE.splice(idx, 1);
+  }
+  alex = null;
+  alexDelay = ALEX_INTERVAL_MIN + Math.random() * (ALEX_INTERVAL_MAX - ALEX_INTERVAL_MIN);
   // The regulars persist across restarts as characters, but every scrap of
   // their run state — orders, patience, mood, dialogue history and Nazim's
   // drink count — is wiped.
@@ -1908,10 +2428,37 @@ function removeFromTray(target) {
   }
 }
 
+// The customer pushes a shot back across the table. Refresh, not stack: the
+// clock restarts at full, and `hunterSlide` is dropped so the hunter re-aims
+// on the next frame and turns tail immediately rather than finishing a wall
+// follow it committed to while it was still the one doing the chasing.
+function grantJameson(from) {
+  jamesonTimer = JAMESON_DURATION;
+  jamesonBounceTimer = 0;
+  hunterSlide = null;
+  hunterChangeTimer = 0;
+  Sound.play('jameson');
+  addFloatingText(from.x, from.y - from.h - 4, 'JAMESON!', PUB.amber);
+  Dialogue.trigger('jameson', null);
+
+  // Every shot tops up the bladder. Filling it is what starts the clock —
+  // topping off an already-full one (another Jameson while already racing
+  // for the bathroom) doesn't restart the timer, same as it doesn't for the
+  // Jameson effect itself.
+  if (!bladderFull()) {
+    bladderLevel = Math.min(BLADDER_MAX, bladderLevel + 1);
+    if (bladderFull()) {
+      bladderUrgentTimer = BLADDER_TIME_LIMIT;
+      Dialogue.trigger('bladderFull', null);
+    }
+  }
+}
+
 // A delivery that actually landed. Everything a completed order awards happens
 // here and nowhere else — notably Nazim's drink count, so mashing the interact
 // button can never advance his night without a trip to the bar.
 function completeDelivery(target) {
+  const type = target.orderType;
   target.served = true;
   target.beingCarried = false;
   removeFromTray(target);
@@ -1936,13 +2483,29 @@ function completeDelivery(target) {
     hunterServed();
     return;
   }
+  // Every CIGARETTES_EVERY deliveries — walk-in or regular, one shared
+  // counter — the player pockets another pack, up to the reserve cap.
+  // Counted here, not in the per-type branches below, so both populations
+  // feed the same clock. Held back (not reset) while the reserve is already
+  // full, so the very next delivery past the cap grants one the moment a
+  // dropped pack frees up a slot, instead of being silently lost.
+  deliveriesSinceCigarette++;
+  if (deliveriesSinceCigarette >= CIGARETTES_EVERY && cigaretteReserve < CIGARETTE_RESERVE_MAX) {
+    deliveriesSinceCigarette = 0;
+    cigaretteReserve++;
+    addFloatingText(target.x, target.y - target.h - 12, '+1 PACK', '#c9c2b3');
+  }
+
+  // Rolled here, alongside the points, so it can only ever come from a trip
+  // that actually landed — and for regulars as well as walk-ins, since a
+  // grateful Nazim buying a round is the whole joke.
+  if (isAlcoholicOrder(type) && Math.random() < JAMESON_CHANCE) grantJameson(target);
   if (!target.isRegular) {
     noteOrderCleared(target);
     target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
     return;
   }
 
-  const type = target.orderType;
   target.mood = clampMood(target.mood + 0.35);
   let stageChanged = false;
   let sobered = false;
@@ -2111,6 +2674,9 @@ window.addEventListener('keydown', (e) => {
   // E is the primary interact key; Space is the same action (and stays the
   // restart key on the caught screen) so a one-handed grip works too.
   if (!e.repeat && (k === 'e' || e.key === ' ')) handleInteract();
+  // C drops a held pack at the player's feet — a separate key from E/Space
+  // since it isn't a grab-or-deliver action and can fire while carrying one.
+  if (!e.repeat && k === 'c') dropCigarette();
   if (e.key === ' ') e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -2240,6 +2806,7 @@ const touchEl = {
   stick: document.getElementById('stick'),
   knob: document.querySelector('#stick .stick-knob'),
   action: document.getElementById('btn-action'),
+  drop: document.getElementById('btn-drop'),
 };
 
 const STICK_RADIUS = 46;   // px of travel before the stick reads as full tilt
@@ -2320,6 +2887,18 @@ if (touchEl.action) {
   touchEl.action.addEventListener('pointerup', endAction);
   touchEl.action.addEventListener('pointercancel', endAction);
   touchEl.action.addEventListener('pointerleave', endAction);
+}
+
+if (touchEl.drop) {
+  touchEl.drop.addEventListener('pointerdown', (e) => {
+    touchEl.drop.classList.add('active');
+    if (!caught && !paused) dropCigarette();
+    e.preventDefault();
+  });
+  const endDrop = () => touchEl.drop.classList.remove('active');
+  touchEl.drop.addEventListener('pointerup', endDrop);
+  touchEl.drop.addEventListener('pointercancel', endDrop);
+  touchEl.drop.addEventListener('pointerleave', endDrop);
 }
 
 // Only reveal the touch UI where it makes sense: a coarse pointer or a real
@@ -2472,7 +3051,9 @@ function pickNewHunterDirection() {
     // carry the "not quite straight" feel, and too much slop walks him into
     // the very corner the route was going round.
     const jitterMax = Math.max(Math.PI / 24, Math.PI / 6 - lvl * (Math.PI / 72));
-    const baseAngle = Math.atan2(aimAt.y - hunter.y, aimAt.x - hunter.x);
+    const baseAngle = jamesonActive()
+      ? Math.atan2(hunter.y - player.y, hunter.x - player.x)
+      : Math.atan2(aimAt.y - hunter.y, aimAt.x - hunter.x);
     const jitter = (Math.random() - 0.5) * jitterMax;
     hunterDir = { x: Math.cos(baseAngle + jitter), y: Math.sin(baseAngle + jitter) };
     hunterFacing = hunterDir;
@@ -2702,10 +3283,69 @@ function update(dt) {
   player.x = playerMove.x;
   player.y = playerMove.y;
 
-  // Hunter: state machine in updateHunter (arriving / scanning / chase / lost /
-  // drinking). Speed creeps up with level, capped just under the player's own
-  // 62 so a straight-line escape is always possible, if barely at high levels.
-  updateHunter(dt);
+  const hunterLvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1;
+  hunter.speed = Math.min(60, 40 + hunterLvl * 2.5) * spillSlowAt(hunter.x, hunter.y);
+
+  if (hunterSmokeState === 'leaving') {
+    // Walking himself out the door. The catch check below stands down for
+    // this whole break, so there's no risk in him crossing right past the
+    // player on the way.
+    hunterSmokeTravelTimer += dt;
+    if (hunterFollowSmokePath(dt) || hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
+      // Either he actually made it, or the walk stalled (see
+      // HUNTER_SMOKE_STUCK_TIMEOUT) — either way he's outside now.
+      hunter.x = DOOR.x;
+      hunter.y = DOOR.y;
+      hunterSmokeState = 'outside';
+      hunterSmokeOutsideTimer = SMOKE_BREAK_DURATION;
+      hunter.moving = false;
+    }
+  } else if (hunterSmokeState === 'outside') {
+    // Off the floor entirely — render/collision both skip him for this state
+    // (see render() and the catch check below).
+    hunter.moving = false;
+    hunterSmokeOutsideTimer -= dt;
+    if (hunterSmokeOutsideTimer <= 0) {
+      hunterSmokeOutsideTimer = 0;
+      hunterSmokeState = 'returning';
+      hunterSmokeTravelTimer = 0;
+      hunter.x = DOOR.x;
+      hunter.y = DOOR.y;
+      const spot = hunterSmokeReturnSpot || reachablePoint(hunter, { x: WORLD_W / 2, y: WORLD_H / 2 });
+      hunter.path = computeCustomerPath(DOOR, spot, null, HUNTER_FOOTPRINT);
+      hunter.pathIndex = 0;
+      Sound.play('smokeBreakEnd');
+    }
+  } else if (hunterSmokeState === 'returning') {
+    hunterSmokeTravelTimer += dt;
+    if (hunterFollowSmokePath(dt) || hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
+      // Same stuck fallback as above: snap him the rest of the way in rather
+      // than leaving him parked at the door forever.
+      const spot = hunterSmokeReturnSpot || reachablePoint(hunter, { x: WORLD_W / 2, y: WORLD_H / 2 });
+      hunter.x = spot.x;
+      hunter.y = spot.y;
+      hunterSmokeState = null;
+      hunterSmokeReturnSpot = null;
+      setHunterState('scanning');
+      hunterRouteTo(pickClearSpawn(hunter));
+      hunterChangeTimer = 0; // back on the hunt without waiting out the timer
+    }
+  } else {
+    updateHunter(dt);
+  }
+
+  // Dropped packs: cleared out either by the hunter stepping on one, or by
+  // simply running out the clock on a pack nobody found in time.
+  for (let i = cigarettePacks.length - 1; i >= 0; i--) {
+    const cig = cigarettePacks[i];
+    if (!hunterOnSmokeBreak() && hunterState !== 'arriving' && hunterState !== 'drinking' && Math.hypot(hunter.x - cig.x, hunter.y - cig.y) < CIGARETTE_PICKUP_RADIUS) {
+      cigarettePacks.splice(i, 1);
+      grantSmokeBreak();
+      continue;
+    }
+    cig.ttl -= dt;
+    if (cig.ttl <= 0) cigarettePacks.splice(i, 1);
+  }
 
   // Customers: trickle in, sit at a free table, then leave. Both the seating
   // cap and how fast new customers arrive ramp up with level.
@@ -2724,11 +3364,28 @@ function update(dt) {
     if (updateCustomer(c, dt) === 'remove') customers.splice(i, 1);
   }
 
+  // Every puddle on the floor is disgusting enough to clear the room around
+  // it — any walk-in still nearby (entering, waiting, or already seated)
+  // bails, which is what actually costs the player customers, not just the
+  // score hit from the accident itself. Regulars hold their booth regardless.
+  // Puddles don't fade, so this keeps checking for the rest of the run.
+  if (wetPantsPuddles.length) {
+    for (const c of customers) {
+      if (c.state === 'leaving') continue;
+      const scared = wetPantsPuddles.some(p => Math.hypot(c.x - p.x, c.y - p.y) < WET_PANTS_SCARE_RADIUS);
+      if (scared) {
+        scareOffCustomer(c);
+      }
+    }
+  }
+
   updateRegulars(dt);
   updateRound(dt);
   updateSpills(dt);
   updateGhost(dt);
   updateWaiter(dt);
+  updateBusboy(dt);
+  updateAlex(dt);
   updateDialogueTriggers(dt, input);
   updateAmbient(dt);
 
@@ -2773,6 +3430,48 @@ function update(dt) {
   for (const e of [player, hunter, ...customers]) tickLegs(e, dt);
   tickReactions(dt);
   if (waiter) tickLegs(waiter, dt);
+  if (busboy) tickLegs(busboy, dt);
+  if (alex) tickLegs(alex, dt);
+
+  // The Jameson counting itself down. Sliding is dropped for its duration so
+  // the wall-following that exists to close distance can't be used to keep it.
+  if (jamesonBounceTimer > 0) jamesonBounceTimer -= dt;
+  if (jamesonTimer > 0) {
+    jamesonTimer -= dt;
+    hunterSlide = null;
+    if (jamesonTimer <= 0) {
+      jamesonTimer = 0;
+      Sound.play('jamesonEnd');
+      hunterChangeTimer = 0;   // back on the hunt without waiting out the timer
+    }
+  }
+
+  // The bladder, once full: reaching the bathroom clears it, running out the
+  // clock doesn't. Independent of the Jameson countdown above — drinking
+  // through the timer buys no extra time to get there.
+  if (wetPantsTimer > 0) wetPantsTimer -= dt;
+  if (bladderUrgentTimer > 0) {
+    if (Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y) < BLADDER_REACH_RADIUS) {
+      bladderUrgentTimer = 0;
+      bladderLevel = 0;
+      Sound.play('bathroomRelief');
+      addFloatingText(player.x, player.y - player.h - 4, 'RELIEF!', PUB.coolPale);
+      Dialogue.trigger('bathroomRelief', null);
+    } else {
+      bladderUrgentTimer -= dt;
+      if (bladderUrgentTimer <= 0) {
+        bladderUrgentTimer = 0;
+        bladderLevel = 0;
+        wetPantsTimer = WET_PANTS_DURATION;
+        wetPantsPuddles.push({ x: player.x, y: player.y });
+        loseTips(WET_PANTS_PENALTY);
+        Sound.play('wetPants');
+        addFloatingText(player.x, player.y - player.h - 10, 'OOPS!', '#e84c3d');
+        addFloatingText(player.x, player.y - player.h - 2, '-' + WET_PANTS_PENALTY, '#e84c3d');
+        Dialogue.trigger('wetPants', null);
+      }
+    }
+  }
 
   // Life regen: only once a few hit-free seconds have passed, and never
   // while already fully caught (game over).
@@ -2792,8 +3491,23 @@ function update(dt) {
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   const hunterCanCatch = hunterState !== 'arriving' && hunterState !== 'drinking';
-  if (hunterCanCatch && hitInvulnTimer <= 0 && dist < (player.w + hunter.w) / 2.4) {
-    if (hunterState !== 'chase') hunterNoticesPlayer();   // walked into him: that counts
+  const touching = hunterCanCatch && !hunterOnSmokeBreak() && dist < (player.w + hunter.w) / 2.4;
+
+  // On a Jameson the collision still happens, it just runs the other way:
+  // the hunter is the one shoved clear, and the player walks through.
+  if (touching && jamesonActive()) {
+    if (jamesonBounceTimer <= 0) {
+      jamesonBounceTimer = JAMESON_BOUNCE_COOLDOWN;
+      const away = dist > 0.001 ? Math.atan2(-dy, -dx) : Math.random() * Math.PI * 2;
+      const knock = tryMove(hunter, Math.cos(away) * JAMESON_BOUNCE_FORCE, Math.sin(away) * JAMESON_BOUNCE_FORCE);
+      hunter.x = knock.x;
+      hunter.y = knock.y;
+      hunterSlide = null;
+      hunterChangeTimer = 0;
+      Sound.play('jamesonBounce');
+    }
+  } else if (hitInvulnTimer <= 0 && touching) {
+    if (hunterState !== 'chase') hunterNoticesPlayer();
     life = Math.max(0, life - LIFE_HIT_FRACTION);
     hitInvulnTimer = LIFE_HIT_INVULN;
     regenDelayTimer = LIFE_REGEN_DELAY;
@@ -2982,6 +3696,7 @@ const HOT_RGB = [255, 226, 160];
 const FIRE_RGB = [255, 150, 60];
 const COOL_RGB = [91, 166, 201];
 const LAMP_DROP = 26;   // screen px between a pendant shade and its floor pool
+const JAMESON_RGB = [255, 214, 120];
 
 // Rebuilt only when the viewport changes size.
 let vignetteCanvas = null;
@@ -3322,6 +4037,28 @@ function drawArchitecture(ctx) {
     }
   }
 
+  // The bathroom: a small door set into the right wall, in the hallway gap
+  // above the first table on that side. Purely a landmark for the bladder
+  // mechanic (see BATHROOM in game.js) — there's no room behind it, just the
+  // door and a sign, the same way the bar's back rooms are implied rather
+  // than modeled.
+  {
+    const doorH = 20;
+    const wallX = left + WORLD_W - WALL_SIDE_W;
+    const dy = top + Math.round(BATHROOM.y - doorH / 2);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(wallX - 1, dy - 1, WALL_SIDE_W + 2, doorH + 2);
+    ctx.fillStyle = PUB.midnight;
+    ctx.fillRect(wallX, dy, WALL_SIDE_W, doorH);
+    ctx.fillStyle = PUB.wainscotLit;
+    ctx.fillRect(wallX, dy, WALL_SIDE_W, 1);
+    ctx.fillRect(wallX, dy + doorH - 1, WALL_SIDE_W, 1);
+    ctx.fillStyle = PUB.brass;
+    ctx.fillRect(wallX + 1, dy + doorH - 6, 2, 1);
+    const sign = 'WC';
+    fontDrawTextShadow(ctx, sign, wallX - fontTextWidth(sign) - 4, dy + doorH / 2 - 2, PUB.coolPale);
+  }
+
   // Front wall and the door everyone arrives through.
   const bottom = top + WORLD_H - WALL_BOTTOM_H;
   ctx.fillStyle = PUB.wallDark;
@@ -3598,7 +4335,7 @@ function drawFloorLight(camX, camY) {
   // Readability halos on the two leads, dim enough to be separation rather
   // than a spotlight, so they read even when a route runs between pools.
   drawGlow(glowFor(20, WARM_RGB, 0.14), player.x, player.y - 4, 1, camX, camY);
-  if (hunterState !== 'arriving') drawGlow(glowFor(18, WARM_RGB, 0.1), hunter.x, hunter.y - 4, 1, camX, camY);
+  if (hunterState !== 'arriving' && hunterSmokeState !== 'outside') drawGlow(glowFor(18, WARM_RGB, 0.1), hunter.x, hunter.y - 4, 1, camX, camY);
   // The door brightens while someone is coming in or going out.
   let doorBusy = 0;
   for (const c of customers) {
@@ -3607,6 +4344,15 @@ function drawFloorLight(camX, camY) {
     if (d < 40) doorBusy = Math.max(doorBusy, 1 - d / 40);
   }
   drawGlow(glowFor(26, COOL_RGB, 0.12), DOOR.x, WORLD_H - 8, 0.55 + doorBusy * 0.8, camX, camY);
+
+  // A pool of its own under the deer while the shot is in him: same prebaked
+  // glow the lamps use, so it reads as part of the room's lighting rather
+  // than an effect pasted on top. It fades out with the last two seconds.
+  if (jamesonActive()) {
+    const fade = clamp(jamesonTimer / 2, 0, 1);
+    const pulse = prefersReducedMotion ? 0.8 : 0.66 + 0.34 * Math.abs(Math.sin(gameTime * 6));
+    drawGlow(glowFor(20, JAMESON_RGB, 0.34), player.x, player.y - 3, fade * pulse, camX, camY);
+  }
 }
 
 // A soft additive rectangle (stepped edges, no gradient) for counter tops.
@@ -3615,6 +4361,28 @@ function drawGlowRect(x, y, w, h, alpha) {
     ctx.globalAlpha = alpha * (0.5 + i * 0.25);
     ctx.fillStyle = 'rgb(255,190,92)';
     ctx.fillRect(Math.round(x + i * 3), Math.round(y + i * 3), Math.max(0, w - i * 6), Math.max(0, h - i * 6));
+  }
+  ctx.globalAlpha = 1;
+}
+
+// The bladder losing its race against the clock, made unmistakable and made
+// to stick: a stain left on the floor exactly where it happened. Unlike the
+// sprite tint (wetPantsTimer, a few seconds) this doesn't fade — it's part
+// of the room now, same as a table, until resetGame() wipes it. Drawn on the
+// floor, under every character, same layer as the contact shadows in
+// drawEntity.
+function drawWetPantsPuddles(camX, camY) {
+  if (!wetPantsPuddles.length) return;
+  ctx.globalAlpha = 0.7;
+  for (const p of wetPantsPuddles) {
+    const x = Math.round(p.x - camX);
+    const y = Math.round(p.y - camY);
+    ctx.fillStyle = '#c8b45a';
+    ctx.fillRect(x - 5, y - 2, 10, 4);
+    ctx.fillRect(x - 3, y - 3, 6, 1);
+    ctx.fillRect(x - 3, y + 2, 6, 1);
+    ctx.fillStyle = '#e8d68a';
+    ctx.fillRect(x - 2, y - 1, 4, 2);
   }
   ctx.globalAlpha = 1;
 }
@@ -3634,6 +4402,32 @@ function drawDarkness(colour) {
   ctx.fillStyle = colour;
   ctx.fillRect(0, 0, viewW, viewH);
   ctx.globalCompositeOperation = 'source-over';
+}
+
+// A stray pack on the floor: white box, a torn-open red top flap, a couple of
+// cigarettes poking out. Small and flat enough to sit on the same layer as
+// the puddles above — under every character, not part of the y-sorted pass.
+function drawCigarettePacks(camX, camY) {
+  if (!cigarettePacks.length) return;
+  for (const cig of cigarettePacks) {
+    // Fades over its last few seconds rather than popping away, so a pack
+    // nobody found doesn't just disappear out from under the player.
+    ctx.globalAlpha = clamp(cig.ttl / CIGARETTE_PACK_FADE_TIME, 0, 1);
+    const x = Math.round(cig.x - camX);
+    const y = Math.round(cig.y - camY);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(x - 3, y + 1, 6, 2);
+    ctx.fillStyle = '#e8e4d8';
+    ctx.fillRect(x - 3, y - 4, 6, 5);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(x - 3, y - 4, 6, 2);
+    ctx.fillStyle = '#d8d0b8';
+    ctx.fillRect(x - 2, y - 6, 1, 3);
+    ctx.fillRect(x, y - 7, 1, 4);
+    ctx.fillStyle = '#e07850';
+    ctx.fillRect(x, y - 7, 1, 1);
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ---- Furniture --------------------------------------------------------------
@@ -4119,6 +4913,8 @@ function drawTableProp(item, tableSX, tableSY, camX, camY) {
 }
 
 function drawFurnitureItem(item, camX, camY) {
+  if (item.type === 'wall') return; // collision-only — baked into roomCanvas by drawArchitecture
+  if (item.type === 'alex') return; // collision-only — Alex himself draws in the y-sorted entity pass
   if (item.type === 'bar') drawBar(item, camX, camY);
   else if (item.type === 'bench') drawBench(item, camX, camY);
   else drawTable(item, camX, camY);
@@ -4188,7 +4984,7 @@ function drawGrade() {
 // and chasing — strongest when he's off camera, which is when you need it.
 const DANGER_RANGE = 80;
 function drawDangerEdge() {
-  if (hunterState !== 'chase' || caught) return;
+  if (hunterState !== 'chase' || hunterOnSmokeBreak() || jamesonActive() || caught) return;
   const dx = hunter.x - player.x;
   const dy = hunter.y - player.y;
   const dist = Math.hypot(dx, dy);
@@ -4228,6 +5024,22 @@ function pushDrawable(sortY, type, ref) {
   drawList.push(e);
 }
 
+// The Jameson tint, or null for everyone and every other moment. The cycle
+// runs on gameTime rather than a dedicated phase so it stops dead with the
+// rest of the simulation during the level splash, and it steps through whole
+// palettes rather than easing a colour, which is what keeps it pixel art.
+// Over the last JAMESON_WARN_TIME it alternates with the ordinary palette, so
+// the effect visibly runs out instead of simply stopping.
+function jamesonPaletteFor(e) {
+  if (e !== player) return null;
+  if (wetPantsTimer > 0) return DOE_WET_PALETTE;
+  if (!jamesonActive()) return null;
+  if (prefersReducedMotion) return DOE_JAMESON_PALETTES[1];
+  const step = Math.floor(gameTime * 9);
+  if (jamesonTimer < JAMESON_WARN_TIME && step % 2 === 0) return null;
+  return DOE_JAMESON_PALETTES[step % DOE_JAMESON_PALETTES.length];
+}
+
 // The pose an entity is in, as the raster animation id ("carryWalk.down"):
 // the same name the procedural sets key their frames by.
 function poseBase(e) {
@@ -4252,6 +5064,33 @@ function rasterFrameFor(e) {
   const family = rasterFamilyFor(e);
   if (!Assets.hasFamily(family)) return null;
   return Assets.frameFor(family, animIdFor(e), gameTime * 1000);
+}
+
+// Cache status variants of atlas frames, retaining their detail, alpha and
+// feet pivot. The same status palette drives both raster and fallback art.
+const rasterStatusCache = new WeakMap();
+function statusRasterFrame(frame, e) {
+  const palette = jamesonPaletteFor(e);
+  if (!palette) return frame;
+  let variants = rasterStatusCache.get(frame.image);
+  if (!variants) { variants = new Map(); rasterStatusCache.set(frame.image, variants); }
+  const wet = palette === DOE_WET_PALETTE;
+  const colour = wet ? '#625034' : palette.f;
+  const r = frame.rect;
+  const key = [r.x, r.y, r.width, r.height, colour].join(':');
+  if (variants.has(key)) return variants.get(key);
+  const image = document.createElement('canvas');
+  image.width = r.width; image.height = r.height;
+  const paint = image.getContext('2d');
+  paint.drawImage(frame.image, r.x, r.y, r.width, r.height, 0, 0, r.width, r.height);
+  paint.globalCompositeOperation = 'source-atop';
+  paint.globalAlpha = wet ? 0.5 : 0.3;
+  paint.fillStyle = colour;
+  const top = wet ? Math.floor(r.height * 0.6) : 0;
+  paint.fillRect(0, top, r.width, r.height - top);
+  const tinted = Object.assign({}, frame, { image, rect: { x: 0, y: 0, width: r.width, height: r.height } });
+  variants.set(key, tinted);
+  return tinted;
 }
 
 // Directional sets ("dirs") key poses as "pose.facing" with a two-step walk
@@ -4320,8 +5159,8 @@ function drawEntity(e, camX, camY) {
   ctx.globalAlpha = flicker ? 0.4 : 1;
   const frame = rasterFrameFor(e);
   const squash = squashFor(e);
-  if (frame) drawRasterFrame(frame, e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift, squash);
-  else drawSprite(sprite, e.palette || set.palette, sx, sy, flip, squash);
+  if (frame) drawRasterFrame(statusRasterFrame(frame, e), e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift, squash);
+  else drawSprite(sprite, jamesonPaletteFor(e) || e.palette || set.palette, sx, sy, flip, squash);
   ctx.globalAlpha = 1;
   // The hunter's pint while he sits one out: the existing drinking state,
   // shown in his hand.
@@ -4419,6 +5258,11 @@ function drawWaiter(w, camX, camY) {
     ctx.fillRect(Math.round(k.x - camX), Math.round(k.y - camY), k.size, k.size);
   }
   ctx.globalCompositeOperation = 'source-over';
+  for (const s of w.shards) {
+    ctx.globalAlpha = clamp(s.ttl / s.maxTtl, 0, 1);
+    ctx.fillStyle = s.color;
+    ctx.fillRect(Math.round(s.x - camX), Math.round(s.y - camY), s.size, s.size);
+  }
   ctx.globalAlpha = 1;
 }
 
@@ -4578,7 +5422,7 @@ const BUBBLE_FRAME_HUNTER = PUB.tomato;    // the hunter wants a pint
 
 // "!" when he spots you, "?" while he's lost the trail, "..." over a pint.
 function drawHunterAlert(camX, camY) {
-  if (!hunterAlert || hunterState === 'arriving') return;
+  if (!hunterAlert || hunterState === 'arriving' || hunterOnSmokeBreak()) return;
   const scale = hunterAlert.text.length === 1 ? 2 : 1;
   const tw = fontTextWidth(hunterAlert.text) * scale;
   const bw = tw + 6;
@@ -4755,12 +5599,34 @@ function hudLabels() {
   };
 }
 
+// The Jameson row only exists while the shot does, so the plate grows for ten
+// seconds and shrinks back. measureHud is what the dialogue layout treats as
+// an obstacle, so the taller plate pushes bubbles down for exactly as long.
+const JAMESON_BAR_H = 3;
+function jamesonRowHeight() { return jamesonActive() ? JAMESON_BAR_H + 3 : 0; }
+
+// The bladder row exists whenever there's anything to show — filling up, or
+// counting down the dash to the bathroom — same grow/shrink treatment as the
+// Jameson row, and stacked below it so the plate never overlaps either.
+const BLADDER_BAR_H = 3;
+function bladderRowHeight() { return (bladderLevel > 0 || bladderUrgentTimer > 0) ? BLADDER_BAR_H + 3 : 0; }
+
+// Held packs as a row of tiny icons rather than a number — one slot per
+// CIGARETTE_RESERVE_MAX, lit for what's actually in reserve so the empty
+// slots still read as "room for more", not just absence. Always present
+// (like the life bar) rather than popping in only once the player is
+// carrying one, so the row never shifts everything below it around.
+const PACK_ICON_W = 6;
+const PACK_ICON_H = 6;
+const PACK_ICON_GAP = 2;
+function packRowWidth() { return CIGARETTE_RESERVE_MAX * PACK_ICON_W + (CIGARETTE_RESERVE_MAX - 1) * PACK_ICON_GAP; }
+
 function measureHud() {
   const labels = hudLabels();
   const textW = fontTextWidth(labels.shift) + 6 + fontTextWidth(labels.tips);
   const rowTwoW = lifeBarWidth() + 6 + fontTextWidth(labels.total) + (labels.clock ? 6 + fontTextWidth(labels.clock) : 0);
-  hudRect.w = Math.max(textW, rowTwoW) + HUD_PAD_X * 2;
-  hudRect.h = HUD_CHAIN_H + 4 + FONT_H + 3 + PINT_H + 4;
+  hudRect.w = Math.max(textW, rowTwoW, packRowWidth()) + HUD_PAD_X * 2;
+  hudRect.h = HUD_CHAIN_H + 4 + FONT_H + 3 + PINT_H + 4 + PACK_ICON_H + 3 + jamesonRowHeight() + bladderRowHeight();
   return hudRect;
 }
 
@@ -4786,6 +5652,40 @@ function drawPint(x, y, fill) {
   // Highlight down the left of the glass reads as the lamp on it.
   ctx.fillStyle = PUB.glass;
   ctx.fillRect(x, y + 1, 0.5, PINT_H - 3);
+}
+
+// One pack icon: lit slots get the same little white-box-red-flap thumbnail
+// as the one dropped on the floor (see drawCigarettePacks), just without the
+// poking-out cigarettes — there isn't room at this size to read them as
+// anything but noise. An empty slot is just a faint outline.
+function drawPackIcon(x, y, filled) {
+  if (filled) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x - 1, y - 1, PACK_ICON_W + 2, PACK_ICON_H + 2);
+    ctx.fillStyle = '#e8e4d8';
+    ctx.fillRect(x, y, PACK_ICON_W, PACK_ICON_H);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(x, y, PACK_ICON_W, 2);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(x, y, PACK_ICON_W, PACK_ICON_H);
+  }
+}
+
+// The busboy's occasional line. Deliberately not routed through the Dialogue
+// module — that machinery (mood, per-character cooldowns, history) exists
+// for the three regulars, and a walk-on with one fixed line doesn't need any
+// of it. A plain box above his head, same ink/cream as a dialogue bubble so
+// it still reads as speech.
+function drawBusboyLine(camX, camY) {
+  if (!busboy || !busboy.line) return;
+  const text = busboy.line;
+  const bw = fontTextWidth(text) + DIALOGUE_PAD * 2;
+  const bh = FONT_H + DIALOGUE_PAD * 2;
+  const bx = clamp(Math.round(busboy.x - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
+  const by = Math.round(busboy.y - busboy.h - camY - bh - 4);
+  drawParchmentPlate(bx, by, bw, bh, PUB.ink);
+  fontDrawText(ctx, text, bx + DIALOGUE_PAD, by + DIALOGUE_PAD, DIALOGUE_INK);
 }
 
 function drawDialogueBubbles(camX, camY) {
@@ -4932,6 +5832,45 @@ function drawHud() {
     const blink = left <= 5 && Math.floor(gameTime * 4) % 2 === 0;
     if (!blink) fontDrawTextShadow(ctx, labels.clock, rx, pintY + 1, isLastCall() ? PUB.tomato : PUB.cream, UI.walnutDark);
   }
+
+  // Held cigarette packs, right under the life bar.
+  const packY = pintY + PINT_H + 4;
+  for (let i = 0; i < CIGARETTE_RESERVE_MAX; i++) {
+    const x = hud.x + 3 + i * (PACK_ICON_W + PACK_ICON_GAP);
+    drawPackIcon(x, packY, i < cigaretteReserve);
+  }
+
+  // The shot's remaining seconds: one unbroken amber bar under the life
+  // segments, blinking through its last stretch alongside the sprite tint so
+  // the two warnings agree.
+  let rowY = packY + PACK_ICON_H + 3;
+  if (jamesonActive()) {
+    const jx = hud.x + 3;
+    const jw = lifeBarWidth();
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(jx - 1, rowY - 1, jw + 2, JAMESON_BAR_H + 2);
+    const blink = jamesonTimer < JAMESON_WARN_TIME && !prefersReducedMotion &&
+      Math.floor(gameTime * 9) % 2 === 0;
+    ctx.fillStyle = blink ? PUB.amberDim : PUB.amber;
+    ctx.fillRect(jx, rowY, Math.ceil(jw * clamp(jamesonTimer / JAMESON_DURATION, 0, 1)), JAMESON_BAR_H);
+    rowY += JAMESON_BAR_H + 3;
+  }
+
+  // The bladder: a pale blue fill while it's just topping up, then a countdown
+  // once full — same bar, same slot, so the plate reads as one system rather
+  // than two. Its own blink (independent of the Jameson one above) is what
+  // sells "the clock is actually running out" once it's the bathroom dash.
+  if (bladderLevel > 0 || bladderUrgentTimer > 0) {
+    const bx = hud.x + 3;
+    const bw = lifeBarWidth();
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(bx - 1, rowY - 1, bw + 2, BLADDER_BAR_H + 2);
+    const urgent = bladderUrgentTimer > 0;
+    const frac = urgent ? clamp(bladderUrgentTimer / BLADDER_TIME_LIMIT, 0, 1) : bladderLevel / BLADDER_MAX;
+    const blink = urgent && !prefersReducedMotion && Math.floor(gameTime * 11) % 2 === 0;
+    ctx.fillStyle = blink ? PUB.burgundy : (urgent ? PUB.coolPale : PUB.cool);
+    ctx.fillRect(bx, rowY, Math.ceil(bw * frac), BLADDER_BAR_H);
+  }
 }
 
 // Cover-fits a splash image into the internal resolution and drops a tint
@@ -5003,7 +5942,7 @@ function drawCaughtOverlay() {
   drawWalnutPlate(bx, by, boardW, boardH, { rail: true });
 
   let y = by + 6;
-  drawCenteredText('CAUGHT!', y, PUB.tomato, BOARD_TITLE_SCALE);
+  drawCenteredText('CHARBONNEAU!', y, PUB.tomato, BOARD_TITLE_SCALE);
   y += titleH + 4;
   drawBrassRule(bx + 6, y, boardW - 12);
   y += 2 + 4;
@@ -5089,6 +6028,8 @@ function render() {
   drawRoom(camX, camY);
   drawDarkness(DARK_FLOOR);
   drawSpills(camX, camY);
+  drawWetPantsPuddles(camX, camY);
+  drawCigarettePacks(camX, camY);
 
   // Furniture and characters share one y-sorted pass so nearer (lower) things
   // draw over farther ones. Table sortY is still the table top's own front
@@ -5098,7 +6039,7 @@ function render() {
   drawPoolIdx = 0;
   for (const f of FURNITURE) pushDrawable(f.sortY, 'furniture', f);
   pushDrawable(player.y, 'entity', player);
-  if (hunterState !== 'arriving') pushDrawable(hunter.y, 'entity', hunter);
+  if (hunterState !== 'arriving' && hunterSmokeState !== 'outside') pushDrawable(hunter.y, 'entity', hunter);
   for (const c of customers) pushDrawable(c.y, 'entity', c);
   for (const r of regulars) pushDrawable(r.y, 'entity', r);
   // Floats above the floor with no ground shadow and no collision — it should
@@ -5107,6 +6048,13 @@ function render() {
   // The waiter, by contrast, is on the floor like anyone else — his own pass
   // exists only so the mist can be painted over his sprite.
   if (waiter) pushDrawable(waiter.y, 'waiter', waiter);
+  // The busboy needs no such extras — his pose alone (mop/mopB) carries the
+  // whole effect — so he draws through the ordinary entity path.
+  if (busboy) pushDrawable(busboy.y, 'entity', busboy);
+  // Alex, likewise — the split pose alone carries the gag, and his actual
+  // blocking collider is a separate FURNITURE entry pushed/popped in
+  // updateAlex, not anything drawn here.
+  if (alex) pushDrawable(alex.y, 'entity', alex);
   drawList.sort(sortByY);
   for (const d of drawList) {
     if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
@@ -5130,7 +6078,7 @@ function render() {
   placedOrderBubbles.push({ x: measuredHud.x, y: measuredHud.y, w: measuredHud.w, h: measuredHud.h });
   for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
   for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
-  if (hunterState !== 'arriving') drawOrderBubbleFor(hunter, camX, camY, BUBBLE_FRAME_HUNTER);
+  if (hunterState !== 'arriving' && !hunterOnSmokeBreak()) drawOrderBubbleFor(hunter, camX, camY, BUBBLE_FRAME_HUNTER);
   drawHunterAlert(camX, camY);
   for (const item of player.tray) {
     const carriedFor = item.customer;
@@ -5139,6 +6087,7 @@ function render() {
   }
 
   drawDialogueBubbles(camX, camY);
+  drawBusboyLine(camX, camY);
 
   // Floating score/penalty feedback, fading out as it drifts up.
   for (const t of floatingTexts) {
@@ -5196,6 +6145,12 @@ window.__debug = {
   getWaiter: () => waiter,
   spawnWaiter,
   waiterSchedule: () => ({ visitedThrough: waiterLevel, level: getLevel(), dueIn: +waiterDelay.toFixed(1) }),
+  getBusboy: () => busboy,
+  spawnBusboy,
+  getAlex: () => alex,
+  spawnAlex,
+  alexSchedule: () => ({ dueIn: +alexDelay.toFixed(1) }),
+  wetPantsPuddles,
   loadHighScores, saveHighScore,
   clearHighScores: () => { try { localStorage.removeItem(HIGH_SCORE_KEY); } catch {} },
   getNameEntry: () => ({ entering: enteringName, name: nameInput }),
@@ -5219,6 +6174,41 @@ window.__debug = {
   getRound: () => round,
   callRound: tryCallRound,
   startNazimWander: () => startNazimWander(regularById.get('nazim')),
+  getJameson: () => ({ active: jamesonActive(), remaining: +jamesonTimer.toFixed(2) }),
+  // No delivery needed: hands the shot over as if the player were standing.
+  giveJameson: (seconds) => {
+    grantJameson(player);
+    if (seconds != null) jamesonTimer = Math.max(0, seconds);
+    return jamesonTimer;
+  },
+  getBladder: () => ({ level: bladderLevel, max: BLADDER_MAX, urgent: +bladderUrgentTimer.toFixed(2), wet: +wetPantsTimer.toFixed(2), puddles: wetPantsPuddles.length }),
+  cigarettePacks,
+  dropCigarette,
+  getCigaretteReserve: () => cigaretteReserve,
+  fillCigaretteReserve: (n) => { cigaretteReserve = clamp(n ?? CIGARETTE_RESERVE_MAX, 0, CIGARETTE_RESERVE_MAX); return cigaretteReserve; },
+  getSmokeBreak: () => ({ state: hunterSmokeState, outsideRemaining: +hunterSmokeOutsideTimer.toFixed(2) }),
+  // No pack needed underfoot: hands the hunter the break directly. Still
+  // walks him to and from the door like the real thing, unless `instant` skips
+  // straight past both walks to just being outside.
+  giveSmokeBreak: (seconds, instant) => {
+    grantSmokeBreak();
+    if (instant) {
+      hunterSmokeState = 'outside';
+      hunter.x = DOOR.x;
+      hunter.y = DOOR.y;
+    }
+    if (seconds != null) hunterSmokeOutsideTimer = Math.max(0, seconds);
+    return hunterSmokeOutsideTimer;
+  },
+  // Tops the bladder up without a Jameson delivery; fills it to bursting by
+  // default, same as giveJameson stands in for a drink.
+  fillBladder: (n) => {
+    bladderLevel = clamp(n ?? BLADDER_MAX, 0, BLADDER_MAX);
+    if (bladderFull() && bladderUrgentTimer <= 0) bladderUrgentTimer = BLADDER_TIME_LIMIT;
+    else if (!bladderFull()) bladderUrgentTimer = 0;
+    return bladderLevel;
+  },
+  BATHROOM,
   getViewport: () => ({ viewW, viewH, pixelScale, portrait: viewIsPortrait }),
   getCamera,
   reservedSeats: () => SEATS.filter(s => s.reserved).map(s => ({ who: s.regularId, side: s.side, x: s.x, y: s.y })),

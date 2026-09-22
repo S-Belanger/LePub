@@ -1,5 +1,43 @@
 # LePub durable handoff
 
+## 2026-09-22 18:55 America/Toronto — resolved merge ready to push and release
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0. Refetch confirms `origin/main` remains `4c47160`; merge resolved locally, not yet committed/pushed. User explicitly authorizes production after completion.
+- Final `node tests/smoke.js` PASS including busboy speech rendering and all added gameplay regressions; asset registry PASS31. `node tools/validate-art.js` PASS desktop/mobile,112 animation mappings, input/rotation and missing-sheet fallback. New `node tools/validate-merge.js` PASS desktop1280x720/mobile390x844: ready atlases, raster status/pivot, Alex split, keyboard/touch pack drops, wet effect, off-floor hunter removal, caught UI; zero page errors. Status screenshots reviewed in `%TEMP%/lepub-merge-review`.
+- README/CLAUDE now reflect actual40% alcoholic-shot probability, raster status handling, incoming mechanics and shift/tray terminology. Existing nine PNGs untouched; incoming Alex/busboy procedural art retained. `git diff --check` PASS; no conflict markers remain.
+- Changed files: five resolved conflicts (`game.js`, sprites, dialogue content, sound, CLAUDE); incoming README/source floor plan/index/dialogue/CSS; tests/smoke regression coverage; new tools/validate-merge browser coverage; this handoff. All intentional.
+- Next: stage/commit merge, push feature branch, confirm PR mergeable, deploy with `vercel deploy --prod --yes` to linked `lepub`, verify live assets/gameplay, record release. PR remains open; direct production release does not require merging it into main.
+
+## 2026-09-22 18:51 America/Toronto — production release authorized; browser art checks pass
+
+- User now explicitly requests continuing and pushing to production after completion. Finish/push the resolved feature branch, then deploy that tested commit to the existing linked Vercel production project. README identifies `https://lepub.vercel.app`; GitHub Pages is absent and there is no repository deployment workflow. PR merging is not required for the documented direct CLI deployment.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0; main `4c47160` merge remains local/uncommitted. GitHub PR #3 remains conflicting until this merge is pushed.
+- `node tools/validate-art.js` PASS: desktop1280x720/touch390x844, all9 atlases ready,112 pose mappings each, movement12.4 units, rotation preserves position, missing-Doe fallback works; zero normal browser errors. Captures/report in `%TEMP%/lepub-art-final`. CPU render submission desktop2.8/5.2ms median/p95; mobile2.7/5.5ms, not physical-device evidence. `git diff --check` PASS.
+- Further code inspection found main's busboy speech used removed `DIALOGUE_BG`; changed `drawBusboyLine` to the existing parchment painter and added an exercised speech render to smoke tests. This small follow-up needs final checks. New gameplay/sprite status browser capture pending.
+- Next: final integration render/input checks and doc consistency; commit/push merge; verify PR mergeable; deploy via linked Vercel CLI and verify live production. Nothing committed/pushed/deployed this turn yet.
+
+## 2026-09-22 12:54 America/Toronto — merged gameplay regression checks pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0; main `4c47160` merge still uncommitted/unpushed.
+- `game.js`: fixed stale HUD coordinates, fitted packs/status bars into walnut HUD; preserved raster artwork with cached Jameson/wet status variants. Smoke routes use hunter footprint, clear carried hunter orders, resume scanning, hide off-floor alerts/order/light, and timeout only on sustained stalls. Busboy/Alex paths now use their own body footprints. Bathroom/customer penalties use shift accounting. Pack drops respect tally/pause/game-over.
+- `tests/smoke.js`: added coverage for delivery-earned packs, frozen tally, full smoke route and patrol return, Jameson bounce, bathroom relief/accident plus shift ledger, reachable mopping, Alex collider lifecycle, all new reset state, and raster status rendering. Initial busboy test failed because its fixture put the puddle inside a table; corrected to an actually clear aisle and retained body-aware routes.
+- `node tests/smoke.js` PASS (9 scripts, 40 routes, existing gameplay plus new integration coverage); `node tests/assets.js` PASS (31 checks). Initial HUD failure is fixed. No new atlas/source PNG changes.
+- Next: desktop/mobile Edge validation and screenshots, inspect final diff, stage and commit resolved merge, push feature branch and verify PR mergeability.
+
+## 2026-09-22 12:48 America/Toronto — conflict content combined, integration checks underway
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0; merge of `origin/main` `4c47160` remains in progress, uncommitted/unpushed.
+- All five conflicted files now combine the illustrated overhead branch with main's Jameson, bathroom, smoke-break, busboy/Alex, dialogue and sound additions. Current shift/tray/hunter state machine, renderer and approved PNGs remain preserved. New busboy/Alex retain main's procedural assets.
+- `node --check game.js` PASS. First `node tests/smoke.js` FAIL: incoming cigarette HUD still references removed `barY`/`LIFE_SEG_H`. Fixing HUD layout, smoke/state-machine integration and raster status effects before rerunning. Identified duplicate `hunterFollowPath` signatures during resolution; incoming smoke helper renamed to keep scanning paths intact.
+- Next: finish these integration fixes, exercise incoming features with regression tests, run existing assets and desktop/mobile browser validation, stage/commit/push merge.
+
+## 2026-09-22 12:43 America/Toronto — merging latest main, conflicts in progress
+
+- User requests pulling main and fixing PR #3 conflicts; prior push authorization applies to the resolved feature branch. Preserve illustrated overhead art and incoming gameplay features.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0. Clean at startup. Fresh fetch finds main `4c47160` with three new commits: Jameson power-up, restroom need, Mathieu/Alex smoke breaks and split slowdown.
+- `git merge --no-commit --no-ff origin/main` is in progress. Conflicted: `CLAUDE.md`, `game.js`, `src/dialogue-content.js`, `src/sound.js`, `src/sprites.js`. Auto-merged: README, planFloor image, index, dialogue runtime, CSS. Approved `assets/art-direction/floor-plan.*` remain distinct from incoming source planFloor image.
+- No tests run yet for merged tree; conflict markers must be resolved and incoming features integrated with shifts/tray/hunter states/art pipeline. Next: inspect each hunk, combine behavior, run smoke/assets/browser validation, commit and push merge. Nothing committed/pushed this turn.
+
 ## 2026-09-22 12:30 America/Toronto — illustrated cast pushed
 
 - Branch `feat/regulars-responsive-pixel-polish` advanced from `4bfd425` to `3a0f63c` with commit `feat: replace procedural cast with illustrated overhead sprites`; pushed successfully to `origin/feat/regulars-responsive-pixel-polish` (0 ahead / 0 behind after push).

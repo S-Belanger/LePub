@@ -190,6 +190,36 @@ const DIALOGUE_LINES = [
   { who: 'sam', category: 'hunterSpooked', text: "Did he just flinch at nothing?" },
   { who: 'gerald', category: 'hunterSpooked', text: "Big man. Scared of a draught." },
   { who: 'nazim', category: 'hunterSpooked', stage: ['drunk', 'gone'], text: "I saw it too. The see-through fella." },
+
+  // ---------------------------------------------------------------- JAMESON
+  // A customer has just handed the deer a shot and he's briefly untouchable.
+  // The booth watches it happen, so these are reactions to the room, not
+  // explanations of the mechanic: nobody here says "invincible".
+  { who: 'nazim', category: 'jameson', stage: ['sober', 'warm'], text: "A free one. For him. Naturally." },
+  { who: 'nazim', category: 'jameson', stage: ['buzzed'], text: "Whiskey. The good kind of decision." },
+  { who: 'nazim', category: 'jameson', stage: ['drunk'], text: "He gets Jameson. I get patience." },
+  { who: 'nazim', category: 'jameson', stage: ['gone'], text: "Pour one for the antlers. They've earned it." },
+  { who: 'sam', category: 'jameson', text: "Somebody tipped. In whiskey." },
+  { who: 'sam', category: 'jameson', text: "He's glowing. That's not the lamps." },
+  { who: 'sam', category: 'jameson', text: "Go on then. Run at the hat." },
+  { who: 'sam', category: 'jameson', rare: true, text: "Irish courage. Literally.", weight: 0.8 },
+  { who: 'gerald', category: 'jameson', text: "One shot and he thinks he's immortal." },
+  { who: 'gerald', category: 'jameson', text: "That's not a tip. That's an enabler." },
+  { who: 'gerald', category: 'jameson', nazim: ['drunk', 'gone'], text: "Wrong man got the Jameson." },
+
+  // ---------------------------------------------------------------- BLADDER
+  // The other cost of all those free shots. bladderFull fires the moment the
+  // clock starts; bathroomRelief when he makes it; wetPants when he doesn't.
+  { who: 'nazim', category: 'bladderFull', text: "He's doing the little dance now." },
+  { who: 'sam', category: 'bladderFull', text: "Three whiskeys in. Physics is due." },
+  { who: 'gerald', category: 'bladderFull', text: "Go. Now. We'll hold the fort." },
+  { who: 'nazim', category: 'bathroomRelief', text: "And he's back. Lighter, somehow." },
+  { who: 'sam', category: 'bathroomRelief', text: "Cutting it fine. But cut." },
+  { who: 'gerald', category: 'bathroomRelief', text: "Bladder: one. Dignity: barely." },
+  { who: 'nazim', category: 'wetPants', text: "Oh no. Oh, no no no." },
+  { who: 'sam', category: 'wetPants', text: "That's a whole new stain on his night." },
+  { who: 'gerald', category: 'wetPants', text: "And there it is. Slower than the hunter, this time." },
+  { who: 'gerald', category: 'wetPants', rare: true, text: "In front of everyone, too. Beautiful.", weight: 0.7 },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------
@@ -375,6 +405,20 @@ const DIALOGUE_EXCHANGES = [
     lines: [
       { who: 'nazim', text: "To the deer!", delay: 0 },
       { who: 'gerald', text: "Quietly, Nazim.", delay: 1.2 },
+    ],
+  },
+  {
+    category: 'jameson',
+    lines: [
+      { who: 'sam', text: "He drank it in one.", delay: 0 },
+      { who: 'gerald', text: "On shift. Marvellous.", delay: 1.3 },
+    ],
+  },
+  {
+    category: 'jameson', nazim: ['buzzed', 'drunk', 'gone'],
+    lines: [
+      { who: 'nazim', text: "Where's mine?", delay: 0 },
+      { who: 'gerald', text: "Behind you. Five of them.", delay: 1.4 },
     ],
   },
 ];

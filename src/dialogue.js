@@ -15,12 +15,16 @@ const Dialogue = (function () {
   // ambient line that's still cooling down, and to drop queued ambient chatter.
   const CATEGORY_PRIORITY = {
     caught: 5,
+    wetPants: 4,
+    jameson: 4,
     stageChanged: 4,
     nearMiss: 4,
     served: 3,
     lateOrder: 3,
     nazimFood: 3,
     restart: 3,
+    bladderFull: 2,
+    bathroomRelief: 2,
     hunterNear: 2,
     lastCall: 3,
     hunterSpooked: 2,

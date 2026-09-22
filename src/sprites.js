@@ -126,6 +126,24 @@ const DOE_PALETTE = {
   b: '#d7902f', // carried beer
 };
 
+// A Jameson from a grateful customer leaves the doe briefly untouchable, and
+// the sprite says so: the same rows painted through a ring of whiskey-gold
+// palettes, cycled a few times a second. They're prebuilt rather than mixed
+// per frame because drawSprite caches one baked canvas per palette *object*,
+// so three fixed objects cost three bakes for the whole run and a freshly
+// mixed palette every frame would cost one bake every frame.
+function doeTint(over) { return Object.assign({}, DOE_PALETTE, over); }
+const DOE_JAMESON_PALETTES = [
+  doeTint({ n: '#e0a850', f: '#f8e8b8', h: '#d8b058', k: '#f6cc96', e: '#6e4820', d: '#8a5a20', c: '#f0e0b0', s: '#3a2814' }),
+  doeTint({ n: '#ffd870', f: '#fff4c8', h: '#f0c86a', k: '#ffd9a0', e: '#8a5c28', d: '#b8802c', c: '#fff0c0', s: '#4a3418' }),
+  doeTint({ n: '#fff0b0', f: '#ffffff', h: '#ffe49a', k: '#ffe9c8', e: '#a8763a', d: '#e0a840', c: '#fffbe0', s: '#665028' }),
+];
+
+// The bladder losing its race against the clock: a single darkened palette
+// (no cycling needed, it isn't a warning — it's already happened) staining
+// the onesie and chest patch for a few seconds.
+const DOE_WET_PALETTE = doeTint({ d: '#4a4234', c: '#a89870', s: '#1c1710' });
+
 const DOE_IDLE = buildSprite([
   R('.', 4, 'n', 1, 'N', 1, '.', 4, 'N', 1, 'n', 1, '.', 4),
   R('.', 3, 'n', 1, '.', 1, 'n', 1, '.', 4, 'n', 1, '.', 1, 'n', 1, '.', 3),
@@ -658,6 +676,149 @@ const WAITER_SPRAY_B = buildSprite([
   '.....aaaaaaaaaa..bB.',
   '......ppp..ppp...bB.',
   ...WAITER_SPRAY.rows.slice(15),
+]);
+
+// --- Busboy: the one who comes to mop up after an accident. Dark hair, a
+// goatee, no glasses or chain — reads as a different member of staff from
+// the waiter at a glance even sharing the same silhouette. The mop is folded
+// into the existing 14-wide frame rather than widened like the waiter's
+// spray: just a couple of columns on his right side switch from apron/leg
+// colors to the mop's, so the two poses read as a small side-to-side wipe
+// without needing a second baked width.
+const BUSBOY_PALETTE = {
+  '.': null,
+  h: '#241a12', // dark hair
+  k: '#e2b78d', // skin
+  e: '#201812', // eyes
+  j: '#1c1410', // goatee
+  t: '#4a5c48', // work shirt
+  a: '#9b9284', // apron
+  p: '#2c2620', // trousers
+  s: '#1a1512', // shoes
+  M: '#8a6a3c', // mop handle
+  m: '#d8d2c0', // mop head
+};
+
+const BUSBOY_IDLE = buildSprite([
+  '....hhhhhh....',
+  '...hhhhhhhh...',
+  '..hhhhhhhhhh..',
+  '..hkkkkkkkkh..',
+  '..kkkkkkkkkk..',
+  '..k.ee..ee.k..',
+  '...kkkkkkkk...',
+  '....kjjjjk....',
+  '.....kjjk.....',
+  '..tttttttttt..',
+  '.tttttttttttt.',
+  '.ttaaaaaaaatt.',
+  '.ktaaaaaaaatk.',
+  '..aaaaaaaaaa..',
+  '...ppp..ppp...',
+  '...ppp..ppp...',
+  '...sss..sss...',
+]);
+
+const BUSBOY_WALK = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 14),
+  '..ppp....ppp..',
+  '.ppp......ppp.',
+  'sss........sss',
+]);
+
+// Mopping: the same 14-wide frame, with the mop leaning down his right side
+// from hand to floor. MOP_B nudges it one column over so alternating between
+// the two reads as a short wipe rather than a held pose.
+const BUSBOY_MOP = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 12),
+  '.ktaaaaaaaatM.',
+  '..aaaaaaaaaaM.',
+  '...ppp..ppp.m.',
+  '...ppp..ppp.m.',
+  '...sss..sss.m.',
+]);
+
+const BUSBOY_MOP_B = buildSprite([
+  ...BUSBOY_IDLE.rows.slice(0, 12),
+  '.ktaaaaaaaMk.',
+  '..aaaaaaaaaM..',
+  '...ppp..pppm..',
+  '...ppp..pppm..',
+  '...sss..sssm..',
+]);
+
+// --- Alex: a wandering regular who occasionally bursts in to drop into a full
+// split in the middle of the floor, stopping traffic for whoever runs into
+// him before picking himself back up. Drawn from a photo reference: dark
+// swept hair, a short full beard, a wide grin — dressed down from the
+// waiter's service look into a t-shirt and shorts, since he's here to
+// stretch, not to work.
+//
+// idle/walk match the waiter/busboy's 14-wide convention (14 head/torso rows
+// then 3 leg rows) so he reads as one more member of the cast at a glance.
+// split is a separate, wider (22px) frame: the legs run out sideways along
+// the floor instead of down, which is also what makeSplitCollider in game.js
+// keys off to block the corridor he lands in.
+const ALEX_PALETTE = {
+  '.': null,
+  h: '#2a1a10', // dark hair
+  H: '#4a3018', // swept-back highlight
+  k: '#e3ac7c', // skin
+  g: '#1c1c22', // glasses frame
+  w: '#8fa8bd', // lens catchlight
+  e: '#201410', // eyes, behind the lens
+  j: '#141110', // short beard — black, a shade cooler/darker than the hair so it still reads as its own shape
+  m: '#f7f2e4', // grin
+  t: '#2f6f6a', // t-shirt
+  p: '#4a4a52', // shorts
+  s: '#e8e4d8', // sneakers
+};
+
+const ALEX_IDLE = buildSprite([
+  '....hhhhhh....',
+  '...hHHhhhhh...',
+  '..hhHHhhhhhh..',
+  '..hkkkkkkkkh..',
+  '..ggggkkgggg..',
+  '..gwegkkgweg..',
+  '...kkkkkkkk...',
+  '...jkmmmmkj...',
+  '....jjjjjj....',
+  '..tttttttttt..',
+  '.tttttttttttt.',
+  '.tttttttttttt.',
+  '...pppppppp...',
+  '...pp....pp...',
+  '...kk....kk...',
+  '...ss....ss...',
+  '...ss....ss...',
+]);
+
+const ALEX_WALK = buildSprite([
+  ...ALEX_IDLE.rows.slice(0, 14),
+  '..kk......kk..',
+  '.kk........kk.',
+  'ss..........ss',
+]);
+
+// The split: head and torso padded out to 22px so the arms have somewhere to
+// go, legs run flat along the last row instead of down — shoes at the outer
+// edges, a gap at the centre for the floor between them.
+const ALEX_SPLIT = buildSprite([
+  '....' + '....hhhhhh....' + '....',
+  '....' + '...hHHhhhhh...' + '....',
+  '....' + '..hhHHhhhhhh..' + '....',
+  '....' + '..hkkkkkkkkh..' + '....',
+  '....' + '..ggggkkgggg..' + '....',
+  '....' + '..gwegkkgweg..' + '....',
+  '....' + '...kkkkkkkk...' + '....',
+  '....' + '...jkmmmmkj...' + '....',
+  '....' + '....jjjjjj....' + '....',
+  '..kk' + '..tttttttttt..' + 'kk..', // arms out for balance
+  '....' + '.tttttttttttt.' + '....',
+  '....' + '...pppppppp...' + '....',
+  '....' + '...pppppppp...' + '....',
+  'sskkkkkkkk..kkkkkkkkss',              // legs run flat, floor gap at centre
 ]);
 
 // ---- High-density lead sheets --------------------------------------------
@@ -1488,4 +1649,14 @@ const SPRITES = {
   nazim: OH_NAZIM,
   sam: OH_SAM,
   gerald: OH_GERALD,
+  busboy: {
+    idle: BUSBOY_IDLE, walk: BUSBOY_WALK,
+    mop: BUSBOY_MOP, mopB: BUSBOY_MOP_B,
+    palette: BUSBOY_PALETTE,
+  },
+  alex: {
+    idle: ALEX_IDLE, walk: ALEX_WALK,
+    split: ALEX_SPLIT,
+    palette: ALEX_PALETTE,
+  },
 };
