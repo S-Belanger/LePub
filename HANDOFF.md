@@ -1,6 +1,12 @@
 # LePub durable handoff
 
-## 2026-09-22 18:55 America/Toronto — resolved merge ready to push and release
+## 2026-09-22 18:53 America/Toronto — merge committed and pushed; production deployment next
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `03748b7`, upstream 0/0 after successful push. Merge commit incorporates main `4c47160`; all conflict resolutions and final tests are committed. Working tree was clean before this checkpoint.
+- User authorized production. All validation results from the ready-to-release checkpoint below stand. Next: deploy the linked Vercel `lepub` project with `--prod`, then verify the public alias serves the merged files and passes desktop/mobile integration checks. PR stays open; no PR comment or main-branch mutation requested/performed.
+- This documentation checkpoint will be committed and pushed before deployment so the deployed working tree is clean. No production deployment has happened yet.
+
+## 2026-09-22 18:53 America/Toronto — resolved merge ready to push and release
 
 - Branch `feat/regulars-responsive-pixel-polish`, HEAD `3621024`, upstream 0/0. Refetch confirms `origin/main` remains `4c47160`; merge resolved locally, not yet committed/pushed. User explicitly authorizes production after completion.
 - Final `node tests/smoke.js` PASS including busboy speech rendering and all added gameplay regressions; asset registry PASS31. `node tools/validate-art.js` PASS desktop/mobile,112 animation mappings, input/rotation and missing-sheet fallback. New `node tools/validate-merge.js` PASS desktop1280x720/mobile390x844: ready atlases, raster status/pivot, Alex split, keyboard/touch pack drops, wet effect, off-floor hunter removal, caught UI; zero page errors. Status screenshots reviewed in `%TEMP%/lepub-merge-review`.
