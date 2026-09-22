@@ -1,5 +1,11 @@
 # LePub durable handoff
 
+## 2026-09-22 12:30 America/Toronto — illustrated cast pushed
+
+- Branch `feat/regulars-responsive-pixel-polish` advanced from `4bfd425` to `3a0f63c` with commit `feat: replace procedural cast with illustrated overhead sprites`; pushed successfully to `origin/feat/regulars-responsive-pixel-polish` (0 ahead / 0 behind after push).
+- This checkpoint records the completed user-authorized push. No PR merge, deployment, or PR comment was performed.
+- Working tree has only this handoff update pending. Next state: commit and push this checkpoint, then wait for visual review feedback.
+
 This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
