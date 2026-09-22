@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.sam.illustrated",
+  "image": "sam-illustrated.png",
+  "imageSize": {
+    "width": 1254,
+    "height": 1254
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 12.333333333333334,
+  "alphaPolicy": "translucent",
+  "palettePolicy": "illustrated-reference",
+  "fallbackKey": "sam",
+  "directions": [
+    "down",
+    "right",
+    "up",
+    "left"
+  ],
+  "provenance": "Built-in imagegen from the overhead character study; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
+  "frames": {
+    "idle.down": {
+      "rect": {
+        "x": 55,
+        "y": 36,
+        "width": 206,
+        "height": 247
+      },
+      "pivot": {
+        "x": 102,
+        "y": 245
+      }
+    },
+    "idle.right": {
+      "rect": {
+        "x": 384,
+        "y": 36,
+        "width": 175,
+        "height": 259
+      },
+      "pivot": {
+        "x": 86.5,
+        "y": 257
+      }
+    },
+    "idle.up": {
+      "rect": {
+        "x": 683,
+        "y": 36,
+        "width": 202,
+        "height": 251
+      },
+      "pivot": {
+        "x": 101,
+        "y": 249
+      }
+    },
+    "idle.left": {
+      "rect": {
+        "x": 1010,
+        "y": 36,
+        "width": 175,
+        "height": 259
+      },
+      "pivot": {
+        "x": 87.5,
+        "y": 257
+      }
+    },
+    "walkA.down": {
+      "rect": {
+        "x": 54,
+        "y": 339,
+        "width": 206,
+        "height": 265
+      },
+      "pivot": {
+        "x": 103,
+        "y": 263
+      }
+    },
+    "walkA.right": {
+      "rect": {
+        "x": 384,
+        "y": 340,
+        "width": 183,
+        "height": 266
+      },
+      "pivot": {
+        "x": 86.5,
+        "y": 264
+      }
+    },
+    "walkA.up": {
+      "rect": {
+        "x": 684,
+        "y": 340,
+        "width": 199,
+        "height": 266
+      },
+      "pivot": {
+        "x": 100,
+        "y": 264
+      }
+    },
+    "walkA.left": {
+      "rect": {
+        "x": 1002,
+        "y": 340,
+        "width": 183,
+        "height": 266
+      },
+      "pivot": {
+        "x": 95.5,
+        "y": 264
+      }
+    },
+    "walkB.down": {
+      "rect": {
+        "x": 53,
+        "y": 653,
+        "width": 208,
+        "height": 263
+      },
+      "pivot": {
+        "x": 104,
+        "y": 261
+      }
+    },
+    "walkB.right": {
+      "rect": {
+        "x": 379,
+        "y": 651,
+        "width": 189,
+        "height": 262
+      },
+      "pivot": {
+        "x": 91.5,
+        "y": 260
+      }
+    },
+    "walkB.up": {
+      "rect": {
+        "x": 685,
+        "y": 653,
+        "width": 199,
+        "height": 258
+      },
+      "pivot": {
+        "x": 99,
+        "y": 256
+      }
+    },
+    "walkB.left": {
+      "rect": {
+        "x": 1000,
+        "y": 651,
+        "width": 191,
+        "height": 262
+      },
+      "pivot": {
+        "x": 97.5,
+        "y": 260
+      }
+    },
+    "special.down": {
+      "rect": {
+        "x": 51,
+        "y": 954,
+        "width": 216,
+        "height": 252
+      },
+      "pivot": {
+        "x": 106,
+        "y": 250
+      }
+    },
+    "special.right": {
+      "rect": {
+        "x": 397,
+        "y": 954,
+        "width": 184,
+        "height": 263
+      },
+      "pivot": {
+        "x": 73.5,
+        "y": 261
+      }
+    },
+    "special.up": {
+      "rect": {
+        "x": 677,
+        "y": 955,
+        "width": 215,
+        "height": 252
+      },
+      "pivot": {
+        "x": 107,
+        "y": 250
+      }
+    },
+    "special.left": {
+      "rect": {
+        "x": 986,
+        "y": 954,
+        "width": 186,
+        "height": 263
+      },
+      "pivot": {
+        "x": 111.5,
+        "y": 261
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.left",
+          "durationMs": 1000
+        }
+      ]
+    }
+  }
+}

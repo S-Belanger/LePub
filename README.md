@@ -16,9 +16,15 @@ translated into the existing straight-overhead, gameplay-first camera. The
 reference controls palette, materials, lighting, and decorative density—not
 the room projection or collision layout.
 
-The renderer uses a 2x internal art grid over the unchanged logical world, so
+The renderer uses a 4x internal art grid over the unchanged logical world, so
 fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
 light, and wood grain remain crisp without changing movement or collision.
+
+The cast now uses nine illustrated sprite atlases with four directions,
+including three distinct walk-in customers. [Character review](tools/art-review.html)
+lets you inspect poses and display sizes with the local server running;
+[asset notes](assets/sprites/ILLUSTRATED.md) describe the sources and remaining
+animation limits. Run `node tools/validate-art.js` for real Edge checks.
 
 With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
 
@@ -65,7 +71,7 @@ Life begins regenerating after three hit-free seconds. A fully empty bar takes 2
 | Fullscreen | Fullscreen button | Fullscreen button, where supported |
 
 The canvas adapts to landscape and portrait screens using integer CSS scaling
-over a 2x art backing store, so the finer pixel work remains crisp instead of
+over a 4x art backing store, so the finer pixel work remains crisp instead of
 being stretched across fractional pixels.
 
 ## The corner-table regulars
@@ -107,7 +113,7 @@ The game uses classic scripts that share one global scope. Their order in `index
 | `src/sound.js` | Lazy Web Audio initialization and synthesized sound cues |
 | `assets/` | Gameplay screenshot, game-over art, level-completion art, and the floor-plan reference |
 
-Static room art and lighting textures are baked into 2x offscreen canvases.
+Static room art is baked into a 4x offscreen canvas; continuous-alpha lighting textures are cached separately.
 Sprite renders are cached by sprite, palette, and facing; collision dimensions
 remain separate from visual sheets, while furniture and characters share one
 pooled y-sorted render pass.

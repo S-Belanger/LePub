@@ -490,6 +490,13 @@ function run() {
     if (!frame || frame.rect.width !== 40) throw new Error('Doe should draw from the atlas frame.');
     debug.render();
     if (vm.runInContext('rasterFrameFor(hunter)', context) !== null) throw new Error('Hunter has no atlas and must fall back.');
+    // Directional sheets have lean.up/slump.up, not the old bare aliases.
+    // Checking only set.lean silently erased both intoxication silhouettes.
+    vm.runInContext("regularById.get('nazim').talkTimer = 0", context);
+    for (const [stage, pose] of [['drunk', 'lean'], ['gone', 'slump']]) {
+      const actual = vm.runInContext(`regularPose(regularById.get('nazim'), NAZIM_STAGE_VISUALS.${stage})`, context);
+      if (actual !== pose) throw new Error(`${stage} Nazim should use ${pose}, got ${actual}`);
+    }
   });
 
   rasterCheck.then(() => console.log(`Smoke test passed: ${SCRIPT_FILES.length} scripts, ${freeSeats} customer routes, ` +

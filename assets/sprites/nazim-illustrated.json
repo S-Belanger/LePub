@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.nazim.illustrated",
+  "image": "nazim-illustrated.png",
+  "imageSize": {
+    "width": 1254,
+    "height": 1254
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 11.80952380952381,
+  "alphaPolicy": "translucent",
+  "palettePolicy": "illustrated-reference",
+  "fallbackKey": "nazim",
+  "directions": [
+    "down",
+    "right",
+    "up",
+    "left"
+  ],
+  "provenance": "Built-in imagegen from the overhead character study; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
+  "frames": {
+    "idle.down": {
+      "rect": {
+        "x": 69,
+        "y": 58,
+        "width": 199,
+        "height": 240
+      },
+      "pivot": {
+        "x": 88,
+        "y": 238
+      }
+    },
+    "idle.right": {
+      "rect": {
+        "x": 392,
+        "y": 50,
+        "width": 161,
+        "height": 248
+      },
+      "pivot": {
+        "x": 78.5,
+        "y": 246
+      }
+    },
+    "idle.up": {
+      "rect": {
+        "x": 684,
+        "y": 55,
+        "width": 188,
+        "height": 243
+      },
+      "pivot": {
+        "x": 100,
+        "y": 241
+      }
+    },
+    "idle.left": {
+      "rect": {
+        "x": 1016,
+        "y": 51,
+        "width": 161,
+        "height": 247
+      },
+      "pivot": {
+        "x": 81.5,
+        "y": 245
+      }
+    },
+    "walkA.down": {
+      "rect": {
+        "x": 71,
+        "y": 363,
+        "width": 192,
+        "height": 247
+      },
+      "pivot": {
+        "x": 86,
+        "y": 245
+      }
+    },
+    "walkA.right": {
+      "rect": {
+        "x": 398,
+        "y": 355,
+        "width": 160,
+        "height": 245
+      },
+      "pivot": {
+        "x": 72.5,
+        "y": 243
+      }
+    },
+    "walkA.up": {
+      "rect": {
+        "x": 692,
+        "y": 354,
+        "width": 177,
+        "height": 256
+      },
+      "pivot": {
+        "x": 92,
+        "y": 254
+      }
+    },
+    "walkA.left": {
+      "rect": {
+        "x": 1012,
+        "y": 351,
+        "width": 160,
+        "height": 249
+      },
+      "pivot": {
+        "x": 85.5,
+        "y": 247
+      }
+    },
+    "lean.down": {
+      "rect": {
+        "x": 76,
+        "y": 673,
+        "width": 183,
+        "height": 231
+      },
+      "pivot": {
+        "x": 81,
+        "y": 229
+      }
+    },
+    "lean.right": {
+      "rect": {
+        "x": 377,
+        "y": 669,
+        "width": 194,
+        "height": 241
+      },
+      "pivot": {
+        "x": 93.5,
+        "y": 239
+      }
+    },
+    "lean.up": {
+      "rect": {
+        "x": 687,
+        "y": 674,
+        "width": 181,
+        "height": 235
+      },
+      "pivot": {
+        "x": 97,
+        "y": 233
+      }
+    },
+    "lean.left": {
+      "rect": {
+        "x": 998,
+        "y": 666,
+        "width": 193,
+        "height": 244
+      },
+      "pivot": {
+        "x": 99.5,
+        "y": 242
+      }
+    },
+    "slump.down": {
+      "rect": {
+        "x": 71,
+        "y": 995,
+        "width": 190,
+        "height": 194
+      },
+      "pivot": {
+        "x": 86,
+        "y": 192
+      }
+    },
+    "slump.right": {
+      "rect": {
+        "x": 382,
+        "y": 985,
+        "width": 202,
+        "height": 216
+      },
+      "pivot": {
+        "x": 88.5,
+        "y": 214
+      }
+    },
+    "slump.up": {
+      "rect": {
+        "x": 689,
+        "y": 978,
+        "width": 180,
+        "height": 222
+      },
+      "pivot": {
+        "x": 95,
+        "y": 220
+      }
+    },
+    "slump.left": {
+      "rect": {
+        "x": 986,
+        "y": 983,
+        "width": 201,
+        "height": 218
+      },
+      "pivot": {
+        "x": 111.5,
+        "y": 216
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        }
+      ]
+    },
+    "lean.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "lean.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "slump.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "slump.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        }
+      ]
+    },
+    "lean.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "lean.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "slump.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "slump.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        }
+      ]
+    },
+    "lean.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "lean.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "slump.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "slump.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        }
+      ]
+    },
+    "lean.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "lean.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "slump.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "slump.left",
+          "durationMs": 1000
+        }
+      ]
+    }
+  }
+}

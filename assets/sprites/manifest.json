@@ -1,10 +1,13 @@
 {
   "atlases": [
-    "doe.json",
-    "hunter.json",
-    "nazim.json",
-    "sam.json",
-    "gerald.json",
-    "waiter.json"
+    "doe-illustrated.json",
+    "hunter-illustrated.json",
+    "nazim-illustrated.json",
+    "sam-illustrated.json",
+    "gerald-illustrated.json",
+    "waiter-illustrated.json",
+    "customer-teal-illustrated.json",
+    "customer-ochre-illustrated.json",
+    "customer-blue-illustrated.json"
   ]
 }

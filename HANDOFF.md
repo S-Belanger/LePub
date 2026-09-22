@@ -4,6 +4,87 @@ This file is maintained throughout active work, not only at the end. Read the
 newest checkpoint before making changes. Do not record secrets or `.env`
 contents here.
 
+## 2026-09-22 12:26 America/Toronto — character rebuild ready for local review
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425f4fd71c9efac6f0711aade3bd3fbf1b04`, upstream 0 ahead / 0 behind. All session changes remain uncommitted/unpushed; no deployment, PR comment or merge made. Final Git status checked against this entry.
+- User rejected the latest procedural sprite execution on PR #3, asked to recover our reference direction, explicitly confirmed overhead, then resumed on Sep22. Approved geometry/colliders/rules preserved.
+- `assets/sprites/{doe,hunter,nazim,sam,gerald,waiter,customer-teal,customer-ochre,customer-blue}-illustrated.{png,json}`: nine genuinely new illustrated source sheets from built-in imagegen, 144 alpha-checked source frames and measured per-family feet/density metadata. `manifest.json` selects these. Original atlases and procedural sets preserved.
+- `game.js`: single ART_SCALE 4 transform, illustrated walk-in selection via existing look; hunter drink and regular talk/lean/slump resolve to correct assets; fixed directional-pose lookup and opacity omission from lighting cache key. `src/scenery.js`: continuous-alpha lighting/vignette removes coarse checkerboard over artwork. No world/input/gameplay numeric change.
+- `tests/smoke.js`: drunk/gone directional-pose regression assertions. `tools/export-sheets.js`: procedural export cannot silently add a competing family to the illustrated manifest.
+- `tools/browser-session.js`: shared local-only static server and Edge harness. `tools/import-illustrated.js`: metadata importer, PNGs unmodified. `tools/validate-art.js`: full real-browser validation and captures. `tools/art-review.html`: interactive nine-character direction/pose/scale viewer. `tools/serve.js`: dependency-free preview command. Removed the obsolete two-lead prototype `tools/review-art.js` created earlier this session.
+- `assets/sprites/ILLUSTRATED.md`: provenance, prompt recipe/set, frame contract and limitations. `README.md`, `CLAUDE.md`, `assets/art-direction/README.md`: current renderer/cast/fallback direction. `assets/gameplay.png` refreshed from actual carry/drink/spray browser frame. `docs/art-review/{README.md,desktop.png,mobile.png,cast.png,report.json}`: saved evidence.
+- Final tests: `node tests/smoke.js` PASS (9 scripts, 40 routes, regulars/waiter/serving/hunter/Nazim/round/reactions/shifts/render/raster + regression); `node tests/assets.js` PASS (31 checks); syntax checks for game/server/harness PASS; `git diff --check` PASS (only expected Windows line-ending notices).
+- Browser: final `node tools/validate-art.js` PASS desktop1280×720 and touch390×844. All9 sheets ready;112 direction/pose mappings each; actual lean/slump/talk; carry/drink/spray rendered; keyboard/touch move12.4 units; rotation preserves position; deliberate Doe404 falls back while Hunter and movement work. Normal errors zero. Gallery9/9, no page errors. Mature order tickets and actual sprite screenshots visually reviewed.
+- Latest CPU-only render submission,300 frames with9 patrons+regulars+Jay: desktop median2.9/p95 5.0ms; mobile emulation3.1/5.6ms. Not physical-phone/GPU/frame-pacing evidence.
+- Local preview running via hidden Node PID6064, port8917. Verified HTTP200 and expected content for `http://127.0.0.1:8917/` and `/tools/art-review.html`. Restart with `node tools/serve.js` if process ends. No credentials or deployment needed for local review.
+- Remaining scope/risks: visual approval pending; room/furniture are still procedural, not full painted-reference parity. Doe carryWalk uses held-pint frame plus existing step lift (no independent carry strides). Fine blush/blink and anatomical prop consistency need artist review; ghost intentionally procedural. Generated sources are reviewed AI illustrations, not hand-cleaned/palette-locked pixel art. Source PNGs add download/decode memory; no real-device performance claim.
+- Next concrete step: user reviews the local playable game/cast; address their visual feedback before any PR publication or environment-art expansion. Do not regenerate or revert the preserved reference-quality sprites to procedural exports.
+
+## 2026-09-22 12:18 America/Toronto — final manifest browser validation passes
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0; uncommitted/unpushed.
+- Added `tools/validate-art.js`: tests actual production manifest (nine ready sheets), 112 direction/animation mappings per viewport, Nazim lean/slump and Sam/Gerald talk via runtime, carry/drinking/spray rendering, keyboard/touch movement, rotate/resize preserving world position, and simulated Doe PNG 404 with working fallback + other atlases.
+- `node tools/validate-art.js` PASS at desktop 1280×720 and mobile 390×844. Zero normal console/page/request/HTTP errors. Movement both 12.4 world units. Desktop backing 1280×720; mobile 780×1440. Render-submission CPU only (300 samples after 30 warmup, 9 patrons + regulars + Jay): desktop median3.3/p95 5.8ms; mobile emulation median3.1/p95 5.5ms. This is not GPU/frame-pacing or physical-phone performance evidence.
+- Captures/report at `%TEMP%/lepub-art-final/`; visual inspection, final docs and review delivery next. Existing earlier `tools/review-art.js` is only the two-lead prototype and should be removed/replaced so no misleading before/after captures survive.
+
+## 2026-09-22 12:13 America/Toronto — walk-in artwork integrated
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0; uncommitted/unpushed.
+- Built-in imagegen available again. A combined 24-frame customer sheet and extraction retry failed visual alpha inspection (painted backgrounds); rejected and left outside repo. Three square sheets based on the transparent waiter template succeeded.
+- Added `customer-{teal,ochre,blue}-illustrated.png` + JSON, 16 alpha-checked frames each. Manifest now nine illustrated atlases (144 source frames); `game.js` selects customer atlas using existing `look`, preserves entity kind/palette and per-family fallback. Ghost remains intentionally procedural/translucent.
+- Next: final browser proof of all nine atlases, full cast directions/poses, crowded room, controls/resize, missing-asset fallback and frame-cost measurements. Documentation and final screenshots still pending. Earlier smoke/31 asset checks pass; customer integration not yet tested.
+
+## 2026-09-22 12:06 America/Toronto — resumed, regression suites pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0. Git status matches the six illustrated sheets/metadata, importer/review harness, manifest/renderer/lighting/pose changes and handoff from yesterday; all preserved, uncommitted/unpushed.
+- User says resume; overhead remains explicit direction. Yesterday's last customer-sheet generation failed with usage_limit_reached (429); no customer image was produced. Retry now after the recorded reset period.
+- Tests now run against the directional pose fix: `node tests/smoke.js` PASS including drunk/gone Nazim regression; `node tests/assets.js` PASS, 31 checks.
+- Next: customer artwork if available, final cast/browser/movement/fallback/resizing/performance validation, updated documentation and review captures. No deployment, PR comment, commit or push made.
+
+## 2026-09-21 20:23 America/Toronto — directional pose bug fixed
+
+- Branch/HEAD/upstream unchanged: `feat/regulars-responsive-pixel-polish`, `4bfd425`, 0/0; uncommitted/unpushed.
+- Found `regularPose()` only recognized bare legacy keys, so directional lean/slump silently returned idle. Fixed it to recognize directional and ready atlas poses; added regression assertions to `tests/smoke.js`. Also enables illustrated Sam/Gerald talking frames from actual talkTimer events.
+- New assertions not yet run. Next: final gameplay/pose/fallback checks, and align walk-in customers with the named cast so crowds do not mix two art styles.
+
+## 2026-09-21 20:21 America/Toronto — six named characters integrated
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0; all work uncommitted/unpushed.
+- Added Jay's `waiter-illustrated.png`; corrected Sam's unintended beard with imagegen; importer alpha/bounds-checked regulars + waiter and wrote four more illustrated JSONs. Six sources, 96 frames total.
+- `assets/sprites/manifest.json` selects the six illustrated sheets. Old PNG/JSON and procedural sets remain as reference/safety net. `tools/export-sheets.js` no longer appends a competing procedural family when illustrated entry exists.
+- `game.js`: talking pose mapping for Sam/Gerald; `tools/import-illustrated.js`: distinct Nazim lean/slump, talking/spray poses. Lighting cache now keys alpha as well as radius/color (bug found during review).
+- Tests remain the prior smoke/31 asset checks; all6 sheets validated by importer. Next: browser validation of final manifest, four directions/poses, booth/crowd, resize and missing-asset fallback; performance comparison and documentation. Generic walk-ins and ghost still procedural. Carry walk uses the held-pint pose + existing step lift; no independently authored carry strides yet.
+
+## 2026-09-21 20:18 America/Toronto — regulars source artwork added
+
+- Same branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0; uncommitted/unpushed.
+- Added `nazim-illustrated.png`, `sam-illustrated.png`, `gerald-illustrated.png`. Nazim rows differ deliberately: idle, walk, lean, slump. Sam/Gerald row4 is talking. Keep those mappings in importer and pose selection.
+- Earlier test/browser results still stand; new regular sheets not yet imported/tested. Next: Jay, import all three regulars with correct poses, integrate manifest and capture booth plus moving leads. Sam generation added facial hair despite clean-shaven prompt; correct before final.
+
+## 2026-09-21 20:15 America/Toronto — leads proven in gameplay, renderer noise fixed
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream 0/0. User confirmed overhead artwork replacement. No commits/push/deployment.
+- `tools/browser-session.js`, `tools/import-illustrated.js`, `tools/review-art.js`: local Edge harness, alpha/bounds measurement into loader-compatible JSON (sources unchanged), reproducible desktop/mobile proof. `doe-illustrated.json` / `hunter-illustrated.json` ready; manifest still original pending full cast.
+- `game.js`: ART_SCALE 2→4 after native-size comparison demonstrated loss of illustrated detail at 2. One transform only; world, CSS scale, routes/colliders unchanged. Hunter drinking pose resolves to sheet with procedural fallback.
+- `src/scenery.js`: removed coarse Bayer light/vignette patterns that overlaid checkerboards on faces. Continuous alpha lighting, artwork stays crisp. Discovered light cache key also omits alpha; fix next.
+- Tests: `node tests/smoke.js` PASS (9 scripts, 40 routes and gameplay scenarios); `node tests/assets.js` PASS (31 checks). Edge proof at 1280×720 and 390×844: all loaded atlases ready, zero console/page/request/HTTP errors. Captures in `%TEMP%/lepub-art-review/` visually reviewed.
+- Next: regulars + Jay source sheets, manifest integration, alpha-aware cache key, movement/fallback/resizing checks, final review captures. Environment remains procedural and is not claimed to match the painted reference fully. Source prompts/provenance documentation still needed.
+
+## 2026-09-21 20:13 America/Toronto — illustrated leads authored
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, upstream unchanged (0 ahead / 0 behind). User confirmed: keep overhead, fix artwork.
+- Added `assets/sprites/doe-illustrated.png` and `hunter-illustrated.png` using built-in imagegen, referenced to the overhead character study. Four directions with idle, two walk steps and held-pint poses; original procedural atlases preserved.
+- These are generated source sheets, not yet wired into the manifest. Must inspect alpha and measured bounds, anchor feet consistently, verify camera and native-size readability in gameplay before acceptance.
+- HANDOFF.md also modified. No tests run yet; no commits/push/deployment/comments. Next: atlas metadata and an in-game proof, followed by regulars if the scale holds.
+
+## 2026-09-21 20:09 America/Toronto — recovering the intended artwork from PR #3
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `4bfd425`, clean at startup and synchronized with upstream; live PR #3 head matches. Previous handoff's `f45c112` predates the final docs commit.
+- User rejects the latest procedural sprites and asks to return to our reference direction. Read the complete prior handoff, PR body/comments, camera brief, and viewed gameplay plus all three visual references.
+- Diagnosis: production PNGs are exports of the procedural overhead generator; reference-quality replacement art was never produced. Keep the approved geometry, overhead projection, current gameplay and existing loader. Optional camera clarification pending; overhead is the documented default.
+- Next: use built-in imagegen to author replacement character sheets from the camera study, integrate via atlas metadata, verify native-size desktop/mobile gameplay and existing tests. No renderer scale change decided.
+- Only HANDOFF.md changed so far. No tests yet in this session. No commits, pushes, deployment or PR comments made.
+- Art remains unapproved; judge real gameplay captures, not generated concept images.
 ## 2026-09-16 15:30 — P0: overhead overhaul pack received; discovery and baseline
 
 The user delivered `LePub-Character-Reference-Pack.zip` (Astra's plan). Binding

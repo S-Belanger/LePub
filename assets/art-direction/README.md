@@ -24,7 +24,20 @@ Translate its visual language into the game rather than copying its camera:
 `floor-plan.png` / `floor-plan.json` are the room as the game plays it,
 rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
 
-## Status (2026-09-16)
+## Status (2026-09-22)
+
+The six named characters and three walk-in looks now use new illustrated PNG
+sheets, measured into the existing atlas contract. The original procedural
+sprites remain fallbacks. `ART_SCALE=4` preserves source detail; continuous
+lighting replaces the coarse checkerboard overlay. The overhead camera and
+approved floor plan remain. See [source and frame notes](../sprites/ILLUSTRATED.md)
+and the [interactive cast review](../../tools/art-review.html).
+
+This is a character-art replacement for review. The furniture and room remain
+procedural, and the Doe's carry walk still uses a held-pint pose with step lift.
+Do not claim complete visual parity with the painted pub reference.
+
+### Previous state (2026-09-16)
 
 The camera is now the high overhead of `overhead/gameplay-modernization-concept.png`
 (see `../../docs/overhaul/00-CAMERA-DIRECTION.md`, which supersedes the

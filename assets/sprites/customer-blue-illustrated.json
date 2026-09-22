@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.customer-blue.illustrated",
+  "image": "customer-blue-illustrated.png",
+  "imageSize": {
+    "width": 1254,
+    "height": 1254
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 13.666666666666666,
+  "alphaPolicy": "translucent",
+  "palettePolicy": "illustrated-reference",
+  "fallbackKey": "customer-blue",
+  "directions": [
+    "down",
+    "right",
+    "up",
+    "left"
+  ],
+  "provenance": "Built-in imagegen from the overhead character study; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
+  "frames": {
+    "idle.down": {
+      "rect": {
+        "x": 52,
+        "y": 10,
+        "width": 208,
+        "height": 272
+      },
+      "pivot": {
+        "x": 105,
+        "y": 270
+      }
+    },
+    "idle.right": {
+      "rect": {
+        "x": 397,
+        "y": 8,
+        "width": 164,
+        "height": 287
+      },
+      "pivot": {
+        "x": 73.5,
+        "y": 285
+      }
+    },
+    "idle.up": {
+      "rect": {
+        "x": 679,
+        "y": 9,
+        "width": 207,
+        "height": 271
+      },
+      "pivot": {
+        "x": 105,
+        "y": 269
+      }
+    },
+    "idle.left": {
+      "rect": {
+        "x": 1022,
+        "y": 12,
+        "width": 160,
+        "height": 283
+      },
+      "pivot": {
+        "x": 75.5,
+        "y": 281
+      }
+    },
+    "walkA.down": {
+      "rect": {
+        "x": 50,
+        "y": 325,
+        "width": 210,
+        "height": 290
+      },
+      "pivot": {
+        "x": 107,
+        "y": 288
+      }
+    },
+    "walkA.right": {
+      "rect": {
+        "x": 395,
+        "y": 320,
+        "width": 164,
+        "height": 277
+      },
+      "pivot": {
+        "x": 75.5,
+        "y": 275
+      }
+    },
+    "walkA.up": {
+      "rect": {
+        "x": 677,
+        "y": 319,
+        "width": 209,
+        "height": 293
+      },
+      "pivot": {
+        "x": 107,
+        "y": 291
+      }
+    },
+    "walkA.left": {
+      "rect": {
+        "x": 1021,
+        "y": 324,
+        "width": 163,
+        "height": 273
+      },
+      "pivot": {
+        "x": 76.5,
+        "y": 271
+      }
+    },
+    "walkB.down": {
+      "rect": {
+        "x": 50,
+        "y": 638,
+        "width": 211,
+        "height": 286
+      },
+      "pivot": {
+        "x": 107,
+        "y": 284
+      }
+    },
+    "walkB.right": {
+      "rect": {
+        "x": 389,
+        "y": 633,
+        "width": 174,
+        "height": 274
+      },
+      "pivot": {
+        "x": 81.5,
+        "y": 272
+      }
+    },
+    "walkB.up": {
+      "rect": {
+        "x": 676,
+        "y": 638,
+        "width": 213,
+        "height": 284
+      },
+      "pivot": {
+        "x": 108,
+        "y": 282
+      }
+    },
+    "walkB.left": {
+      "rect": {
+        "x": 1020,
+        "y": 639,
+        "width": 170,
+        "height": 269
+      },
+      "pivot": {
+        "x": 77.5,
+        "y": 267
+      }
+    },
+    "special.down": {
+      "rect": {
+        "x": 48,
+        "y": 950,
+        "width": 212,
+        "height": 268
+      },
+      "pivot": {
+        "x": 109,
+        "y": 266
+      }
+    },
+    "special.right": {
+      "rect": {
+        "x": 404,
+        "y": 946,
+        "width": 177,
+        "height": 282
+      },
+      "pivot": {
+        "x": 66.5,
+        "y": 280
+      }
+    },
+    "special.up": {
+      "rect": {
+        "x": 678,
+        "y": 946,
+        "width": 229,
+        "height": 272
+      },
+      "pivot": {
+        "x": 106,
+        "y": 270
+      }
+    },
+    "special.left": {
+      "rect": {
+        "x": 996,
+        "y": 951,
+        "width": 181,
+        "height": 277
+      },
+      "pivot": {
+        "x": 101.5,
+        "y": 275
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.left",
+          "durationMs": 1000
+        }
+      ]
+    }
+  }
+}

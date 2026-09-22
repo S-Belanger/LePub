@@ -106,7 +106,11 @@ async function main() {
   const manifestPath = path.join(outDir, 'manifest.json');
   const existing = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { atlases: [] };
   const atlases = new Set(existing.atlases || []);
-  for (const f of written) atlases.add(f + '.json');
+  // Exporting the procedural safety net must not race the illustrated family
+  // at load time or silently switch production back to the rejected artwork.
+  for (const f of written) {
+    if (!atlases.has(f + '-illustrated.json')) atlases.add(f + '.json');
+  }
   fs.writeFileSync(manifestPath, JSON.stringify({ atlases: [...atlases] }, null, 2) + '\n');
   await browser.close();
   server.close();

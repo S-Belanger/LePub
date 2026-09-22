@@ -11,10 +11,12 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 // The simulation still runs in the original 200x360 logical world, but art is
-// backed by two physical pixels per logical unit. Existing gameplay geometry
+// backed by four physical pixels per logical unit. Existing gameplay geometry
 // therefore stays untouched while refined sprites and half-pixel material
 // details get a real pixel of their own instead of being blurred away.
-const ART_SCALE = 2;
+// The illustrated source sheets contain real surface detail: preserve it at
+// desktop size rather than reducing to 40px figures then enlarging them again.
+const ART_SCALE = 4;
 
 // ---- Adaptive viewport ------------------------------------------------------
 // The canvas fills the browser viewport rather than sitting at a fixed size.
@@ -1518,14 +1520,16 @@ function updateRegulars(dt) {
 // Pose priority: talking beats blinking beats the stage's resting pose.
 function regularPose(r, vis) {
   const set = SPRITES[r.cfg.spriteKey];
+  const hasPose = name => !!(set[name] || set[name + '.' + (r.facing || 'down')] ||
+    Assets.frameFor(r.kind, name + '.' + (r.facing || 'down'), 0));
   const base = r.wander ? 'lean' : (vis ? vis.pose : 'idle');
   if (r.talkTimer > 0) {
     const talkKey = base === 'idle' ? 'talk' : base + 'Talk';
-    if (set[talkKey]) return talkKey;
-    if (set.talk) return 'talk';
+    if (hasPose(talkKey)) return talkKey;
+    if (hasPose('talk')) return 'talk';
   }
   if (r.blinking && set.idleB && base === 'idle') return 'idleB';
-  return set[base] ? base : 'idle';
+  return hasPose(base) ? base : 'idle';
 }
 
 // Opens a regular's mouth for a moment. The dialogue layer drives this; a
@@ -2964,10 +2968,10 @@ function buildDecor() {
 // Prebaked lighting. One canvas per lamp radius, plus the cool spills.
 const GLOW_CACHE = new Map();
 function glowFor(radius, rgb, alpha) {
-  const key = radius + ':' + rgb.join(',');
+  const key = radius + ':' + rgb.join(',') + ':' + alpha;
   let g = GLOW_CACHE.get(key);
   if (!g) {
-    g = makeGlowCanvas(radius, rgb, alpha, 5);
+    g = makeGlowCanvas(radius, rgb, alpha);
     GLOW_CACHE.set(key, g);
   }
   return g;
@@ -4228,18 +4232,26 @@ function pushDrawable(sortY, type, ref) {
 // the same name the procedural sets key their frames by.
 function poseBase(e) {
   if (e === player && e.tray.length) return e.moving ? 'carryWalk' : 'carry';
-  if (e === hunter) return e.moving ? 'gunWalk' : 'gun';
+  if (e === hunter) return hunterState === 'drinking' ? 'drink' : e.moving ? 'gunWalk' : 'gun';
   if (e.pose === 'spray' || e.pose === 'sprayB') return 'spray';
+  if (e.pose === 'talk' && (e.kind === 'sam' || e.kind === 'gerald')) return 'talk';
   if (e.pose) return e.pose.indexOf('slump') === 0 ? 'slump' : e.pose.indexOf('lean') === 0 ? 'lean' : 'idle';
   return e.moving ? 'walk' : 'idle';
 }
 function animIdFor(e) { return poseBase(e) + '.' + (e.facing || 'down'); }
 
-// A ready raster frame for this entity, or null. Walk-ins keep their
-// per-entity palettes, so they stay procedural.
+// Walk-in appearance uses the existing per-spawn look; gameplay identity and
+// the per-entity procedural palette remain intact for missing-sheet fallback.
+const CUSTOMER_ATLASES = ['customer-teal', 'customer-ochre', 'customer-blue'];
+function rasterFamilyFor(e) {
+  return e.kind === 'customer' ? CUSTOMER_ATLASES[(e.look || 0) % CUSTOMER_ATLASES.length] : e.kind;
+}
+
+// A ready raster frame for this entity, or null for its procedural fallback.
 function rasterFrameFor(e) {
-  if (e.kind === 'customer' || !Assets.hasFamily(e.kind)) return null;
-  return Assets.frameFor(e.kind, animIdFor(e), gameTime * 1000);
+  const family = rasterFamilyFor(e);
+  if (!Assets.hasFamily(family)) return null;
+  return Assets.frameFor(family, animIdFor(e), gameTime * 1000);
 }
 
 // Directional sets ("dirs") key poses as "pose.facing" with a two-step walk
@@ -4257,7 +4269,7 @@ function spriteForEntity(e) {
     const facing = e.facing || 'down';
     let base = poseBase(e);
     if (e.moving && (base === 'walk' || base === 'carryWalk' || base === 'gunWalk') && e.legFrame !== 1) base += 'B';
-    return set[base + '.' + facing] || set['idle.' + facing] || set.idle;
+    return set[base + '.' + facing] || (base === 'drink' && set['gun.' + facing]) || set['idle.' + facing] || set.idle;
   }
   if (e === player && e.tray.length) {
     return set[e.moving && e.legFrame === 1 ? 'carryWalk' : 'carry'] || set.idle;
@@ -4313,7 +4325,7 @@ function drawEntity(e, camX, camY) {
   ctx.globalAlpha = 1;
   // The hunter's pint while he sits one out: the existing drinking state,
   // shown in his hand.
-  if (e === hunter && hunterState === 'drinking') {
+  if (e === hunter && hunterState === 'drinking' && !frame) {
     const icon = ORDER_ICONS['beer-blond'];
     drawSprite(icon.sprite, icon.palette, e.x - camX + 5, e.y - camY - 12, false);
   }

@@ -81,21 +81,10 @@ function makeSeededRandom(seed) {
   };
 }
 
-// 4x4 Bayer matrix. Used to break the banding in the light pools into an
-// ordered dither instead of a smooth blur, which is what keeps them looking
-// drawn rather than filtered.
-const BAYER4 = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-];
-
 // Bakes one radial light pool into an offscreen canvas. Built once per size at
-// load and then blitted, so the frame loop never touches per-pixel work.
-// `steps` quantises the falloff into visible bands; the Bayer threshold
-// scatters the pixels that fall between two bands.
-function makeGlowCanvas(radius, rgb, maxAlpha, steps) {
+// load and then blitted. Continuous alpha preserves the artwork underneath:
+// a coarse Bayer mask was stamping a checkerboard over faces and clothing.
+function makeGlowCanvas(radius, rgb, maxAlpha) {
   const size = radius * 2;
   const cv = document.createElement('canvas');
   cv.width = size;
@@ -103,7 +92,6 @@ function makeGlowCanvas(radius, rgb, maxAlpha, steps) {
   const c = cv.getContext('2d');
   const img = c.createImageData(size, size);
   const data = img.data;
-  const bands = steps || 5;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -112,13 +100,7 @@ function makeGlowCanvas(radius, rgb, maxAlpha, steps) {
       const d = Math.sqrt(dx * dx + dy * dy) / radius;
       if (d >= 1) continue;
       const falloff = Math.pow(1 - d, 1.7);
-      const scaled = falloff * bands;
-      let level = Math.floor(scaled);
-      // Dither the fractional part so the band edges interlock instead of
-      // drawing as hard rings.
-      if ((scaled - level) * 16 > BAYER4[y & 3][x & 3]) level += 1;
-      if (level <= 0) continue;
-      const a = Math.min(1, (level / bands)) * maxAlpha;
+      const a = falloff * maxAlpha;
       const i = (y * size + x) * 4;
       data[i] = rgb[0];
       data[i + 1] = rgb[1];
@@ -130,7 +112,7 @@ function makeGlowCanvas(radius, rgb, maxAlpha, steps) {
   return cv;
 }
 
-// A dithered corner-to-centre darkening, rebuilt whenever the viewport
+// A quiet corner-to-centre darkening, rebuilt whenever the viewport
 // changes size. Cheap to blit and keeps the eye on the middle of the room.
 function makeVignetteCanvas(w, h, maxAlpha) {
   const cv = document.createElement('canvas');
@@ -149,13 +131,10 @@ function makeVignetteCanvas(w, h, maxAlpha) {
       const dy = y - cy;
       const d = Math.sqrt(dx * dx + dy * dy) / maxD;
       const t = Math.max(0, (d - 0.45) / 0.55);
-      const scaled = Math.pow(t, 1.6) * 5;
-      let level = Math.floor(scaled);
-      if ((scaled - level) * 16 > BAYER4[y & 3][x & 3]) level += 1;
-      if (level <= 0) continue;
+      const falloff = Math.pow(t, 1.6);
       const i = (y * cv.width + x) * 4;
       data[i] = 10; data[i + 1] = 20; data[i + 2] = 22;
-      data[i + 3] = Math.round(Math.min(1, level / 5) * maxAlpha * 255);
+      data[i + 3] = Math.round(Math.min(1, falloff) * maxAlpha * 255);
     }
   }
   c.putImageData(img, 0, 0);
