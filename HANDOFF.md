@@ -1,5 +1,25 @@
 # LePub durable handoff
 
+## 2026-09-22 18:56 America/Toronto — production verified; task complete
+
+- User requests fulfilled: merged latest main, resolved conflicts while preserving illustrated overhead art and incoming gameplay, pushed feature branch, then deployed production on explicit authorization.
+- Branch `feat/regulars-responsive-pixel-polish`; tested code merge `03748b7`, release HEAD `5ba02fe`, both pushed. This final checkpoint is recorded in the following documentation-only commit; no game changes after release. Final commit/push leaves branch synchronized with origin and working tree clean. Main unchanged; PR #3 remains draft/open and GitHub confirmed clean/mergeable against `4c47160`.
+- Production `https://lepub.vercel.app` is live on READY deployment `dpl_CiG5nu5q2YXpX2xPRrGu1va5Vo8i` (`https://lepub-e2bgxq5wl-maisoncastros-projects.vercel.app`). Initial transient authorization rejection resolved on retry.
+- LIVE `node tools/validate-merge.js https://lepub.vercel.app` PASS desktop1280x720/mobile390x844: all atlases ready, illustrated status tint/pivot, Alex split, keyboard/touch pack control, wet effect, smoke invisibility and caught rendering; zero page errors. HTTP200 + SHA256 exact byte matches for live game.js, index.html, sprites.js, sound.js, manifest.json and Doe illustrated PNG against tested local files.
+- Local smoke/gameplay and assets31 checks PASS; full art/browser112 pose mappings per viewport, input/rotation/fallback PASS; diff check PASS. Final live screenshots in `%TEMP%/lepub-merge-review`.
+- Remaining limitations: new busboy/Alex keep main's procedural art, room remains procedural, no physical-device performance claim. No unfinished release work or blocker. Next work only on user feedback; do not auto-merge PR or regenerate approved sprites.
+
+## 2026-09-22 18:55 America/Toronto — production READY, live verification underway
+
+- Branch HEAD `5ba02fe`, upstream 0/0; code merge `03748b7` pushed. GitHub REST confirms PR #3 `mergeable:true`, `mergeable_state:clean`, base `4c47160`; PR remains draft/open. `git merge-base --is-ancestor origin/main HEAD` PASS.
+- Retry of `vercel deploy --prod --yes` succeeded: deployment `dpl_CiG5nu5q2YXpX2xPRrGu1va5Vo8i`, target production, READY; alias `https://lepub.vercel.app`; immutable URL `https://lepub-e2bgxq5wl-maisoncastros-projects.vercel.app`. Tested game code is unchanged from pushed commit; only the auth-attempt documentation checkpoint was local during deployment.
+- Next: run desktop/mobile merged-feature browser checks against the public alias and compare served source/assets with the local tested bytes. Then commit/push final release handoff. No pending code changes.
+
+## 2026-09-22 18:54 America/Toronto — initial Vercel deploy rejected, retry pending
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `5ba02fe`, upstream 0/0. Merge/code and pre-release handoff pushed; tree clean before this note. First `vercel deploy --prod --yes` returned `Not authorized` before any upload/deployment. No production release yet.
+- Earlier deployment history records the same first-attempt rejection followed by a successful retry. Next: retry once, then inspect available authenticated Vercel access if rejection persists. This checkpoint is pending locally; no source changes after validation.
+
 ## 2026-09-22 18:53 America/Toronto — merge committed and pushed; production deployment next
 
 - Branch `feat/regulars-responsive-pixel-polish`, HEAD `03748b7`, upstream 0/0 after successful push. Merge commit incorporates main `4c47160`; all conflict resolutions and final tests are committed. Working tree was clean before this checkpoint.
