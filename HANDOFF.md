@@ -1,5 +1,11 @@
 # LePub durable handoff
 
+## 2026-09-23 18:42 America/Toronto — Alex update committed and pushed; deploying production
+
+- User-authorized feature release committed as `6014ac3` (`feat: upgrade Alex graphics and add macebell workouts`) and pushed to `origin/feat/regulars-responsive-pixel-polish`. Branch upstream0/0, working tree clean before this checkpoint. All43 reviewed files, including prior visual-system/HD split work, are included.
+- All final tests/browser evidence from checkpoints below stand. No gameplay/source changes after testing. Main and PR remain unmerged; production publishing uses the linked Vercel CLI project directly.
+- This documentation checkpoint will be committed/pushed before `vercel deploy --prod --yes` so the uploaded tree is clean. Next: deploy, then verify public alias via live desktop/mobile Alex + merge checks and exact hashes of scripts/manifest/all atlas metadata+PNGs. Production not updated yet.
+
 ## 2026-09-23 18:41 America/Toronto — final release checks pass; committing
 
 - User explicitly authorizes commit, push and production deployment. Branch `feat/regulars-responsive-pixel-polish`, HEAD`699c55f`; fresh `git fetch origin --prune` confirms upstream0/0, no collaborator changes to integrate. All session files preserved, currently uncommitted/unpushed.
