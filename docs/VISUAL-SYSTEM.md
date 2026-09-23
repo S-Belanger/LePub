@@ -136,6 +136,17 @@ That resilience must not be used to call missing production art done.
 Exceptions are explicit debt, never the default for new people. Tests cannot
 judge the pub's vibe: visual inspection and truthful review notes are required.
 
+## Hunter
+
+The September 23 user-supplied portrait controls his likeness: short swept
+brown hair with a high forehead, broad oval cheeks, wide black rectangular
+glasses, a slight smile and light salt-and-pepper chin/jaw stubble. No cap or
+heavy full beard; those belonged to the superseded generic design. Keep his
+olive vest, red/black plaid sleeves, olive trousers, boots and slung shotgun.
+All four directions and idle/two strides/drink poses share the same identity.
+Keep the portrait out of the public asset tree. See the
+[exact prompt and provenance](../assets/sprites/hunter-prompt.md).
+
 ## Alex
 
 Swept dark hair, black glasses, short full beard and grin; teal tee, charcoal

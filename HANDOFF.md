@@ -1,5 +1,31 @@
 # LePub durable handoff
 
+## 2026-09-23 18:54 America/Toronto — hunter likeness ready for production
+
+- Branch feat/regulars-responsive-pixel-polish, HEAD8061cb9, upstream0/0 after fresh fetch. User authorizes push and production. All changed files reviewed; no runtime/gameplay edits.
+- Saved and visually inspected docs/art-review/hunter/desktop.png and mobile.png from actual room; report.json and README record148 mappings/viewport,11 atlases,zero errors and phone-scale limits. Exact built-in prompt and durable identity spec included; personal photograph remains outside repository.
+- All local checks from previous checkpoint PASS; git diff --check PASS (Windows line-ending notices only). Changed hunter PNG/JSON, provenance/style docs, review evidence and handoff.
+- Next: commit/push feat: match hunter graphics to photo reference, deploy linked Vercel production, verify public alias assets by SHA256 and live desktop/mobile checks. Changes currently uncommitted/unpushed; no new deployment yet.
+## 2026-09-23 18:54 America/Toronto — hunter local validation passes
+
+- Branch feat/regulars-responsive-pixel-polish, HEAD8061cb9, upstream0/0. Hunter PNG/metadata, prompt and visual guide changes remain local/uncommitted; publishing authorized.
+- PASS node tests/character-art.js:10 kinds/11 families/5 regression guards; tests/assets.js:31 checks; tests/smoke.js:10scripts/40routes/full gameplay; tests/alex.js:13 schedule gates and both activities/collision/reset.
+- PASS node tools/validate-art.js: desktop1280x720/mobile390x844,11 ready atlases,148 pose mappings each, keyboard/touch movement12.4, rotation/fallback/gallery, zero browser errors. Source import already PASS16 alpha/non-clipped cells,density10.71.
+- Next: inspect/save native-size review captures, review diff and commit/push; deploy production and verify live hunter PNG/JSON hashes plus desktop/mobile integration. No gameplay changes or outstanding test failures.
+## 2026-09-23 18:53 America/Toronto — hunter replacement imported
+
+- Branch feat/regulars-responsive-pixel-polish, HEAD 8061cb9, upstream 0/0; changes local/uncommitted/unpushed. Production release authorized.
+- Built-in imagegen accepted on first pass: 16 complete overhead figures with swept hair, wide rectangular glasses, fuller smiling face and light grey chin stubble; hunting outfit/equipment/pose layout preserved. Viewed full sheet against photo and existing cast.
+- Replaced assets/sprites/hunter-illustrated.png; importer regenerated hunter-illustrated.json with measured bounds/pivots. PASS node tools/import-illustrated.js hunter: 1254x1254,16 transparent/non-clipped frames,density10.71. Original source preserved in Git history; generated pixels unchanged.
+- Added hunter-prompt.md exact prompt/identity provenance; updated docs/VISUAL-SYSTEM.md and ILLUSTRATED.md so future sessions retain this identity. Raw photo not copied into repository. No runtime/gameplay changes.
+- Next: required contract/assets/smoke checks, desktop/mobile full art validation, native-size hunter screenshots and final diff; then commit/push and production deployment with live verification. Likeness remains a small stylized illustration, not photographic reproduction.
+## 2026-09-23 18:51 America/Toronto — hunter likeness correction started
+
+- User supplies a portrait and explicitly requests production publication; refine hunter likeness in the established HD overhead style, then commit/push/deploy.
+- Branch feat/regulars-responsive-pixel-polish, HEAD 8061cb9, upstream 0/0 at startup; clean tree preserved. Read complete handoff/art standard and viewed shipped hunter/waiter/camera references.
+- Decision: replace hunter head across all 16 directional idle/walk/drink cells: expose swept brown hair/high forehead, wider rectangular glasses, fuller face and light chin stubble instead of cap/heavy beard. Preserve hunting clothes/equipment, world scale and gameplay. Raw personal photo stays outside public repository; record descriptive identity/prompt only.
+- Files: HANDOFF.md checkpoint only. No tests yet for new art; no commit/push/deployment this turn. Next: built-in imagegen with supplied photo and shipped sources, inspect alpha/likeness, import measured atlas, browser review and release checks.
+
 ## 2026-09-23 18:45 America/Toronto — Alex graphics/macebell production release verified
 
 - User-authorized release complete: code commit `6014ac3` (`feat: upgrade Alex graphics and add macebell workouts`) pushed to `feat/regulars-responsive-pixel-polish`; production READY at `https://lepub.vercel.app`, deployment`dpl_7iFdvPifrP7ddjnC48j8nPKsPFGh`, immutable`https://lepub-6p1z07qg0-maisoncastros-projects.vercel.app`. Main/PR unmerged, no external messages sent.

@@ -1,0 +1,219 @@
+{
+  "report": [
+    {
+      "name": "desktop",
+      "assets": {
+        "assets/sprites/doe-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "doe",
+          "assetId": "lepub.doe.illustrated"
+        },
+        "assets/sprites/hunter-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "hunter",
+          "assetId": "lepub.hunter.illustrated"
+        },
+        "assets/sprites/nazim-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "nazim",
+          "assetId": "lepub.nazim.illustrated"
+        },
+        "assets/sprites/sam-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "sam",
+          "assetId": "lepub.sam.illustrated"
+        },
+        "assets/sprites/gerald-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "gerald",
+          "assetId": "lepub.gerald.illustrated"
+        },
+        "assets/sprites/waiter-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "waiter",
+          "assetId": "lepub.waiter.illustrated"
+        },
+        "assets/sprites/customer-teal-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-teal",
+          "assetId": "lepub.customer-teal.illustrated"
+        },
+        "assets/sprites/customer-ochre-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-ochre",
+          "assetId": "lepub.customer-ochre.illustrated"
+        },
+        "assets/sprites/customer-blue-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-blue",
+          "assetId": "lepub.customer-blue.illustrated"
+        },
+        "assets/sprites/alex-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "alex",
+          "assetId": "lepub.alex.illustrated"
+        },
+        "assets/sprites/alex-mace-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "alex-mace",
+          "assetId": "lepub.alex-mace.illustrated"
+        }
+      },
+      "checks": {
+        "animationCount": 148,
+        "lean": "lean",
+        "slump": "slump",
+        "viewport": {
+          "viewW": 320,
+          "viewH": 180,
+          "pixelScale": 4,
+          "portrait": false
+        },
+        "backing": {
+          "width": 1280,
+          "height": 720
+        }
+      },
+      "movement": 12.399999999999977,
+      "rotated": {
+        "viewport": {
+          "viewW": 180,
+          "viewH": 320,
+          "pixelScale": 4,
+          "portrait": true
+        },
+        "player": {
+          "x": 74.39999999999998,
+          "y": 160
+        }
+      },
+      "perf": {
+        "kind": "render submission CPU only; 300 frames, 9 patrons + regulars + waiter",
+        "medianMs": 3.299999952316284,
+        "p95Ms": 7.100000023841858
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "assets": {
+        "assets/sprites/doe-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "doe",
+          "assetId": "lepub.doe.illustrated"
+        },
+        "assets/sprites/hunter-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "hunter",
+          "assetId": "lepub.hunter.illustrated"
+        },
+        "assets/sprites/nazim-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "nazim",
+          "assetId": "lepub.nazim.illustrated"
+        },
+        "assets/sprites/sam-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "sam",
+          "assetId": "lepub.sam.illustrated"
+        },
+        "assets/sprites/gerald-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "gerald",
+          "assetId": "lepub.gerald.illustrated"
+        },
+        "assets/sprites/waiter-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "waiter",
+          "assetId": "lepub.waiter.illustrated"
+        },
+        "assets/sprites/customer-teal-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-teal",
+          "assetId": "lepub.customer-teal.illustrated"
+        },
+        "assets/sprites/customer-ochre-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-ochre",
+          "assetId": "lepub.customer-ochre.illustrated"
+        },
+        "assets/sprites/customer-blue-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "customer-blue",
+          "assetId": "lepub.customer-blue.illustrated"
+        },
+        "assets/sprites/alex-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "alex",
+          "assetId": "lepub.alex.illustrated"
+        },
+        "assets/sprites/alex-mace-illustrated.json": {
+          "state": "ready",
+          "reason": null,
+          "family": "alex-mace",
+          "assetId": "lepub.alex-mace.illustrated"
+        }
+      },
+      "checks": {
+        "animationCount": 148,
+        "lean": "lean",
+        "slump": "slump",
+        "viewport": {
+          "viewW": 195,
+          "viewH": 360,
+          "pixelScale": 2,
+          "portrait": true
+        },
+        "backing": {
+          "width": 780,
+          "height": 1440
+        }
+      },
+      "movement": 12.399999999999977,
+      "rotated": {
+        "viewport": {
+          "viewW": 320,
+          "viewH": 195,
+          "pixelScale": 2,
+          "portrait": false
+        },
+        "player": {
+          "x": 74.39999999999998,
+          "y": 160
+        }
+      },
+      "perf": {
+        "kind": "render submission CPU only; 300 frames, 9 patrons + regulars + waiter",
+        "medianMs": 4,
+        "p95Ms": 6
+      },
+      "errors": []
+    }
+  ],
+  "fallback": {
+    "doe": false,
+    "hunter": true,
+    "moved": true
+  }
+}

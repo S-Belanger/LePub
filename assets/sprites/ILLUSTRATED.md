@@ -95,7 +95,7 @@ labels or grid. Match reference material detail rather than geometric blobs.
 | Source | Identity and pose instructions |
 | --- | --- |
 | `doe-illustrated.png` | Brown deer hood, small antlers, glasses, dark beard, cream chest, black boots; rows idle / left stride / right stride / pint in anatomical left hand. |
-| `hunter-illustrated.png` | Orange trapper cap, glasses, dark beard, red/black plaid sleeves, olive vest; wooden shotgun slung over right shoulder. Same idle/walk rows; last row drinking. |
+| `hunter-illustrated.png` | Revised September 23 from the user's portrait: swept brown hair/high forehead, wide rectangular glasses, fuller cheeks, light chin stubble, no cap; red/black plaid sleeves, olive vest, shotgun slung over right shoulder. Same idle/walk rows; last row drinking. [Exact revision prompt](hunter-prompt.md). |
 | `nazim-illustrated.png` | Medium-brown skin, tousled dark hair, stubble, olive hoodie with hood down, charcoal trousers; idle / walk / leaning / deeply slumped, no furniture included. |
 | `sam-illustrated.png` | Navy flat cap, glasses, sandy side hair, burgundy/cream stripes, charcoal trousers; idle / two strides / talking. Follow-up edit: remove beard/moustache in all visible faces; retain glasses, positions and transparency. |
 | `gerald-illustrated.png` | Bald older man with grey side hair, moustache and eyebrows, ruddy skin, burgundy cardigan; idle / two strides / talking gesture. |

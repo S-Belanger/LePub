@@ -8,7 +8,7 @@
   },
   "frameSpace": "untrimmed-source-pixels",
   "pivotSpace": "frame-local-pixels",
-  "authoredPixelsPerWorldUnit": 10.25,
+  "authoredPixelsPerWorldUnit": 10.708333333333334,
   "alphaPolicy": "translucent",
   "palettePolicy": "illustrated-reference",
   "fallbackKey": "hunter",
@@ -18,198 +18,198 @@
     "up",
     "left"
   ],
-  "provenance": "Built-in imagegen from the overhead character study; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
+  "provenance": "Built-in imagegen using documented overhead cast references; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
   "frames": {
     "idle.down": {
       "rect": {
-        "x": 52,
-        "y": 36,
-        "width": 228,
-        "height": 239
+        "x": 49,
+        "y": 29,
+        "width": 232,
+        "height": 249
       },
       "pivot": {
-        "x": 105,
-        "y": 237
+        "x": 108,
+        "y": 247
       }
     },
     "idle.right": {
       "rect": {
-        "x": 368,
-        "y": 37,
-        "width": 198,
-        "height": 245
+        "x": 376,
+        "y": 28,
+        "width": 191,
+        "height": 257
       },
       "pivot": {
-        "x": 102.5,
-        "y": 243
+        "x": 94.5,
+        "y": 255
       }
     },
     "idle.up": {
       "rect": {
-        "x": 671,
-        "y": 35,
-        "width": 224,
-        "height": 240
+        "x": 667,
+        "y": 28,
+        "width": 232,
+        "height": 249
       },
       "pivot": {
-        "x": 113,
-        "y": 238
+        "x": 117,
+        "y": 247
       }
     },
     "idle.left": {
       "rect": {
-        "x": 1004,
-        "y": 37,
-        "width": 181,
-        "height": 246
+        "x": 1012,
+        "y": 29,
+        "width": 174,
+        "height": 256
       },
       "pivot": {
-        "x": 93.5,
-        "y": 244
+        "x": 85.5,
+        "y": 254
       }
     },
     "walkA.down": {
       "rect": {
-        "x": 59,
-        "y": 332,
-        "width": 217,
-        "height": 257
+        "x": 54,
+        "y": 327,
+        "width": 226,
+        "height": 265
       },
       "pivot": {
-        "x": 98,
-        "y": 255
+        "x": 103,
+        "y": 263
       }
     },
     "walkA.right": {
       "rect": {
-        "x": 377,
-        "y": 333,
-        "width": 194,
-        "height": 251
+        "x": 378,
+        "y": 325,
+        "width": 188,
+        "height": 259
       },
       "pivot": {
-        "x": 93.5,
-        "y": 249
+        "x": 92.5,
+        "y": 257
       }
     },
     "walkA.up": {
       "rect": {
-        "x": 675,
-        "y": 330,
-        "width": 217,
-        "height": 253
+        "x": 669,
+        "y": 322,
+        "width": 228,
+        "height": 262
       },
       "pivot": {
-        "x": 109,
-        "y": 251
+        "x": 115,
+        "y": 260
       }
     },
     "walkA.left": {
       "rect": {
-        "x": 1003,
-        "y": 327,
-        "width": 185,
-        "height": 257
+        "x": 1011,
+        "y": 325,
+        "width": 176,
+        "height": 258
       },
       "pivot": {
-        "x": 94.5,
-        "y": 255
+        "x": 86.5,
+        "y": 256
       }
     },
     "walkB.down": {
       "rect": {
-        "x": 54,
-        "y": 654,
-        "width": 225,
-        "height": 244
+        "x": 50,
+        "y": 645,
+        "width": 228,
+        "height": 255
       },
       "pivot": {
-        "x": 103,
-        "y": 242
+        "x": 107,
+        "y": 253
       }
     },
     "walkB.right": {
       "rect": {
-        "x": 374,
-        "y": 655,
-        "width": 194,
-        "height": 243
+        "x": 379,
+        "y": 643,
+        "width": 187,
+        "height": 255
       },
       "pivot": {
-        "x": 96.5,
-        "y": 241
+        "x": 91.5,
+        "y": 253
       }
     },
     "walkB.up": {
       "rect": {
-        "x": 672,
-        "y": 651,
-        "width": 222,
-        "height": 240
+        "x": 668,
+        "y": 643,
+        "width": 229,
+        "height": 248
       },
       "pivot": {
-        "x": 112,
-        "y": 238
+        "x": 116,
+        "y": 246
       }
     },
     "walkB.left": {
       "rect": {
-        "x": 1003,
-        "y": 646,
-        "width": 184,
-        "height": 252
+        "x": 1011,
+        "y": 642,
+        "width": 175,
+        "height": 256
       },
       "pivot": {
-        "x": 94.5,
-        "y": 250
+        "x": 86.5,
+        "y": 254
       }
     },
     "special.down": {
       "rect": {
-        "x": 52,
-        "y": 948,
-        "width": 228,
-        "height": 245
+        "x": 48,
+        "y": 941,
+        "width": 235,
+        "height": 255
       },
       "pivot": {
-        "x": 105,
-        "y": 243
+        "x": 109,
+        "y": 253
       }
     },
     "special.right": {
       "rect": {
-        "x": 367,
-        "y": 952,
-        "width": 216,
-        "height": 249
+        "x": 374,
+        "y": 943,
+        "width": 221,
+        "height": 260
       },
       "pivot": {
-        "x": 103.5,
-        "y": 247
+        "x": 96.5,
+        "y": 258
       }
     },
     "special.up": {
       "rect": {
-        "x": 670,
-        "y": 950,
-        "width": 226,
-        "height": 242
+        "x": 666,
+        "y": 941,
+        "width": 234,
+        "height": 252
       },
       "pivot": {
-        "x": 114,
-        "y": 240
+        "x": 118,
+        "y": 250
       }
     },
     "special.left": {
       "rect": {
-        "x": 990,
-        "y": 949,
-        "width": 197,
-        "height": 252
+        "x": 991,
+        "y": 943,
+        "width": 198,
+        "height": 260
       },
       "pivot": {
-        "x": 107.5,
-        "y": 250
+        "x": 106.5,
+        "y": 258
       }
     }
   },
