@@ -37,10 +37,12 @@
   <div id="cast"></div>
 </main>
 <script src="../src/assets.js"></script>
+<script src="../src/character-art.js"></script>
 <script>
-  const names = { doe: 'The Doe', hunter: 'The Hunter', nazim: 'Nazim', sam: 'Sam', gerald: 'Gerald', waiter: 'Jay', 'customer-teal': 'Teal sweater', 'customer-ochre': 'Ochre jacket', 'customer-blue': 'Blue shirt' };
+  const names = Object.fromEntries(Object.entries(CharacterArt.families).map(([family, spec]) => [family, spec.name]));
   const cards = [];
   const direction = document.getElementById('direction'), pose = document.getElementById('pose'), scale = document.getElementById('scale');
+  pose.replaceChildren(...[...new Set(Object.values(CharacterArt.families).flatMap(spec => Object.keys(spec.animations)))].map(name => new Option(name, name)));
   let paused = matchMedia('(prefers-reduced-motion: reduce)').matches, time = 0, previous = 0;
   const pause = document.getElementById('pause');
   function syncPause() { pause.textContent = paused ? 'Play animation' : 'Pause animation'; pause.setAttribute('aria-pressed', String(paused)); }
@@ -57,7 +59,7 @@
       cards.push({ family, canvas, state });
     }
     const ready = Object.values(Assets.status()).filter(a => a.state === 'ready').length;
-    document.getElementById('status').textContent = ready + ' of 9 characters loaded. Characters without the selected pose show their idle pose.';
+    document.getElementById('status').textContent = ready + ' of ' + Object.keys(names).length + ' characters loaded. Characters without the selected pose show their idle pose.';
     requestAnimationFrame(draw);
   });
   function draw(now) {

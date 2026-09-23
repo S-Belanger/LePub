@@ -4,6 +4,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { session } = require('./browser-session');
+const art = require('../src/character-art');
+const familyCount = Object.keys(art.families).length;
 const out = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'lepub-art-final'));
 fs.mkdirSync(out, { recursive: true });
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -22,7 +24,7 @@ session(async (browser, url) => {
     });
     await page.goto(url, { waitUntil: 'networkidle' });
     const assets = await page.evaluate(() => window.__debug.Assets.status());
-    assert(Object.keys(assets).length === 9 && Object.values(assets).every(a => a.state === 'ready'), name + ': all nine atlases must load');
+    assert(Object.keys(assets).length === familyCount && Object.values(assets).every(a => a.state === 'ready'), name + ': all contracted atlases must load');
     await page.screenshot({ path: path.join(out, name + '-start.png') });
     await page.evaluate(() => {
       const d = window.__debug;
@@ -56,13 +58,8 @@ session(async (browser, url) => {
       const d = window.__debug;
       const families = Object.values(d.Assets.status()).map(a => a.family);
       let animationCount = 0;
-      for (const family of families) for (const direction of ['down', 'right', 'up', 'left']) {
-        const poses = ['idle', 'walk'];
-        if (family === 'doe') poses.push('carry', 'carryWalk');
-        if (family === 'hunter') poses.push('gun', 'gunWalk', 'drink');
-        if (family === 'nazim') poses.push('lean', 'slump');
-        if (family === 'waiter') poses.push('spray');
-        if (family === 'sam' || family === 'gerald') poses.push('talk');
+      for (const family of families) for (const direction of CharacterArt.directions) {
+        const poses = Object.keys(CharacterArt.families[family].animations);
         for (const pose of poses) {
           if (!d.Assets.frameFor(family, pose + '.' + direction, 200)) throw new Error('Missing ' + family + ':' + pose + '.' + direction);
           animationCount++;
@@ -151,8 +148,8 @@ session(async (browser, url) => {
   const galleryErrors = [];
   gallery.on('pageerror', error => galleryErrors.push(error.message));
   await gallery.goto(url + '/tools/art-review.html', { waitUntil: 'networkidle' });
-  assert(await gallery.locator('figure').count() === 9, 'Review gallery must show nine characters');
-  assert((await gallery.locator('#status').textContent()).startsWith('9 of 9'), 'Review gallery must load nine atlases');
+  assert(await gallery.locator('figure').count() === familyCount, 'Review gallery must show all contracted characters');
+  assert((await gallery.locator('#status').textContent()).startsWith(familyCount + ' of ' + familyCount), 'Review gallery must load all contracted atlases');
   await gallery.selectOption('#pose', 'walk');
   await gallery.click('#pause');
   await gallery.screenshot({ path: path.join(out, 'cast-review.png') });

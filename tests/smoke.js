@@ -12,6 +12,7 @@ const SCRIPT_FILES = [
   'src/regulars.js',
   'src/sound.js',
   'src/assets.js',
+  'src/character-art.js',
   'game.js',
 ];
 
@@ -532,12 +533,21 @@ function run() {
   debug.spawnAlex();
   const alex = debug.getAlex();
   assert(alex, 'Alex should find a floor position.');
-  Object.assign(alex, { x: 145, y: 320, path: [{ x: 145, y: 320 }], pathIndex: 0 });
+  Object.assign(alex, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
   evalGame('updateAlex(0.01)');
+  assert(alex.state === 'preparing' && !alex.blocker, 'Alex must warn before blocking.');
+  evalGame('updateAlex(ALEX_PREPARE_TIME + 0.01)');
   assert(alex.state === 'splitting' && evalGame('FURNITURE.includes(alex.blocker)'), 'Alex split must add its collider.');
+  assert(evalGame("animIdFor(alex) === 'split.down'"), 'The split must select its illustrated pose and horizontal orientation.');
+  assert(alex.blocker.collider.w === 22 && alex.blocker.collider.h === 7, 'Art must preserve the split collider dimensions.');
   debug.render();
   evalGame('updateAlex(ALEX_SPLIT_TIME + 0.01)');
   assert(alex.state === 'leaving' && !evalGame("FURNITURE.some(f => f.type === 'alex')"), 'Alex must remove the blocker when standing up.');
+  for (const [dx, dy, facing] of [[10, 0, 'right'], [-10, 0, 'left'], [0, 10, 'down'], [0, -10, 'up']]) {
+    Object.assign(alex, { x: 145, y: 320, path: [{ x: 145 + dx, y: 320 + dy }], pathIndex: 0 });
+    evalGame('alexFollowPath(0.01)');
+    assert(alex.facing === facing && evalGame('poseBase(alex)') === 'walk', 'Alex must walk facing ' + facing + ' after standing up.');
+  }
   debug.resetGame();
   assert(!debug.getJameson().active && debug.getBladder().level === 0 && !debug.getBusboy() && !debug.getAlex() && debug.getSmokeBreak().state === null && !debug.cigarettePacks.length, 'Restart must clear all incoming run state.');
 
@@ -582,4 +592,5 @@ function run() {
     `${debug.regularState().length} regulars, waiter visit, serving, hunter states, Nazim, round, ghost, reactions, shifts, Jameson, bathroom, smoke routes, busboy, Alex and reset; HUD/tally/caught rendering and raster status effects.`)).catch(err => { console.error(err); process.exit(1); });
 }
 
-run();
+if (require.main === module) run();
+module.exports = { createRuntime };

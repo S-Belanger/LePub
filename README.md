@@ -20,8 +20,12 @@ The renderer uses a 4x internal art grid over the unchanged logical world, so
 fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
 light, and wood grain remain crisp without changing movement or collision.
 
-The cast now uses nine illustrated sprite atlases with four directions,
-including three distinct walk-in customers. [Character review](tools/art-review.html)
+The cast now uses eleven illustrated sprite atlases with four directions,
+including Alex's split and macebell routine and three distinct walk-in customers. The
+[visual system](docs/VISUAL-SYSTEM.md) defines texture, sprite detail, camera,
+materials and the required workflow for future additions. A shared character
+contract and CI check flag missing artwork and poses.
+[Character review](tools/art-review.html)
 lets you inspect poses and display sizes with the local server running;
 [asset notes](assets/sprites/ILLUSTRATED.md) describe the sources and remaining
 animation limits. Run `node tools/validate-art.js` for real Edge checks.
@@ -64,6 +68,12 @@ Life begins regenerating after three hit-free seconds. A fully empty bar takes 2
 About two alcoholic drink deliveries in five comes back as a shot for the deer. For the next ten seconds he glows whiskey-gold, the hunter cannot touch him — anyone who tries is bounced off — and the hunter spends the time running the other way. An amber bar under the life segments counts the shot down, and both it and the glow blink through the last three seconds. A second shot restarts the clock rather than stacking on top of it, and food orders never come with one.
 
 ### Controls
+
+Alex occasionally visits for a split or a steel-mace workout. An amber floor
+outline gives a short warning before he blocks that space for 5–6 seconds.
+He waits until you've settled into serving, skips busy or urgent moments,
+and takes a 2–3 minute break after leaving. Timed shifts allow at most one
+visit; the two routines alternate after his first random choice.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |

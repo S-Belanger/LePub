@@ -1,5 +1,136 @@
 # LePub durable handoff
 
+## 2026-09-23 18:41 America/Toronto — final release checks pass; committing
+
+- User explicitly authorizes commit, push and production deployment. Branch `feat/regulars-responsive-pixel-polish`, HEAD`699c55f`; fresh `git fetch origin --prune` confirms upstream0/0, no collaborator changes to integrate. All session files preserved, currently uncommitted/unpushed.
+- Final `node tests/character-art.js` PASS11 families/5 negative guards; `node tests/assets.js` PASS31; `node tests/smoke.js` PASS10 scripts/40 routes/full gameplay; `node tests/alex.js` PASS13 schedule gates and both lifecycle/collision/cleanup suites. `git diff --check` PASS with expected LF/CRLF warnings.
+- `tools/validate-alex.js` accepts optional second argument for a live URL (first remains output directory); this allows the same desktop/mobile source/lifecycle/fallback/reduced-motion checks on production after deployment. Review README now records reduced-motion evidence. No production gameplay changes since tested implementation.
+- Next: stage the complete reviewed session changes, commit `feat: upgrade Alex graphics and add macebell workouts`, push existing feature branch, deploy linked Vercel `lepub` production and verify public alias/served bytes. No PR merge/comment requested or planned.
+
+## 2026-09-23 18:40 America/Toronto — production publication explicitly authorized
+
+- User now explicitly requests commit/push straight to production, with a commit describing Alex graphics and macebell addition, then says resume. Finish and publish the completed local work to the existing feature branch and linked Vercel production project; no PR merge is required or requested.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream0/0 as last checked. All prior visual-system/HD Alex + mace/scheduling changes remain uncommitted locally and preserved. Nothing pushed/deployed yet this turn.
+- Final `node tools/validate-alex.js docs/art-review/alex` PASS desktop/mobile,40 source cells, split and mace lifecycle, four carrying directions, four swing-phase mappings, both missing-asset fallbacks and reduced-motion static pose with blocker intact; zero errors. `node tools/validate-merge.js` PASS both viewports, status effects, split, pack controls, smoke/caught. Full cast148 mappings, gameplay13 gates/smoke and assets31 already PASS; diff check PASS.
+- Current local preview returnsHTTP200 for new mace PNG. Implementation diff reviewed, screenshots/provenance and visual-system docs saved. No unfinished requested feature work.
+- Next: final release checks and fresh upstream comparison, stage/commit with Alex graphics+macebell title, push feature branch, deploy linked Vercel production, run live smoke/assets verification, record release and push final handoff. Preserve all existing uncommitted session files in the release.
+
+## 2026-09-23 15:18 America/Toronto — visual review and documentation complete; final checks
+
+- Branch/HEAD/upstream unchanged; all prior + mace changes local/uncommitted/unpushed.
+- Inspected desktop mace swing and mobile preparation captures: equipment reads as a single-ball steel mace, silhouette/style consistent with Alex and cast, marked floor area readable. Source remains unchanged; original split art retained.
+- Added `alex-mace-prompt.md` with exact accepted built-in prompt, rejected-draft note, measured row seams and animation integration. Visual system/README/CLAUDE/ILLUSTRATED/review docs describe11 sheets,148 mappings and exact appearance/cooldown/preparation/cancellation rules.
+- Contract validation enhanced for source row count/seams and animation timing; PASS11 families plus5 negative guards including missing mace pose. Added browser assertions for carrying directions and static reduced-motion mace while collider stays functional; these new assertions require final rerun.
+- Next: run final Alex browser/reduced-motion checks and adapted merge regression, inspect diff/status, final handoff. Existing gameplay/smoke/assets/full-cast checks PASS as recorded; no release actions requested/performed.
+
+## 2026-09-23 15:15 America/Toronto — mace desktop/mobile browser checks pass
+
+- Same branch/HEAD/upstream `feat/regulars-responsive-pixel-polish`/`699c55f`/0/0; all work local, uncommitted/unpushed.
+- `node tools/validate-alex.js docs/art-review/alex` PASS desktop1280x720/mobile390x844:16 split-source +24 mace-source transparent/non-clipped cells, preparation, original split/facing/exit,4 distinct mace cycle frames,28x14 mace blocker/cleanup, both missing-sheet fallbacks. Zero browser errors. Added ready/three swing-phase screenshots per viewport to existing review folder.
+- `node tools/validate-art.js` PASS:11 atlases,148 mappings each viewport, booth poses, movement12.4, rotation/fallback/gallery, zero errors. `node tests/assets.js` PASS31. CPU timing only, no physical-device claims.
+- Next: inspect mace captures, add reduced-motion and carrying-direction browser assertions, finish provenance/timing/art-system docs, final diff and handoff. Seeded gameplay tests and smoke remain PASS.
+
+## 2026-09-23 15:14 America/Toronto — scheduling and collision regression tests pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD`699c55f`, upstream0/0; uncommitted/unpushed. User scope unchanged.
+- `node tests/alex.js` PASS:13 entry gates, grace/cooldown, activity alternation, timed/endless caps, both preparation/activity/exit cycles, occupancy cancellation, actual player/hunter movement blocking, pause/tally/urgency/shift-end cleanup, reset and restricted spaces. Seeded RNG; a clear-space retry is legitimate, so test waits through bounded defer attempts rather than assuming the first random sample succeeds.
+- `node tests/smoke.js` PASS after adapting old instant-split expectation to1.2s preparation and moving its fixture away from player. `node tests/character-art.js` PASS11 families. Initial old smoke assertion failure was expected fixture drift from new preparation, not an accepted final failure.
+- `tests/smoke.js` exports its runtime harness without running when required; new tests/alex and CI reuse it. `tools/validate-alex.js` now inspects both source sheets, preparation, four mace phase mappings, screenshots and both missing-sheet fallbacks. Merge-render fixture adapted for prep and isolates its intentional urgent-bathroom setup from scheduler gating.
+- Next: run actual desktop/mobile browser suites, inspect mace scale/pose and warning footprint, write provenance and player-facing timing docs, finish handoff. No source redraw needed after accepted square24-frame import.
+
+## 2026-09-23 15:10 America/Toronto — mace artwork and lifecycle implemented; tests next
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream0/0; all previous and new work local/uncommitted/unpushed.
+- Added transparent `alex-mace-illustrated.png` and metadata (square1254,24 frames,density8.24). Importer generalized to contract row count and measured seams; square source bands measured and row cuts declared in `src/character-art.js`. `node tools/import-illustrated.js alex-mace` PASS alpha/bounds/cell-edge checks. Two opaque rectangular drafts rejected outside repo. Manifest now11 sheets; original Alex/split source preserved.
+- `game.js`: split/mace activity selection,1.2s marked preparation,5s split/6s mace block, full-box placement/occupancy and reachable-route validation; cancel if occupied before activating. Mace has28x14 workout area, split22x7 preserved. Floor warning outline, illustrated swing-cycle selection and procedural equipment fallback; new sound cue.
+- Scheduler:60–90s initial delay,3 deliveries and shift warmup,120–180s cooldown on departure, once per timed shift, alternate after random first activity; defer chase/round/urgent bathroom/closing period/busy door/recent-hit conditions. Last-call/round/bathroom or shift end clears an existing workout; restart clears all scheduler memory.
+- Caught a patch matching dismissal rather than reset; corrected before tests so departures retain per-shift/activity memory and receive long cooldown, restart receives fresh grace/memory. `node --check game.js` passed before rendering additions; runtime suites pending.
+- Next: deterministic tests of both activities, fairness/defer/reset and actual collision; adapt prior split browser fixture for preparation, verify new source and swing frames on desktop/mobile, update docs/evidence.
+
+## 2026-09-23 15:05 America/Toronto — rectangular alpha extraction rejected
+
+- Mace draft extraction still visibly retains opaque backdrop, so neither rectangular output is accepted or copied into repo. Branch/HEAD/upstream unchanged; prior local work intact.
+- Decision: regenerate from the transparent Alex source on a square sheet with four columns/six shorter rows and smaller consistent within-cell figures. Source density will still exceed4 px/world unit; runtime scale remains measured. This follows the successful square-sheet path from earlier cast work. Next: verify alpha before integration; implement scheduling while source is resolved.
+
+## 2026-09-23 15:04 America/Toronto — mace source draft needs transparent extraction
+
+- Same branch/HEAD/upstream `feat/regulars-responsive-pixel-polish` / `699c55f` / 0/0; previous local changes preserved, nothing committed/pushed.
+- Built-in imagegen produced a matching 4-column/6-row Alex macebell draft (idle/carry strides/three swing phases), but visibly added an opaque brown backdrop. Draft remains outside repo and is rejected as production art.
+- Next: built-in background-extraction edit preserving 24 figures and cell layout, verify real alpha/edges, then import using generalized row-count contract. No gameplay changes or tests for mace yet.
+
+## 2026-09-23 15:02 America/Toronto — macebell visit and sensible scheduling started
+
+- User adds Alex swinging a steel mace/macebell as another temporary blocking activity and asks for occasional, context-aware appearances. Preserve previous uncommitted visual-system/HD-split work; startup status matches final checkpoint.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0. No commit/push/deploy. Only handoff changed so far this turn.
+- Decision: keep split visits and add a distinct illustrated macebell visit with carrying strides, a short visible preparation cue, a brief swing cycle and temporary blocker. Author supplemental artwork without replacing the approved split source; generalize contract/importer rows as needed.
+- Scheduling: initial grace period and delivery progress; long cooldown after departure, at most one visit per timed shift, defer during last call/round/bathroom urgency/chase or a busy doorway. Validate clear reachable workout space away from door, bathroom and service areas, recheck occupancy before adding a collider. Busy spots/failed routes should cancel or defer, never trap someone inside a newly created blocker.
+- Tests: not yet run for this addition. Next: generate mace art from Alex reference, implement lifecycle/scheduling and explicit reset state, add deterministic gameplay coverage and desktop/mobile art proof. Existing test passes apply only to previous split implementation.
+
+## 2026-09-23 15:00 America/Toronto — visual system and HD Alex complete locally
+
+- User request fulfilled locally: durable texture/sprite/vibe standard for all future sessions plus illustrated Alex idle, directional walking and full split. Overhead camera, existing nine source sheets, room geometry, input and gameplay/collider dimensions preserved.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0 ahead / 0 behind. All changes below uncommitted/unpushed; no deployment, PR mutation or external message this session. Actual Git status checked. Production still has previous release until publication.
+- `docs/VISUAL-SYSTEM.md`: authoritative references, mood/material/color recipes, HD definition, camera/density/pivots, character onboarding, acceptance and limitations. `AGENTS.md`/`CLAUDE.md` require this for future visual work. README/art-direction README/ILLUSTRATED notes reflect ten sheets and busboy debt.
+- `src/character-art.js`: shared family/scale/row/animation contract and explicit ghost/busboy exceptions. `index.html` loads it. `game.js` recognizes contracted special poses, sets Alex walk facing, and uses split.down over original22x7 blocker. `tools/import-illustrated.js` consumes contract and rejects cell-edge clipping; source PNGs remain unmodified by importer.
+- `assets/sprites/alex-illustrated.png` + JSON: corrected built-in imagegen source,1254x1254,16 alpha/edge-checked frames,density10.33; manifest selects it. `alex-prompt.md` stores both exact prompts/provenance. Original clipped generation rejected, never published. Side-split source leg-axis imperfection is documented; gameplay only uses the validated down-facing split.
+- `tests/character-art.js` + `.github/workflows/validate.yml`: production family/manifest/PNG/scale/pose checks and CI configuration. `tests/smoke.js`: new script + Alex split/facing/collider regressions. `tools/art-review.html` and `tools/validate-art.js`: contract-driven cast/pose coverage. `tools/validate-alex.js`: alpha, real lifecycle, four facings, body/blocker invariants and missing-sheet fallback.
+- PASS: contract10 gameplay kinds/10 illustrated families plus4 negative guards; assets31; smoke10 scripts/40 routes + full gameplay and new regressions. Full Edge art PASS desktop1280x720/mobile390x844: ten ready sheets,136 mappings each, movement12.4, rotation/fallback/gallery, zero errors. Alex Edge PASS both sizes:16 non-clipped transparent cells, walking/split/stand, preserved14x17 body and22x7 blocker,404 fallback, zero errors. Syntax checks for new/changed tooling and `git diff --check` PASS (normal LF/CRLF warnings only).
+- `docs/art-review/alex/`: six actual desktop/mobile idle/split/exit captures, report and review README. Clear-aisle captures visually inspected; Alex matches existing cast detail/scale. This is browser emulation, not physical-phone performance evidence. CI is configured locally but has not run remotely; branch protection unchanged.
+- Existing local server already works: HTTP200 for new contract, served manifest confirms Alex. Preview `http://127.0.0.1:8917/`, gallery `/tools/art-review.html`. Earlier helper-launch policy rejection needed no workaround because no new process was necessary.
+- No unfinished implementation for this request. Next: user reviews local cast/gameplay; publish only when requested. Remaining art debt outside this scope: procedural busboy and room, existing cast animation/anatomy limitations. Keep guide/contract/checks in sync for future characters; do not treat fallback as finished artwork.
+
+## 2026-09-23 15:00 America/Toronto — durable screenshots reviewed
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0; no commit/push/deploy. All session files remain local.
+- `node tools/validate-alex.js docs/art-review/alex` PASS with clear-aisle fixture: desktop/mobile idle, actual split and exit PNGs plus report saved. Split and idle captures visually inspected; detail/scale consistent with Jay/Doe/Hunter, feet and horizontal shoes readable. Added review README. Source16 cells, four facings, split collider and fallback checks remain PASS; zero errors.
+- Docs updated to ten atlases/seven named people and remaining busboy debt; original nine sources unchanged. `git diff --check` PASS (expected Windows LF/CRLF warnings only). Implementation diff reviewed.
+- Local preview helper's combined PowerShell HTTP-check/hidden-Start-Process command was automatically rejected by policy; no helper launched by that call. Next: check existing local server with a simple read-only request and, if needed, use the standard foreground Node tool session. Then final status/checkpoint and delivery. No external publication requested for this work.
+
+## 2026-09-23 14:57 America/Toronto — desktop/mobile integration checks pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0; all changes remain local/uncommitted/unpushed.
+- `node tools/validate-alex.js` PASS desktop1280x720/mobile390x844: 16 transparent, non-clipped source cells each; all four walk facings; actual split.down; 24.39-world-unit visual width around unchanged22x7 blocker; unchanged14x17 body; standing/removal and illustrated exit; deliberate Alex404 retains split gameplay/fallback and other artwork. Zero normal browser errors.
+- `node tools/validate-art.js` PASS: all10 atlases ready,136 required directional pose mappings per viewport, booth special states, keyboard/touch movement12.4, resize position preserved, Doe404 fallback and gallery10/10; zero errors. CPU submission timings only, no physical-device performance claim.
+- Reviewed desktop/mobile split captures. Alex matches cast detail; current test staging puts a foreground pendant in front of part of his split, so move the review fixture to a clear aisle before saving durable evidence. No gameplay defect found.
+- Next: finish doc count/debt consistency, save better staged screenshots/report, inspect diff and final handoff. Existing smoke/assets/contract PASS; no production release made.
+
+## 2026-09-23 14:56 America/Toronto — corrected source imported; clipping guard added
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0; all work local/uncommitted/unpushed.
+- Replaced Alex PNG with built-in imagegen spacing correction, preserving identity/materials/poses. Recorded exact edit prompt in `alex-prompt.md`; initial rejected image remains outside repo. Importer now rejects opaque cell-edge pixels for every future imported sheet.
+- `node tools/import-illustrated.js alex` PASS: 1254x1254, 16 alpha/edge-checked frames, new density 10.33. `node tests/character-art.js` PASS including 4 negative guards. Previous smoke/assets PASS unchanged.
+- Next: rerun Alex browser source/lifecycle checks, full-cast browser validation, visual inspection and final documentation consistency. Side-split source axis remains an explicitly documented unused variation; gameplay only uses down-facing horizontal split.
+
+## 2026-09-23 14:55 America/Toronto — gameplay passes; source-cell clipping caught
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0; uncommitted/unpushed. User's HD Alex/visual-standard scope unchanged.
+- `node tests/smoke.js` PASS (10 scripts, 40 routes, gameplay plus Alex split/facing/blocker regressions). `node tests/assets.js` PASS31. Contract check PASS as recorded below.
+- `node tools/validate-alex.js` FAIL before captures: split cell (row3,col0) has 62 opaque boundary pixels. Initial generation extends shoes across strict quarter-cell boundaries despite overall transparency. This source must be corrected before completion; importer-only alpha coverage was insufficient.
+- Next: built-in imagegen edit to give every cell safe transparent margins at consistent body scale; preserve initial source outside repo, replace project Alex source with corrected output, reimport and rerun source/browser checks. No need to alter geometry or existing cast sources.
+
+## 2026-09-23 14:54 America/Toronto — standard and regression guards ready; browser proof next
+
+- Same branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0. All changes local, uncommitted/unpushed. User scope remains durable visual system plus HD Alex.
+- Added `docs/VISUAL-SYSTEM.md` (mood, texture/color recipes, reference hierarchy, HD/camera/anchor contract, onboarding and checks), linked from AGENTS/CLAUDE/README/art notes. `alex-prompt.md` records built-in imagegen prompt/provenance and unused side-split anatomy limit.
+- `tests/character-art.js` PASS: 10 gameplay kinds, 10 illustrated families, PNG/header/scale/animation coverage, four negative regression guards. Ghost/busboy exceptions printed explicitly. Added GitHub workflow to run contract/assets/smoke checks on push/PR (not yet run remotely; no branch-protection setting changed).
+- Gallery and browser art checks consume shared contract, removing hardcoded cast/pose counts. Smoke adds split selection/blocker/facing assertions. New `tools/validate-alex.js` checks alpha/cell edges, real idle/walk/split/stand lifecycle, unchanged body/blocker and missing-sheet fallback on desktop/mobile.
+- Next: run all suites and inspect Alex gameplay captures; resolve any source clipping, scale/anchor or regression failures, then save review evidence and final handoff. Earlier importer PASS remains valid; browser/runtime suites not run yet this session.
+
+## 2026-09-23 14:46 America/Toronto — Alex source and shared contract integrated
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0/0. User's durable art-system + HD Alex request in progress; all changes local/uncommitted/unpushed.
+- Built-in imagegen produced `assets/sprites/alex-illustrated.png` using waiter as style/camera reference: teal tee, shorts, glasses, beard, sneakers; 4 directions x idle/two strides/split. Source preserved unchanged. `node tools/import-illustrated.js alex` PASS: 1254x1254, 16 alpha-checked cells, density 13.52. Generated `alex-illustrated.json`, selected in manifest.
+- `src/character-art.js` now defines each illustrated family, rows, animations, scale, split floor offset, and explicit ghost/busboy procedural exceptions. Importer consumes it; index/smoke load it. `game.js` recognizes declared special poses, updates Alex cardinal facing and uses down-facing split to match existing horizontal 22x7 blocker. No gameplay/collider dimensions changed.
+- New source visually inspected; in-game scale/anchor still require browser proof. Next: authoritative visual guide and AGENTS links, contract enforcement/CI, dynamic gallery/browser checks, regression tests and screenshots. No runtime tests yet beyond importer.
+
+## 2026-09-23 14:44 America/Toronto — character standard and Alex upgrade started
+
+- User requests a durable, enforceable texture/sprite/vibe standard for future sessions and illustrated HD Alex, including his split. Keep overhead camera, existing cast artwork, world geometry, gameplay and collider dimensions.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `699c55f`, upstream 0 ahead / 0 behind; clean at startup, consistent with previous final documentation commit. Only this checkpoint changed; no commits/push/deployment.
+- Inspection: Alex has no atlas and retains coarse front-facing procedural rows. His raster pose currently collapses split to idle; his path following only sets flip, not cardinal facing. Both must be corrected with artwork integration. Busboy remains a documented legacy exception; ghost intentionally procedural.
+- Decision: add a shared character art contract used by importer/validation, an authoritative visual guide linked from AGENTS/CLAUDE, and coverage that rejects undeclared character families or missing required illustrated poses. Preserve runtime fallback for loading failures.
+- Tests: none run yet. Next: generate Alex using existing illustrated cast as visual reference, integrate measured metadata and correct split anchor/facing, enforce contract, run gameplay/assets and desktop/mobile art validation with saved review evidence.
+
 ## 2026-09-22 18:56 America/Toronto — production verified; task complete
 
 - User requests fulfilled: merged latest main, resolved conflicts while preserving illustrated overhead art and incoming gameplay, pushed feature branch, then deployed production on explicit authorization.

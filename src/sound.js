@@ -196,6 +196,10 @@ const Sound = (function () {
         tone(659, 0.07, { type: 'triangle', volume: 0.09, delay: 0.05 });
         tone(880, 0.12, { type: 'triangle', volume: 0.09, delay: 0.1 });
         break;
+      case 'alexMace':
+        tone(260, 0.18, { to: 110, type: 'sine', volume: 0.06 });
+        tone(1200, 0.07, { to: 700, type: 'triangle', volume: 0.035, delay: 0.16 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });

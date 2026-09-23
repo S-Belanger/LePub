@@ -7,6 +7,21 @@ Before changing the repository:
 1. Read `HANDOFF.md` completely.
 2. Inspect `git status --short --branch` and compare it with the handoff.
 3. Preserve all uncommitted work unless the user explicitly asks to discard it.
+4. For visual, character, texture or UI work, read `docs/VISUAL-SYSTEM.md` and
+   view its linked shipped sprite references before authoring. It is the current
+   art standard; older art plans and historical handoffs do not override it.
+
+## Character art requirements
+
+- Declare every new character/appearance in `src/character-art.js`, with
+  illustrated source art and all required directional/special poses.
+- Follow `docs/VISUAL-SYSTEM.md` for materials, camera, density, pivots and
+  review. Procedural fallback is resilience, not completed production artwork.
+  Existing busboy/ghost exceptions are explicit; do not copy them for new people.
+- Run `node tests/character-art.js`, `node tests/assets.js`, and
+  `node tests/smoke.js` before publishing character changes. Run real-browser
+  art checks and inspect desktop/mobile captures for visual changes; record
+  evidence and limits in `HANDOFF.md`.
 
 ## Mandatory progress checkpoints
 

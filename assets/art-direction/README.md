@@ -1,5 +1,9 @@
 # Selected art direction
 
+Start with [the current visual system](../../docs/VISUAL-SYSTEM.md) for all
+future character, texture and UI work. Its shared contract, production checks
+and reference hierarchy supersede older implementation notes below.
+
 `warm-overhead-pub-reference.png` is the primary environment reference.
 
 Translate its visual language into the game rather than copying its camera:
@@ -24,9 +28,9 @@ Translate its visual language into the game rather than copying its camera:
 `floor-plan.png` / `floor-plan.json` are the room as the game plays it,
 rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
 
-## Status (2026-09-22)
+## Status (2026-09-23)
 
-The six named characters and three walk-in looks now use new illustrated PNG
+The seven named characters (including Alex) and three walk-in looks now use new illustrated PNG
 sheets, measured into the existing atlas contract. The original procedural
 sprites remain fallbacks. `ART_SCALE=4` preserves source detail; continuous
 lighting replaces the coarse checkerboard overlay. The overhead camera and

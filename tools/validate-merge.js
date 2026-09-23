@@ -27,8 +27,11 @@ session(async (browser, localUrl) => {
       Object.assign(d.getBusboy(), { x: 150, y: 320, state: 'mopping', pose: 'mop', line: 'Du coup !', lineTtl: 3, mopTimer: 3 });
       d.spawnAlex();
       const a = d.getAlex();
-      Object.assign(a, { x: 168, y: 340, path: [{ x: 168, y: 340 }], pathIndex: 0 });
-      d.update(0.01); d.render();
+      Object.assign(a, { x: 145, y: 265, path: [{ x: 145, y: 265 }], pathIndex: 0 });
+      // This fixture isolates rendering from the urgent-bathroom scheduling gate.
+      const urgent = bladderUrgentTimer; bladderUrgentTimer = 0;
+      updateAlex(0.01); updateAlex(ALEX_PREPARE_TIME + 0.01);
+      bladderUrgentTimer = urgent; d.render();
       const frame = rasterFrameFor(d.player);
       const tint = statusRasterFrame(frame, d.player);
       return { ready: Object.values(d.Assets.status()).every(a => a.state === 'ready'), tinted: frame.image !== tint.image,
