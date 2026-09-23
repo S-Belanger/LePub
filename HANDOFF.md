@@ -1,5 +1,38 @@
 # LePub durable handoff
 
+## 2026-09-23 18:45 America/Toronto — Alex graphics/macebell production release verified
+
+- User-authorized release complete: code commit `6014ac3` (`feat: upgrade Alex graphics and add macebell workouts`) pushed to `feat/regulars-responsive-pixel-polish`; production READY at `https://lepub.vercel.app`, deployment`dpl_7iFdvPifrP7ddjnC48j8nPKsPFGh`, immutable`https://lepub-6p1z07qg0-maisoncastros-projects.vercel.app`. Main/PR unmerged, no external messages sent.
+- Current HEAD before this final test/docs commit is `e3867ea`, upstream0/0. This checkpoint and the browser fixture correction are being committed/pushed together; game/assets unchanged since `6014ac3`. Final commit contains no production behavior change. After push, verify clean tree/upstream0/0.
+- LIVE `node tools/validate-alex.js <temp-output> https://lepub.vercel.app` PASS desktop1280x720/mobile390x844:40 transparent/non-clipped source cells, split and mace carrying/animation/preparation/blocker/exit, both missing-sheet fallbacks, reduced motion static pose with live blocker; zero normal browser errors. Captures/report in `%TEMP%/lepub-alex-live`.
+- LIVE `node tools/validate-merge.js https://lepub.vercel.app` PASS both viewports, existing effects/control/smoke/caught integration; zero errors. SHA256 PASS35 exact served files: runtime scripts/style/index/manifest plus11 metadata/PNG pairs. GitHub CI SUCCESS for release`6014ac3` and deployment checkpoint`e3867ea`.
+- Final local contract PASS11 families/5 guards, assetsPASS31, smokePASS10scripts/40routes, AlexPASS13 entry gates/collision/cleanup; full local artPASS148 mappings each viewport. `git diff --check` PASS (expected line-ending notices only).
+- The first live reduced-motion assertion exposed a test fixture relying on randomized player spawn. Fixed only `tools/validate-alex.js` to stage player clear of workout for fallback/reduced pages, then reran live suite successfully. In-game occupancy cancellation was correct. No source redeploy needed for this test-only correction.
+- Durable visual guide, shared art contract, exact prompts, test/CI coverage and local review evidence are in the release. No unfinished user-requested work. Remaining unrelated debt: procedural busboy/room, documented unused side-split anatomy and existing cast animation limits; no physical-device performance claim. Continue only on new feedback; preserve approved illustrated sources.
+
+## 2026-09-23 18:44 America/Toronto — random-spawn browser fixture corrected
+
+- Investigated live reduced-motion state: player uses randomized `pickClearSpawn`; fallback/reduced test pages had not moved the player away from the staged workout. A player spawning in that area correctly cancels preparation, so the test's blocker assertion was nondeterministic. Isolated live diagnostics show static frame/reduced-motion/blocker all correct with clear space and all11 atlases ready.
+- `tools/validate-alex.js` now explicitly stages player at145,266 on fallback/reduced pages, matching normal desktop/mobile fixtures. Production code/assets unchanged; no redeployment needed for this test-only fix. Existing deterministic tests already verify occupancy cancellation intentionally.
+- BranchHEAD`e3867ea`, upstream0/0; tool fix + deployment handoff notes local. Next: rerun live Alex suite, commit/push test fix and final verified release ledger, confirm clean upstream status.
+
+## 2026-09-23 18:43 America/Toronto — live checks isolate reduced-motion fixture failure
+
+- Production READY on deployment below;35 served runtime/manifest/atlas files SHA256-match local tested bytes. GitHub CI SUCCESS for code`6014ac3` and checkpoint`e3867ea`. Live merge desktop/mobile checks PASS with zero errors.
+- Live `validate-alex` reaches its final reduced-motion check but FAILS `Reduced motion must keep static art with working blocker`; prior local run passed. Desktop/mobile source/lifecycle/fallback stages completed before this assertion. No claim of fully verified release yet.
+- BranchHEAD`e3867ea`, upstream0/0; only handoff local. Next: inspect actual reduced-page state/frames to distinguish fixture timing/random placement from gameplay bug; fix and reverify, redeploy only if production code/assets need changing.
+
+## 2026-09-23 18:42 America/Toronto — production READY; live verification underway
+
+- Code `6014ac3`, branch HEAD `e3867ea`, both pushed, upstream0/0. Only deployment-ledger notes are local; no source/asset changes after tests.
+- Retry succeeded: production deployment `dpl_7iFdvPifrP7ddjnC48j8nPKsPFGh`, READY, alias `https://lepub.vercel.app`, immutable URL `https://lepub-6p1z07qg0-maisoncastros-projects.vercel.app`.
+- Next: live desktop/mobile Alex/merge browser checks, SHA256 comparison of all runtime scripts/style/manifest/11 atlas metadata+PNGs, inspect GitHub validation result, then commit/push final release handoff. Production is deployed; final live verification is not complete yet.
+
+## 2026-09-23 18:42 America/Toronto — initial deployment authorization retry
+
+- Branch HEAD `e3867ea` (release checkpoint), code `6014ac3`, both pushed; upstream0/0. Initial `vercel deploy --prod --yes` returned `Not authorized` before upload. No new production deployment yet.
+- Same first-attempt error resolved on retry in previous releases. Next: retry once, then inspect authenticated deployment access if it persists. Only this documentation note is local; tested/pushed game and assets unchanged.
+
 ## 2026-09-23 18:42 America/Toronto — Alex update committed and pushed; deploying production
 
 - User-authorized feature release committed as `6014ac3` (`feat: upgrade Alex graphics and add macebell workouts`) and pushed to `origin/feat/regulars-responsive-pixel-polish`. Branch upstream0/0, working tree clean before this checkpoint. All43 reviewed files, including prior visual-system/HD split work, are included.

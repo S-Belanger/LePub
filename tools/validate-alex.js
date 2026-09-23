@@ -131,7 +131,9 @@ session(async (browser, localUrl) => {
   await fallback.goto(url, { waitUntil: 'networkidle' });
   const fallbackCheck = await fallback.evaluate(() => {
     document.getElementById('btn-start').click();
-    const d = window.__debug; d.spawnAlex(); const a = d.getAlex();
+    const d = window.__debug;
+    d.player.x = 145; d.player.y = 266; // Keep random player spawn out of the marked space.
+    d.spawnAlex(); const a = d.getAlex();
     Object.assign(a, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
     updateAlex(0.01); updateAlex(ALEX_PREPARE_TIME + 0.01); d.render();
     const splitOK = !d.Assets.hasFamily('alex') && d.Assets.hasFamily('waiter') && !rasterFrameFor(a) && spriteForEntity(a) === SPRITES.alex.split && FURNITURE.includes(a.blocker);
@@ -146,6 +148,7 @@ session(async (browser, localUrl) => {
   await reduced.goto(url, { waitUntil: 'networkidle' });
   const reducedCheck = await reduced.evaluate(() => {
     document.getElementById('btn-start').click();
+    player.x = 145; player.y = 266; // Exercise motion preference, not occupancy cancellation.
     for (let attempt = 0; attempt < 8 && !alex; attempt++) spawnAlex('mace');
     if (!alex) throw new Error('No reduced-motion visitor');
     Object.assign(alex, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
