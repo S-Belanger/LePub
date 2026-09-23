@@ -1,5 +1,22 @@
 # LePub durable handoff
 
+## 2026-09-23 18:56 America/Toronto — hunter likeness released and live-verified
+
+- User request complete: hunter revised from supplied photo using built-in imagegen, committed/pushed as 1c6bcfc (feat: match hunter graphics to photo reference), deployed to https://lepub.vercel.app. Production READY dpl_Qo6EWs6vQT7iHfrTZraeButgN9oR, immutable https://lepub-atoxrasiz-maisoncastros-projects.vercel.app.
+- Branch feat/regulars-responsive-pixel-polish, HEAD1c6bcfc upstream0/0 before this final documentation commit. Only HANDOFF.md local; commit/push it next and confirm clean0/0. No production code/assets changed after release; no redeploy needed for ledger. Main/PR unchanged; no external messages.
+- LIVE node tools/validate-merge.js https://lepub.vercel.app PASS desktop1280x720/mobile390x844: all atlases ready, status/pivots/split/pack controls/smoke/caught, zero page errors. SHA256 MATCH6 served files: hunter PNG+JSON, character-art.js, game.js, index.html, manifest.json. GitHub CI SUCCESS for1c6bcfc (run35930900948).
+- Local tests PASS contract11families/5guards, assets31, smoke10scripts/40routes, Alex13gates; full browser PASS148 mappings each viewport and input/rotation/fallback/gallery. Import PASS16 transparent/non-clipped cells,density10.71. Actual desktop/mobile screenshots inspected and saved in docs/art-review/hunter with report/notes.
+- Durable docs record corrected swept hair, wide glasses, fuller face/light stubble and exact prompt. Changed hunter PNG/metadata only for game assets; gameplay untouched. Photo remains outside public repo. No unfinished user-requested work. Limits: stylized small-scale likeness; phone fine facial detail naturally reduced. Continue on user feedback.
+## 2026-09-23 18:55 America/Toronto — hunter production READY
+
+- Branch feat/regulars-responsive-pixel-polish, HEAD1c6bcfc, upstream0/0. Feature committed/pushed; only handoff notes local. GitHub CI SUCCESS: https://github.com/S-Belanger/LePub/actions/runs/35930900948.
+- Vercel production READY deployment dpl_Qo6EWs6vQT7iHfrTZraeButgN9oR, immutable https://lepub-atoxrasiz-maisoncastros-projects.vercel.app, public alias https://lepub.vercel.app. Deployment succeeded first attempt; tested code/assets unchanged.
+- Next: public-alias desktop/mobile integration checks and exact source hashes, then commit/push final handoff. Local checks stand; live verification not yet complete.
+## 2026-09-23 18:55 America/Toronto — hunter change committed and pushed
+
+- Branch feat/regulars-responsive-pixel-polish, HEAD1c6bcfc, synchronized with origin after successful push. Feature commit: feat: match hunter graphics to photo reference. Reviewed10 files committed; only this deployment checkpoint is subsequently local.
+- All local art/gameplay/browser checks PASS as recorded below; no source changes after validation. User production authorization in force.
+- Next: deploy linked project via vercel deploy --prod --yes, then check live desktop/mobile integration and exact served hunter source/metadata hashes. No new production deployment yet; record result and commit/push final ledger.
 ## 2026-09-23 18:54 America/Toronto — hunter likeness ready for production
 
 - Branch feat/regulars-responsive-pixel-polish, HEAD8061cb9, upstream0/0 after fresh fetch. User authorizes push and production. All changed files reviewed; no runtime/gameplay edits.
