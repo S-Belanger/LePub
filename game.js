@@ -1018,7 +1018,8 @@ let doubleHitFree = true;   // ...and nobody has been hit since
 // from the bar and deliver — a customer who gives up unserved costs points.
 const customers = [];
 const BASE_MAX_CUSTOMERS = 6;
-const SERVED_CUSTOMER_STAY = [16, 24]; // time to enjoy an order before freeing the seat
+const CUSTOMER_ORDER_PATIENCE = [45, 65];
+const SERVED_CUSTOMER_STAY = [10, 14]; // short drink break before freeing the seat
 let customerSpawnTimer = 3;
 
 function spawnCustomer() {
@@ -1061,7 +1062,7 @@ function updateCustomer(c, dt) {
       if (c.state === 'entering') {
         c.state = 'sitting';
         c.facing = seatFacing(c.seat);
-        c.sitTimer = 30 + Math.random() * 20; // patient: 30-50s before giving up
+        c.sitTimer = randomInRange(CUSTOMER_ORDER_PATIENCE);
         c.patienceDuration = c.sitTimer; // remembered so the patience bar can show a fraction
         c.orderTimer = 1 + Math.random() * 1.5;
       } else {

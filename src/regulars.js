@@ -61,8 +61,8 @@ const REGULARS = [
     accent: '#7a9450',             // dialogue-bubble frame colour
     seatSide: 's',                 // front of the booth, closest to the camera
     // Genuinely chill: he waits a long time and orders steadily.
-    patience: [40, 60],
-    orderDelay: [24, 36],          // seconds between finishing one and wanting the next
+    patience: [54, 74],
+    orderDelay: [18, 26],          // seconds between finishing one and wanting the next
     firstOrderDelay: [4, 9],
     orderWeights: {
       'beer-blond': 4, 'beer-red': 3, 'beer-dark': 3,
@@ -75,8 +75,8 @@ const REGULARS = [
     spriteKey: 'sam',
     accent: '#5b7fae',
     seatSide: 'w',
-    patience: [34, 52],
-    orderDelay: [30, 44],
+    patience: [48, 66],
+    orderDelay: [22, 30],
     firstOrderDelay: [7, 13],
     orderWeights: {
       'beer-blond': 3, cocktail: 3, food: 3,
@@ -90,8 +90,8 @@ const REGULARS = [
     accent: '#a8434f',
     seatSide: 'e',                 // directly across the table from Nazim
     // Impatient by construction: the shortest fuse of the three.
-    patience: [26, 40],
-    orderDelay: [22, 34],
+    patience: [40, 54],
+    orderDelay: [16, 24],
     firstOrderDelay: [3, 8],
     orderWeights: {
       'beer-dark': 5, food: 3, wine: 2,

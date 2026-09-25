@@ -214,6 +214,8 @@ function run() {
       () => `Customer could not reach ${customer.seat.side} seat at ` +
         `${customer.seat.x},${customer.seat.y}; stopped at ${customer.x},${customer.y}.`,
     );
+    assert(customer.sitTimer >= 45 && customer.sitTimer <= 65,
+      'A seated walk-in should have enough order patience to route through the pub.');
   }
 
   for (const customer of debug.customers) {
@@ -312,22 +314,23 @@ function run() {
   debug.player.tray.push({ type: 'wine', customer: lateDrinker });
   debug.player.x = lateDrinker.x; debug.player.y = lateDrinker.y + 6;
   debug.handleInteract();
-  if (!lateDrinker.served || lateDrinker.sitTimer < 16) throw new Error('A late delivery should start a full seated drinking period.');
-  debug.updateCustomer(lateDrinker, 15);
+  if (!lateDrinker.served || lateDrinker.sitTimer < 10) throw new Error('A late delivery should start a full seated drinking period.');
+  debug.updateCustomer(lateDrinker, 9);
   if (lateDrinker.state !== 'sitting') throw new Error('A served guest left before enjoying the drink.');
-  debug.updateCustomer(lateDrinker, 10);
+  debug.updateCustomer(lateDrinker, 6);
   if (lateDrinker.state !== 'leaving') throw new Error('A served guest should eventually free the seat.');
   debug.resetGame();
   const restingSam = debug.regulars.find(r => r.id === 'sam');
   debug.forceRegularOrder('sam', 'wine');
+  if (restingSam.sitTimer < 48 || restingSam.sitTimer > 66) throw new Error('Sam should have a fair solo-service window.');
   restingSam.beingCarried = true;
   debug.player.tray.push({ type: 'wine', customer: restingSam });
   debug.player.x = restingSam.x; debug.player.y = restingSam.y + 6;
   debug.handleInteract();
-  if (restingSam.orderType || restingSam.orderCooldown < 30) throw new Error('A regular requested another drink immediately after service.');
-  vm.runInContext('updateRegulars(20)', context);
+  if (restingSam.orderType || restingSam.orderCooldown < 22) throw new Error('A regular requested another drink immediately after service.');
+  vm.runInContext('updateRegulars(15)', context);
   if (restingSam.orderType) throw new Error('A regular reordered during the post-service pause.');
-  vm.runInContext('updateRegulars(25)', context);
+  vm.runInContext('updateRegulars(16)', context);
   if (!restingSam.orderType) throw new Error('A regular never resumed ordering after the pause.');
   debug.resetGame();
 

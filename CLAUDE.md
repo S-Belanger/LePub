@@ -128,7 +128,7 @@ A sprite set is keyed by pose name. Movers use `idle`/`walk` driven by `legFrame
 
 ### 5. Customer/order state machine
 
-Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), following a routed path between `DOOR` and their seat. On sitting they get a patience clock (`sitTimer`, 30–50s, with `patienceDuration` remembered for the bar) and after a short delay roll a random order from `ORDER_TYPES`, shown as a bubble with a green/yellow/red patience bar. Patience running out unserved costs `FORGOTTEN_PENALTY` (15); a delivery earns `POINTS_PER_DELIVERY` (10) and starts a fresh 16–24s seated drinking period before the seat opens, including on a late delivery. Orders also record `orderPlacedAt` (in `gameTime` seconds) so the bar queue can be ordered by age.
+Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), following a routed path between `DOOR` and their seat. On sitting they get a patience clock (`sitTimer`, 45–65s, with `patienceDuration` remembered for the bar) and after a short delay roll a random order from `ORDER_TYPES`, shown as a bubble with a green/yellow/red patience bar. Patience running out unserved costs `FORGOTTEN_PENALTY` (15); a delivery earns `POINTS_PER_DELIVERY` (10) and starts a fresh 10–14s seated drinking period before the seat opens, including on a late delivery. Orders also record `orderPlacedAt` (in `gameTime` seconds) so the bar queue can be ordered by age.
 
 **`spawnCustomer()` only considers seats that are neither occupied nor `reserved`.** A walk-in can never take a regular's chair.
 
@@ -151,6 +151,8 @@ Nazim, Sam and Gerald are permanent fixtures of the booth. Config is in `src/reg
 They are **not** generic customers: no `entering`/`leaving` lifecycle, no seat competition, and they stay for the whole run. What they *do* share is the order shape (`orderType`, `sitTimer`, `patienceDuration`, `served`, `beingCarried`, `seat`, `orderPlacedAt`), so pickup, carrying, target highlighting, table-range delivery, patience bars and scoring all reuse the existing serving code unchanged. The only branch is what happens *after* a delivery lands, in `completeDelivery()`.
 
 Their orders are framed in amber (`BUBBLE_FRAME_REGULAR`) so they read apart from walk-ins without any extra HUD.
+
+After service, the regulars pause before reordering: Nazim 18–26s, Sam 22–30s and Gerald 16–24s. Their active orders remain timed (54–74s, 48–66s and 40–54s respectively), preserving Gerald's shorter fuse while giving one player enough time to route through the pub.
 
 `resetRegular(r)` holds every mutable field and is called both at construction and on every restart, so a new run never inherits last run's orders, patience, mood, dialogue history or drink count.
 
