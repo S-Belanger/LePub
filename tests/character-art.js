@@ -77,8 +77,8 @@ assert.throws(() => validateCoverage(kinds, missingSplit), /missing pose split.d
 const lowDensity = JSON.parse(JSON.stringify(records));
 lowDensity.find(r => r.meta.fallbackKey === 'alex').meta.authoredPixelsPerWorldUnit = 2;
 assert.throws(() => validateCoverage(kinds, lowDensity), /insufficient source density/);
-const missingMace = JSON.parse(JSON.stringify(records));
-delete missingMace.find(r => r.meta.fallbackKey === 'alex-mace').meta.animations['mace.down'];
-assert.throws(() => validateCoverage(kinds, missingMace), /missing pose mace.down/);
+const wrongSplit = JSON.parse(JSON.stringify(records));
+wrongSplit.find(r => r.meta.fallbackKey === 'alex').meta.animations['split.down'].sequence[0].frameId = 'idle.down';
+assert.throws(() => validateCoverage(kinds, wrongSplit), /incorrect pose mapping split.down/);
 console.log('Character art contract PASS: ' + kinds.length + ' gameplay kinds, ' + records.length + ' illustrated families; source/scale/pose/timing coverage and 5 regression guards.');
 for (const [kind, reason] of Object.entries(art.proceduralExceptions)) console.log('Explicit exception ' + kind + ': ' + reason);

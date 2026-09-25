@@ -1,5 +1,74 @@
 # LePub durable handoff
 
+## 2026-09-25 17:21 America/Toronto — main push reviewed and ready
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`. All 57 current-session file changes staged, none committed/pushed. Staged diff and file names reviewed: portrait-matched split PNG/JSON and prompts/review, split-only runtime/sound/contract/manifest/tests/docs, old mace assets and old mixed review deleted. Personal portrait/credentials absent. `git diff --cached --check` PASS (Windows line-ending notices only); `git grep --cached -i mace -- ':!HANDOFF.md'` returns no matches.
+- Final required validation stands: four Node suites PASS (character 10/10/5; assets31; smoke10/40; Alex13), three real Edge suites PASS desktop/mobile (10 atlases/136 mappings, split lifecycle/fallback/reduced motion, merge integration) with zero page errors; native idle/split captures inspected. No source changes since browser checks; only review docs/handoff updated.
+- Fresh `git fetch origin --prune` confirms `origin/main=4c47160`, exact merge-base of feature HEAD; remote main is 38 commits behind current HEAD, no divergence. Next: stage this checkpoint, commit feature tree, switch local main, fast-forward it to the new commit, push `origin/main`, verify remote status. No Vercel deployment requested.
+
+## 2026-09-25 17:20 America/Toronto — split-only browser validation passes
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`; all changes local/uncommitted/unpushed. Removed obsolete mace references from current code/assets/docs/review data. `rg` now finds none outside historical `HANDOFF.md`. Current manifest has 10 atlases; no mace source or runtime path remains.
+- Local Node PASS: character art 10 kinds/10 families/5 guards, assets 31, smoke 10 scripts/40 routes, Alex 13 schedule gates/split lifecycle/collision/reset. Real Edge PASS `node tools/validate-art.js docs/art-review/alex-likeness/full-cast`: desktop1280×720/mobile390×844, 10 ready atlases/136 mappings each, input/rotation/fallback, zero errors. PASS `node tools/validate-alex.js docs/art-review/alex-likeness`: 16 alpha-checked cells, four facings, split/blocker/exit, missing-sheet fallback, reduced-motion cue/blocker, zero errors. PASS `node tools/validate-merge.js`: both viewports, atlas/status/pivot/split/pack controls, zero errors. Desktop/mobile Alex idle and split captures visually inspected. `git diff --check` PASS (Windows LF/CRLF notices only).
+- Current `docs/art-review/alex-likeness` captures/reports replaced previous mace evidence; old `docs/art-review/alex` removed. Hunter report was refreshed from the same current full-cast validation, and its README distinguishes older screenshots from current report. Latest docs counts updated to 10/136. Photo remains outside repository. No physical-device performance claim.
+- Next: stage and inspect full diff, fresh fetch to confirm `origin/main` ancestor, commit, fast-forward local `main`, push `origin/main`, verify clean/upstream/remote tree. User explicitly authorized main push; no production Vercel deploy requested.
+
+## 2026-09-25 17:18 America/Toronto — split-only Node checks pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`; all changes local. After mace removal, `node tests/character-art.js` PASS 10 kinds/10 illustrated families/5 regression guards; `node tests/assets.js` PASS 31; `node tests/smoke.js` PASS 10 scripts/40 routes/full gameplay; `node tests/alex.js` PASS 13 schedule gates/split lifecycle/collision/cleanup. Game/browser-tool syntax checks previously passed.
+- Next: real Edge full-art/Alex/merge checks at desktop and mobile, replace stale current reports, inspect images and diff, then main publication. No commit/push/deploy yet.
+
+## 2026-09-25 17:17 America/Toronto — mace removed from current code and assets
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`; all changes uncommitted/unpushed. The prior local Alex portrait split PNG/JSON and its prompt are preserved. No branch switch or merge yet; `origin/main` remains ancestor `4c47160` after fetch.
+- Removed mace choice/scheduling state, 28x14 blocker and 6s action, renderer atlas/fallback branch, sound cue, character-art family and manifest entry. Alex now visits only for the 22x7, 5s split with the existing scheduling, preparation, collision and cleanup. Updated `tests/alex.js`, `tests/character-art.js` and `tools/validate-alex.js` for split-only behavior. Removed tracked mace PNG/JSON/prompt and superseded `docs/art-review/alex` evidence; deleted untracked mace screenshots from new `docs/art-review/alex-likeness`.
+- Updated README, CLAUDE, visual system, illustrated art notes, Alex likeness and review notes to reflect split-only/current 10 atlases. Current `rg` finds no mace references outside historical `HANDOFF.md` and stale generated report JSONs, which the next browser run will replace. `node --check` passes game.js, tests/alex.js and tools/validate-alex.js. No functional suite run after removal yet.
+- Next: run required Node/browser suites, overwrite stale reports and inspect desktop/mobile captures, review diff, then commit and fast-forward/push main. No deployment requested.
+
+## 2026-09-25 17:09 America/Toronto — user requests main push and mace removal
+
+- New user direction: “Push to main and remove the whole mace thing with Alex.” Preserve the finished, uncommitted photo-likeness split sheet; remove Alex's mace activity, runtime/art contract/manifest/sound branches, mace PNG/JSON/prompt, tests, browser checks, documentation and current review evidence. Keep Alex's split visit. Older handoff entries remain historical, with this checkpoint superseding their mace direction.
+- Startup: reread handoff and visual system, inspected current tree against previous checkpoint and fetched origin. Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`, with only the previous turn's Alex likeness art/docs/evidence uncommitted. `origin/main` is `4c47160` and is an ancestor of the feature branch (`origin/main...HEAD` = `0/38`); local `main` is older. Preserve all existing work. The user explicitly authorizes pushing the completed result to `main`.
+- No mace removal or new tests yet this turn; no commit/push yet. Next: inspect full Alex implementation and tests, remove mace while retaining split, update review and docs, run Node/browser checks, review Git diff and fast-forward `main` to the validated result, push and verify upstream.
+
+## 2026-09-25 16:45 America/Toronto — Alex portrait likeness complete locally
+
+- User supplied Alex's portrait as identity reference. Both split and mace sprite atlases now show swept medium-dark brown hair, broad toothy smile, full brown beard and no glasses across directional/action poses. Athletic clothes, overhead camera, world scale, colliders and gameplay were preserved; the portrait's suit and the portrait file were not copied into the repo.
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`; working tree contains only this session's modified/untracked files. Changed: `assets/sprites/alex-illustrated.png/.json`, `alex-mace-illustrated.png/.json`, `assets/sprites/ILLUSTRATED.md`, `alex-prompt.md`, `alex-mace-prompt.md`, new `alex-likeness.md`, `docs/VISUAL-SYSTEM.md`, new `docs/art-review/alex-likeness/` screenshots/reports/README, and this `HANDOFF.md`. All changes are local, uncommitted and unpushed; no deployment.
+- Built-in imagegen first edits failed import on cell boundaries; accepted spacing edits and final importer PASS: 16 split cells/density 9.90, 24 mace cells/density 6.48, both 1254×1254 transparent sheets. `node tests/character-art.js` PASS 10 kinds/11 families/5 guards; `node tests/assets.js` PASS 31; `node tests/smoke.js` PASS 10 scripts/40 routes/full gameplay; `node tests/alex.js` PASS 13 schedule gates/lifecycles/collision/reset.
+- Real Edge `node tools/validate-art.js docs/art-review/alex-likeness/full-cast` PASS desktop1280×720/mobile390×844: 11 ready atlases, 148 pose mappings each, input/rotation/fallback/gallery, zero errors. `node tools/validate-alex.js docs/art-review/alex-likeness` PASS both viewports: 40 source cells, split/blocker, all carrying facings and mace phases, missing-sheet fallbacks, reduced-motion static pose, zero errors. Native captures inspected: new face clear at desktop; hair/beard and actions readable on mobile, fine face details reduced. `git diff --check` PASS (Windows LF/CRLF notices only). No physical-device performance claim; existing unused side-split anatomy debt remains.
+- Next concrete step: user visual review of the local result; make any likeness corrections they request. If they request publication, commit/push/deploy this tested tree and verify live assets/browser. No outstanding implementation or validation work for this likeness edit.
+
+## 2026-09-25 16:44 America/Toronto — Alex required Node suites pass
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0` at last check; likeness assets/docs uncommitted/unpushed. All four relevant Node suites PASS after import: `node tests/character-art.js` (10 gameplay kinds, 11 families, 5 guards), `node tests/assets.js` (31 checks), `node tests/smoke.js` (10 scripts, 40 routes, full gameplay), `node tests/alex.js` (13 schedule gates and both activity lifecycles/collision/reset).
+- Final PNG source imports PASS all 40 alpha-checked cells. Next: real Edge desktop/mobile art and Alex lifecycle checks, inspect captures at native size, review diff. No commit/push/deploy.
+
+## 2026-09-25 16:45 America/Toronto — Alex likeness documentation ready for checks
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0` at last check; all changes local/uncommitted/unpushed. Final split and mace PNG/JSON files are imported and visually inspected at source size; no runtime logic or hitboxes changed.
+- Added `assets/sprites/alex-likeness.md` with the user portrait's role, exact two edit prompts plus two accepted spacing-correction prompts, provenance and small-scale limits. Updated `docs/VISUAL-SYSTEM.md`, `assets/sprites/ILLUSTRATED.md`, and the historical Alex prompt files to make the no-glasses identity current while preserving original prompt history. The personal photo is not in the repo.
+- Importer PASS: Alex 16 frames/density 9.90, mace 24 frames/density 6.48. Contract/assets/smoke/Alex gameplay and browser checks remain to run. Next: execute required checks, inspect desktop/mobile captures, review diff and record results. No commit/push/deploy.
+
+## 2026-09-25 16:42 America/Toronto — Alex likeness assets imported
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0` at last check; all changes local/uncommitted/unpushed. Existing split and mace PNGs replaced with built-in imagegen edits using the supplied portrait and shipped Alex art. Final versions show swept medium-brown hair, broad smile, full beard, no glasses, and preserve teal athletic outfit and split/mace actions.
+- First generated versions failed importer at a cell edge (`alex` row1,col0; `alex-mace` row2,col0). Built-in imagegen spacing corrections were visually inspected and accepted. Final `node tools/import-illustrated.js alex` PASS: 1254×1254, 16 alpha-checked frames, density 9.90. Final `node tools/import-illustrated.js alex-mace` PASS: 1254×1254, 24 alpha-checked frames, density 6.48. Measured JSON bounds/pivots regenerated; no runtime/gameplay files changed.
+- Files currently changed: `HANDOFF.md`, both Alex PNGs and both Alex JSON metadata files. No character-contract/assets/smoke or browser suite run yet. Next: document exact prompts/new identity in art guides, run required Node tests and real-browser desktop/mobile art checks, inspect captures and record limits. Portrait remains outside repository.
+
+## 2026-09-25 16:40 America/Toronto — Alex first import blocked by cell edge
+
+- Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0` at last check. Two generated likeness sheets were copied over the existing Alex PNGs locally; original versions remain in Git. `HANDOFF.md` is also modified. No commit/push/deploy.
+- Both generated 1254-square sources were visually inspected: photo-matched swept brown hair, full beard, smile and no glasses; outfit, split and mace poses retained. The first `node tools/import-illustrated.js alex alex-mace` attempt FAILED at `alex: opaque pixels cross cell boundary 1,0`. No new JSON metadata was written. This is spacing, not a game/runtime failure.
+- Next: measure transparent cell margins read-only, use built-in imagegen to correct split sheet spacing (and mace if needed), rerun importer, then continue tests/browser review. Do not claim art accepted until every cell validates.
+
+## 2026-09-25 16:35 America/Toronto — Alex photo likeness work started
+
+- User supplied a portrait and said “Alex looks like this.” Treat it as identity reference for the existing Alex split and mace appearances. The photo shows swept dark-brown hair, a full medium-brown beard, a broad smile and no glasses. Preserve his teal workout shirt, charcoal shorts, shoes, elevated overhead camera, directional poses, split/mace mechanics and scale; the portrait's suit is outside the workout costume.
+- Startup complete: read handoff/visual standard, inspected Git status and viewed the photo, both shipped Alex sources, Jay's source and camera study. Branch `feat/regulars-responsive-pixel-polish`, HEAD `9966dd2`, upstream `0/0`, clean tree before this checkpoint. Preserve existing work. User's earlier publication authorization concerned completed prior releases; this turn has no new commit/push/deploy authorization.
+- Applying the built-in imagegen skill for bitmap source edits. Keep the personal photo outside the public repository. No art, code or metadata changed yet; no tests run for this request. This checkpoint is the only current local change and is uncommitted/unpushed.
+- Next: edit both transparent sprite sheets using the photo and shipped sheets, inspect all cells, import measured metadata, run required Node and desktop/mobile browser art checks, document provenance and review limits, then leave the completed change locally reviewable.
+
 ## 2026-09-23 18:56 America/Toronto — hunter likeness released and live-verified
 
 - User request complete: hunter revised from supplied photo using built-in imagegen, committed/pushed as 1c6bcfc (feat: match hunter graphics to photo reference), deployed to https://lepub.vercel.app. Production READY dpl_Qo6EWs6vQT7iHfrTZraeButgN9oR, immutable https://lepub-atoxrasiz-maisoncastros-projects.vercel.app.

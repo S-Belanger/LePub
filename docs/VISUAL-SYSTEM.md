@@ -85,8 +85,8 @@ name, target height, sheet rows and required animation sequences.
 `proceduralExceptions` lists the only current exceptions.
 
 The importer uses four columns (down/right/up/left) and the row count declared
-by each family. Most sheets use idle/walkA/walkB/special; Nazim differs and
-Alex's mace appearance has six rows. Optional `rowCuts` store measured seams
+by each family. Most sheets use idle/walkA/walkB/special; Nazim differs.
+Optional `rowCuts` store measured seams
 when generated spacing differs from equal rows. Actual dimensions are
 measured; prompt cell sizes are not authoritative. See
 [ILLUSTRATED.md](../assets/sprites/ILLUSTRATED.md) for provenance/frame notes.
@@ -149,33 +149,30 @@ Keep the portrait out of the public asset tree. See the
 
 ## Alex
 
-Swept dark hair, black glasses, short full beard and grin; teal tee, charcoal
-shorts, bare lower legs, off-white sneakers. Four directions with idle/two
+The September 25 user-supplied portrait controls Alex's likeness: swept
+medium-dark brown hair with an exposed forehead, strong brows, a broad toothy
+smile and a full neatly shaped medium-brown beard. No glasses. Keep his teal
+tee, charcoal shorts, bare lower legs and off-white sneakers for the workout
+appearance; do not transfer the portrait's suit. Four directions with idle/two
 strides/full split. Same finish as Jay. Gameplay turns him down for the split,
 keeping the legs horizontal over the unchanged 22x7 blocker. Split floor pivot
 is 1.5 world units above the cropped silhouette bottom. No pose-dependent
 art scaling or collider change. Other split directions are source variations
 for inspection; right/left source poses have imperfect rotated leg anatomy
-and are not used by the gameplay split. [Exact prompt](../assets/sprites/alex-prompt.md).
-
-Alex also carries a **steel mace/macebell**: one long dark shaft, a single
-smooth steel ball, two-handed grip. `alex-mace` is a supplemental appearance
-of kind `alex`, with idle, two carrying strides, and three swing phases.
-It uses the same body scale and style; the original split sheet is preserved.
-[Mace source/prompt](../assets/sprites/alex-mace-prompt.md).
+and are not used by the gameplay split. The personal portrait stays outside
+the public asset tree. [Current likeness prompts](../assets/sprites/alex-likeness.md)
+and [original source prompt](../assets/sprites/alex-prompt.md).
 
 Visits start only after a 60–90 second opening delay, at least three deliveries
 and 30 seconds of the current shift. There is at most one visit per timed
 shift; endless shifts use a 120–180 second cooldown starting after departure.
-Activities alternate after a random first choice. Entry defers during a chase,
+Entry defers during a chase,
 recent hit, active round, bathroom urgency, busy doorway, or final 40 seconds.
-He uses a reachable empty workout space outside the staff pocket and away
+He uses a reachable empty split space outside the staff pocket and away
 from door/bathroom. Busy/unreachable attempts defer 10 seconds.
 
-A 1.2-second amber floor outline warns before either action. Occupancy is
-checked again before a blocker is added. Split blocks 22x7 for 5 seconds;
-mace reserves 28x14 for 6 seconds. The mace area remains faintly marked during
-the swing cycle; neither action causes damage. Last call, an active round,
+A 1.2-second amber floor outline warns before the split. Occupancy is
+checked again before a blocker is added. The split blocks 22x7 for 5 seconds
+without damage. Last call, an active round,
 bathroom urgency or shift end releases the workout early. Exiting or timing
 out removes the visitor, and restart clears both blocker and schedule memory.
-Reduced motion keeps a static mace pose while preserving game rules.

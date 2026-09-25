@@ -20,8 +20,8 @@ The renderer uses a 4x internal art grid over the unchanged logical world, so
 fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
 light, and wood grain remain crisp without changing movement or collision.
 
-The cast now uses eleven illustrated sprite atlases with four directions,
-including Alex's split and macebell routine and three distinct walk-in customers. The
+The cast now uses ten illustrated sprite atlases with four directions,
+including Alex's split and three distinct walk-in customers. The
 [visual system](docs/VISUAL-SYSTEM.md) defines texture, sprite detail, camera,
 materials and the required workflow for future additions. A shared character
 contract and CI check flag missing artwork and poses.
@@ -69,11 +69,11 @@ About two alcoholic drink deliveries in five comes back as a shot for the deer. 
 
 ### Controls
 
-Alex occasionally visits for a split or a steel-mace workout. An amber floor
-outline gives a short warning before he blocks that space for 5–6 seconds.
+Alex occasionally visits for a split. An amber floor
+outline gives a short warning before he blocks that space for 5 seconds.
 He waits until you've settled into serving, skips busy or urgent moments,
 and takes a 2–3 minute break after leaving. Timed shifts allow at most one
-visit; the two routines alternate after his first random choice.
+visit.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |

@@ -1,8 +1,13 @@
 # Alex source provenance
 
+The original September 23 glasses-bearing source described below was
+superseded by the September 25 [portrait likeness revision](alex-likeness.md).
+This file remains the exact historical prompt record.
+
 Generated September 23, 2026 with the built-in imagegen tool. Reference:
-`waiter-illustrated.png` for finish, camera and layout. Output PNG copied into
-this directory unchanged. Metadata measured with `tools/import-illustrated.js`.
+`waiter-illustrated.png` for finish, camera and layout. That original PNG is
+preserved in Git history; the current PNG contains the September 25 portrait
+likeness edit. Metadata measured with `tools/import-illustrated.js`.
 This is reviewed AI illustration, not hand-cleaned or palette-locked pixel art.
 
 ## Exact generation prompt

@@ -29,13 +29,6 @@ const CharacterArt = (() => {
       // Gameplay uses split.down to align the legs with the horizontal blocker.
       floorOffsets: { special: 1.5 },
     }),
-    'alex-mace': person('Alex · macebell', 'alex', 'mace', {
-      rows: ['idle', 'walkA', 'walkB', 'maceA', 'maceB', 'maceC'],
-      // Measured transparent seams in the 1254-square source, not ideal sixths.
-      rowCuts: [0, 224, 420, 614, 813, 1002, 1254],
-      animations: { idle: ['idle'], walk, mace: ['maceA', 'maceB', 'maceC', 'idle'] },
-      frameDurationMs: 220,
-    }),
   };
   const proceduralExceptions = {
     ghost: 'Intentional translucent apparition; keep its procedural material.',

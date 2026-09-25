@@ -17,7 +17,7 @@ session(async (browser, localUrl) => {
     await page.addInitScript(() => { window.requestAnimationFrame = cb => { window.__reviewFrame = cb; return 1; }; });
     await page.goto(url, { waitUntil: 'networkidle' });
     const sources = [];
-    for (const family of ['alex', 'alex-mace']) sources.push(await page.evaluate(async family => {
+    for (const family of ['alex']) sources.push(await page.evaluate(async family => {
       const spec = CharacterArt.families[family];
       const image = new Image(); image.src = 'assets/sprites/' + family + '-illustrated.png'; await image.decode();
       const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
@@ -83,51 +83,14 @@ session(async (browser, localUrl) => {
       window.__debug.render(); return { state: a.state, animation: animIdFor(a) };
     });
     await page.screenshot({ path: path.join(out, name + '-leaving.png') });
-    await page.evaluate(() => {
-      dismissAlex();
-      for (let attempt = 0; attempt < 8 && !alex; attempt++) spawnAlex('mace');
-      if (!alex) throw new Error('No reachable mace space after retries');
-      for (const [dx, dy, dir] of [[10, 0, 'right'], [-10, 0, 'left'], [0, 10, 'down'], [0, -10, 'up']]) {
-        Object.assign(alex, { x: 145, y: 290, path: [{ x: 145 + dx, y: 290 + dy }], pathIndex: 0 });
-        alexFollowPath(0.01);
-        if (animIdFor(alex) !== 'walk.' + dir || rasterFamilyFor(alex) !== 'alex-mace' || !rasterFrameFor(alex)) throw new Error('Mace carrying direction missing: ' + dir);
-      }
-      Object.assign(alex, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
-      updateAlex(0.01);
-      if (alex.state !== 'preparing' || alex.blocker || rasterFamilyFor(alex) !== 'alex-mace') throw new Error('Mace preparation failed');
-      window.__debug.render();
-    });
-    await page.screenshot({ path: path.join(out, name + '-mace-ready.png') });
-    const mace = await page.evaluate(() => {
-      updateAlex(ALEX_PREPARE_TIME + 0.01);
-      if (alex.state !== 'workingOut' || alex.blocker.collider.w !== 28 || alex.blocker.collider.h !== 14) throw new Error('Mace blocker failed');
-      const frames = [];
-      for (const seconds of [0, 0.23, 0.45, 0.67]) {
-        gameTime = alex.activityStarted + seconds;
-        const frame = rasterFrameFor(alex);
-        if (!frame) throw new Error('Missing mace frame');
-        frames.push(frame.rect.y);
-      }
-      if (new Set(frames).size !== 4) throw new Error('Mace cycle does not animate');
-      return { frames, width: alex.blocker.collider.w, height: alex.blocker.collider.h };
-    });
-    for (const [phase, seconds] of [['left', 0], ['behind', 0.23], ['front', 0.45]]) {
-      await page.evaluate(seconds => { gameTime = alex.activityStarted + seconds; window.__debug.render(); }, seconds);
-      await page.screenshot({ path: path.join(out, name + '-mace-' + phase + '.png') });
-    }
-    await page.evaluate(() => {
-      updateAlex(ALEX_MACE_TIME + 0.01);
-      if (alex.state !== 'leaving' || FURNITURE.some(f => f.type === 'alex')) throw new Error('Mace exit did not clear blocker');
-    });
     if (errors.length) throw new Error(name + ': browser errors ' + errors.join('; '));
-    report.push({ name, sources, lifecycle, stood, mace, errors });
+    report.push({ name, sources, lifecycle, stood, errors });
     await page.close();
   }
   const fallback = await browser.newPage();
   const fallbackErrors = [];
   fallback.on('pageerror', e => fallbackErrors.push(e.message));
   await fallback.route('**/alex-illustrated.png', route => route.fulfill({ status: 404, body: '' }));
-  await fallback.route('**/alex-mace-illustrated.png', route => route.fulfill({ status: 404, body: '' }));
   await fallback.goto(url, { waitUntil: 'networkidle' });
   const fallbackCheck = await fallback.evaluate(() => {
     document.getElementById('btn-start').click();
@@ -137,10 +100,7 @@ session(async (browser, localUrl) => {
     Object.assign(a, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
     updateAlex(0.01); updateAlex(ALEX_PREPARE_TIME + 0.01); d.render();
     const splitOK = !d.Assets.hasFamily('alex') && d.Assets.hasFamily('waiter') && !rasterFrameFor(a) && spriteForEntity(a) === SPRITES.alex.split && FURNITURE.includes(a.blocker);
-    dismissAlex(); spawnAlex('mace');
-    Object.assign(alex, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
-    updateAlex(0.01); updateAlex(ALEX_PREPARE_TIME + 0.01); d.render();
-    return splitOK && !d.Assets.hasFamily('alex-mace') && !rasterFrameFor(alex) && alex.state === 'workingOut' && FURNITURE.includes(alex.blocker);
+    return splitOK;
   });
   if (!fallbackCheck || fallbackErrors.length) throw new Error('Alex failure must preserve fallback split and other cast');
   await fallback.close();
@@ -149,17 +109,18 @@ session(async (browser, localUrl) => {
   const reducedCheck = await reduced.evaluate(() => {
     document.getElementById('btn-start').click();
     player.x = 145; player.y = 266; // Exercise motion preference, not occupancy cancellation.
-    for (let attempt = 0; attempt < 8 && !alex; attempt++) spawnAlex('mace');
+    for (let attempt = 0; attempt < 8 && !alex; attempt++) spawnAlex();
     if (!alex) throw new Error('No reduced-motion visitor');
     Object.assign(alex, { x: 145, y: 290, path: [{ x: 145, y: 290 }], pathIndex: 0 });
-    updateAlex(0.01); updateAlex(ALEX_PREPARE_TIME + 0.01);
+    updateAlex(0.01);
+    const cue = alex.state === 'preparing' && !alex.blocker;
+    updateAlex(ALEX_PREPARE_TIME + 0.01);
     const frame = rasterFrameFor(alex);
-    gameTime += 0.5;
     window.__debug.render();
-    return prefersReducedMotion && frame.rect === rasterFrameFor(alex).rect && !!alex.blocker;
+    return prefersReducedMotion && cue && alex.state === 'splitting' && !!frame && !!alex.blocker;
   });
-  if (!reducedCheck) throw new Error('Reduced motion must keep static art with working blocker');
+  if (!reducedCheck) throw new Error('Reduced motion must preserve the split cue and blocker');
   await reduced.close();
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify({ report, reducedMotion: reducedCheck, fallback: { passed: fallbackCheck, errors: fallbackErrors } }, null, 2) + '\n');
-  console.log(JSON.stringify({ out, viewports: report.map(r => ({ name: r.name, cells: r.sources.map(s => s.cells.length), ...r.lifecycle, stood: r.stood, mace: r.mace, errors: r.errors })), fallback: fallbackCheck, reducedMotion: reducedCheck }, null, 2));
+  console.log(JSON.stringify({ out, viewports: report.map(r => ({ name: r.name, cells: r.sources.map(s => s.cells.length), ...r.lifecycle, stood: r.stood, errors: r.errors })), fallback: fallbackCheck, reducedMotion: reducedCheck }, null, 2));
 }).catch(error => { console.error(error); process.exitCode = 1; });

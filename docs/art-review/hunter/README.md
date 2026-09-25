@@ -7,8 +7,10 @@ equipment, overhead view, directional poses and gameplay remain consistent.
 
 - `desktop.png`: actual room at 1280×720; hunter faces down beside the bar.
 - `mobile.png`: actual room at 390×844 with touch controls; same front view.
-- `report.json`: `node tools/validate-art.js` output, all 11 atlases ready,
-  148 pose mappings per viewport, movement/rotation/fallback, no browser errors.
+- `report.json`: September 25 `node tools/validate-art.js` output for the
+  current split-only cast: all 10 atlases ready, 136 pose mappings per viewport,
+  movement/rotation/fallback and no browser errors. The hunter screenshots
+  remain the original September 23 likeness captures.
 
 Both captures were visually inspected at native size. Hair and glasses read
 clearly on desktop; fine stubble is naturally less visible at phone size.

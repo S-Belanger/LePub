@@ -1596,8 +1596,8 @@ function updateBusboy(dt) {
   }
 }
 
-// ---- Alex: an occasional split or steel-mace workout. His short routine is
-// a temporary obstacle, not damage. Fair scheduling and a preparation cue
+// ---- Alex: an occasional split. His short routine is a temporary obstacle,
+// not damage. Fair scheduling and a preparation cue
 // keep it from ambushing an occupied space. `alex` is null between visits.
 let alex = null;
 const ALEX_INTERVAL_MIN = 120; // Cooldown starts after he leaves, not on entry.
@@ -1606,12 +1606,8 @@ const ALEX_FIRST_MIN = 60;
 const ALEX_FIRST_MAX = 90;
 let alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
 let alexLastVisitShift = 0;
-let alexLastActivity = null;
 const ALEX_SPLIT_TIME = 5;
-const ALEX_MACE_TIME = 6;
 const ALEX_PREPARE_TIME = 1.2;
-const ALEX_MACE_W = 28;
-const ALEX_MACE_H = 14;
 // The blocking box: wide enough to actually close a corridor, low and flat
 // like a body on the floor rather than a standing character's footprint.
 const ALEX_SPLIT_W = 22;
@@ -1635,10 +1631,8 @@ const BAR_STAFF_AREA = {
 };
 
 // Workout bounds are real occupied ground, independent of sprite dimensions.
-function alexArea(x, y, activity) {
-  const w = activity === 'mace' ? ALEX_MACE_W : ALEX_SPLIT_W;
-  const h = activity === 'mace' ? ALEX_MACE_H : ALEX_SPLIT_H;
-  return { x: x - w / 2, y: y - h / 2, w, h };
+function alexArea(x, y) {
+  return { x: x - ALEX_SPLIT_W / 2, y: y - ALEX_SPLIT_H / 2, w: ALEX_SPLIT_W, h: ALEX_SPLIT_H };
 }
 
 function alexPeople() {
@@ -1646,8 +1640,8 @@ function alexPeople() {
     ...customers, ...regulars, waiter, busboy].filter(Boolean);
 }
 
-function alexSpotClear(x, y, activity) {
-  const box = alexArea(x, y, activity);
+function alexSpotClear(x, y) {
+  const box = alexArea(x, y);
   // Unlike getFootBox, this is the full workout footprint, not a 55% body box.
   if (box.x < 2 || box.x + box.w > WORLD_W - 2 || box.y < 16 || box.y + box.h > WORLD_H - 32) return false;
   if (rectsOverlap(box, BAR_STAFF_AREA) || Math.hypot(x - BATHROOM.x, y - BATHROOM.y) < 30) return false;
@@ -1674,25 +1668,23 @@ function alexRoute(from, to) {
   return route.length ? route : null;
 }
 
-function pickAlexSpot(activity = 'split') {
+function pickAlexSpot() {
   for (let i = 0; i < 30; i++) {
     const x = 18 + Math.random() * (WORLD_W - 36);
     const y = 24 + Math.random() * (WORLD_H - 64);
-    if (!alexSpotClear(x, y, activity)) continue;
+    if (!alexSpotClear(x, y)) continue;
     const path = alexRoute(DOOR, { x, y });
     if (path) return { x, y, path };
   }
   return null;
 }
 
-function spawnAlex(activity = 'split') {
+function spawnAlex() {
   if (alex) return null;
-  if (activity !== 'split' && activity !== 'mace') return null;
-  const spot = pickAlexSpot(activity);
+  const spot = pickAlexSpot();
   if (!spot) return null; // floor's too busy this attempt; try again next roll
   alex = makeEntity('alex', DOOR.x, DOOR.y);
   alex.state = 'entering';
-  alex.activity = activity;
   alex.spot = spot;
   alex.path = spot.path;
   alex.pathIndex = 0;
@@ -1701,7 +1693,6 @@ function spawnAlex(activity = 'split') {
   alex.prepareTimer = 0;
   alex.blocker = null; // the FURNITURE entry while he's down, else null
   alexLastVisitShift = shift;
-  alexLastActivity = activity;
   return alex;
 }
 
@@ -1758,9 +1749,7 @@ function updateAlex(dt) {
     alexDelay = Math.max(0, alexDelay - dt);
     if (alexDelay <= 0) {
       if (canScheduleAlex()) {
-        // Alternate after a random first activity so neither joke dominates.
-        const activity = alexLastActivity ? (alexLastActivity === 'split' ? 'mace' : 'split') : (Math.random() < 0.5 ? 'split' : 'mace');
-        spawnAlex(activity);
+        spawnAlex();
       }
       if (!alex) alexDelay = 10; // Busy moment or no reachable space: defer.
     }
@@ -1775,7 +1764,7 @@ function updateAlex(dt) {
   if (alex.state === 'entering') {
     alex.travelTimer += dt;
     if (alexFollowPath(dt)) {
-      if (!alexSpotClear(alex.x, alex.y, alex.activity)) { alexLeave(); return; }
+      if (!alexSpotClear(alex.x, alex.y)) { alexLeave(); return; }
       alex.state = 'preparing';
       alex.pose = 'idle';
       alex.facing = 'down';
@@ -1786,22 +1775,21 @@ function updateAlex(dt) {
     }
   } else if (alex.state === 'preparing') {
     // A person can enter the marked space during the cue. Never close on them.
-    if (!alexSpotClear(alex.x, alex.y, alex.activity)) { alexLeave(); return; }
+    if (!alexSpotClear(alex.x, alex.y)) { alexLeave(); return; }
     alex.prepareTimer -= dt;
     if (alex.prepareTimer <= 0) {
-      alex.state = alex.activity === 'mace' ? 'workingOut' : 'splitting';
-      alex.pose = alex.activity === 'mace' ? 'mace' : 'split';
-      alex.activityTimer = alex.activity === 'mace' ? ALEX_MACE_TIME : ALEX_SPLIT_TIME;
-      alex.activityStarted = gameTime;
+      alex.state = 'splitting';
+      alex.pose = 'split';
+      alex.activityTimer = ALEX_SPLIT_TIME;
       alex.blocker = {
         type: 'alex',
         sortY: alex.y,
-        collider: alexArea(alex.x, alex.y, alex.activity),
+        collider: alexArea(alex.x, alex.y),
       };
       FURNITURE.push(alex.blocker);
-      Sound.play(alex.activity === 'mace' ? 'alexMace' : 'alexSplit');
+      Sound.play('alexSplit');
     }
-  } else if (alex.state === 'splitting' || alex.state === 'workingOut') {
+  } else if (alex.state === 'splitting') {
     alex.activityTimer -= dt;
     if (alex.activityTimer <= 0) alexLeave();
   } else if (alex.state === 'leaving') {
@@ -2432,7 +2420,6 @@ function resetGame() {
   alex = null;
   alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
   alexLastVisitShift = 0;
-  alexLastActivity = null;
   // The regulars persist across restarts as characters, but every scrap of
   // their run state — orders, patience, mood, dialogue history and Nazim's
   // drink count — is wiped.
@@ -5129,7 +5116,6 @@ function animIdFor(e) { return poseBase(e) + '.' + (e.facing || 'down'); }
 // the per-entity procedural palette remain intact for missing-sheet fallback.
 const CUSTOMER_ATLASES = ['customer-teal', 'customer-ochre', 'customer-blue'];
 function rasterFamilyFor(e) {
-  if (e.kind === 'alex' && e.activity === 'mace') return 'alex-mace';
   return e.kind === 'customer' ? CUSTOMER_ATLASES[(e.look || 0) % CUSTOMER_ATLASES.length] : e.kind;
 }
 
@@ -5137,9 +5123,7 @@ function rasterFamilyFor(e) {
 function rasterFrameFor(e) {
   const family = rasterFamilyFor(e);
   if (!Assets.hasFamily(family)) return null;
-  const time = e.kind === 'alex' && e.pose === 'mace'
-    ? (prefersReducedMotion ? 0 : (gameTime - e.activityStarted) * 1000) : gameTime * 1000;
-  return Assets.frameFor(family, animIdFor(e), time);
+  return Assets.frameFor(family, animIdFor(e), gameTime * 1000);
 }
 
 // Cache status variants of atlas frames, retaining their detail, alpha and
@@ -5237,7 +5221,6 @@ function drawEntity(e, camX, camY) {
   const squash = squashFor(e);
   if (frame) drawRasterFrame(statusRasterFrame(frame, e), e.x - camX + (e.swayOffset || 0), e.y - camY + stepLift, squash);
   else drawSprite(sprite, jamesonPaletteFor(e) || e.palette || set.palette, sx, sy, flip, squash);
-  if (!frame && e.kind === 'alex' && e.activity === 'mace') drawAlexFallbackMace(e, camX, camY);
   ctx.globalAlpha = 1;
   // The hunter's pint while he sits one out: the existing drinking state,
   // shown in his hand.
@@ -5247,24 +5230,12 @@ function drawEntity(e, camX, camY) {
   }
 }
 
-function drawAlexFallbackMace(e, camX, camY) {
-  // Loading failure still communicates the equipment and the blocking action.
-  const t = e.pose === 'mace' && !prefersReducedMotion ? (gameTime - e.activityStarted) * 5 : -Math.PI / 2;
-  const x = e.x - camX, y = e.y - camY - 10;
-  ctx.fillStyle = '#777c7b';
-  for (let i = 0; i < 11; i++) ctx.fillRect(Math.round(x + Math.cos(t) * i), Math.round(y + Math.sin(t) * i), 1, 1);
-  const bx = Math.round(x + Math.cos(t) * 11), by = Math.round(y + Math.sin(t) * 11);
-  ctx.fillStyle = '#23282a'; ctx.fillRect(bx - 2, by - 2, 5, 5);
-  ctx.fillStyle = '#697274'; ctx.fillRect(bx - 1, by - 2, 3, 4);
-  ctx.fillStyle = '#d4d9d4'; ctx.fillRect(bx - 1, by - 2, 1, 1);
-}
-
 function drawAlexWorkoutArea(camX, camY) {
-  if (!alex || (alex.state !== 'preparing' && alex.state !== 'workingOut')) return;
-  const box = alexArea(alex.x, alex.y, alex.activity);
+  if (!alex || alex.state !== 'preparing') return;
+  const box = alexArea(alex.x, alex.y);
   const x = box.x - camX, y = box.y - camY;
   ctx.fillStyle = PUB.amber;
-  ctx.globalAlpha = alex.state === 'preparing' ? 0.8 : 0.35;
+  ctx.globalAlpha = 0.8;
   for (let i = 0; i < box.w; i += 4) { ctx.fillRect(x + i, y, 2, 0.5); ctx.fillRect(x + i, y + box.h, 2, 0.5); }
   for (let i = 0; i < box.h; i += 4) { ctx.fillRect(x, y + i, 0.5, 2); ctx.fillRect(x + box.w, y + i, 0.5, 2); }
   ctx.globalAlpha = 1;
@@ -6250,7 +6221,7 @@ window.__debug = {
   getAlex: () => alex,
   spawnAlex,
   alexSchedule: () => ({ dueIn: +alexDelay.toFixed(1), lastVisitShift: alexLastVisitShift,
-    lastActivity: alexLastActivity, eligible: canScheduleAlex() }),
+    eligible: canScheduleAlex() }),
   wetPantsPuddles,
   loadHighScores, saveHighScore,
   clearHighScores: () => { try { localStorage.removeItem(HIGH_SCORE_KEY); } catch {} },
