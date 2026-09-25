@@ -304,6 +304,33 @@ function run() {
   if (debug.player.speed !== 62) throw new Error('Empty tray should restore speed 62.');
   debug.resetGame();
 
+  // A late drink still buys the guest time at the table, and serving a
+  // regular must leave a useful pause before the next order appears.
+  const lateDrinker = seatFor('wine', 0);
+  lateDrinker.sitTimer = 0.1;
+  lateDrinker.beingCarried = true;
+  debug.player.tray.push({ type: 'wine', customer: lateDrinker });
+  debug.player.x = lateDrinker.x; debug.player.y = lateDrinker.y + 6;
+  debug.handleInteract();
+  if (!lateDrinker.served || lateDrinker.sitTimer < 16) throw new Error('A late delivery should start a full seated drinking period.');
+  debug.updateCustomer(lateDrinker, 15);
+  if (lateDrinker.state !== 'sitting') throw new Error('A served guest left before enjoying the drink.');
+  debug.updateCustomer(lateDrinker, 10);
+  if (lateDrinker.state !== 'leaving') throw new Error('A served guest should eventually free the seat.');
+  debug.resetGame();
+  const restingSam = debug.regulars.find(r => r.id === 'sam');
+  debug.forceRegularOrder('sam', 'wine');
+  restingSam.beingCarried = true;
+  debug.player.tray.push({ type: 'wine', customer: restingSam });
+  debug.player.x = restingSam.x; debug.player.y = restingSam.y + 6;
+  debug.handleInteract();
+  if (restingSam.orderType || restingSam.orderCooldown < 30) throw new Error('A regular requested another drink immediately after service.');
+  vm.runInContext('updateRegulars(20)', context);
+  if (restingSam.orderType) throw new Error('A regular reordered during the post-service pause.');
+  vm.runInContext('updateRegulars(25)', context);
+  if (!restingSam.orderType) throw new Error('A regular never resumed ordering after the pause.');
+  debug.resetGame();
+
   // The hunter's rhythm: he arrives through the door after a delay, prowls,
   // spots the Doe only in front of him with a clear line, chases on an A*
   // route sized for his own body, and sits out a pint bought for him.

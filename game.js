@@ -1018,6 +1018,7 @@ let doubleHitFree = true;   // ...and nobody has been hit since
 // from the bar and deliver — a customer who gives up unserved costs points.
 const customers = [];
 const BASE_MAX_CUSTOMERS = 6;
+const SERVED_CUSTOMER_STAY = [16, 24]; // time to enjoy an order before freeing the seat
 let customerSpawnTimer = 3;
 
 function spawnCustomer() {
@@ -1905,7 +1906,7 @@ function recalcIntoxication(r) {
 
 // What Nazim's night costs and pays. Drunk and gone he orders faster and
 // tips double; gone he knocks pints over and Gerald orders him a water.
-const NAZIM_FAST_ORDER = 0.6;
+const NAZIM_FAST_ORDER = 0.75;
 const NAZIM_TIP_MULT = 2;
 const NAZIM_SPILL_CHANCE = 0.5;
 const NAZIM_WATER_SOBERS = 2;    // drinks taken off by a water
@@ -2561,7 +2562,7 @@ function completeDelivery(target) {
   if (isAlcoholicOrder(type) && Math.random() < JAMESON_CHANCE) grantJameson(target);
   if (!target.isRegular) {
     noteOrderCleared(target);
-    target.sitTimer = Math.min(target.sitTimer, 3 + Math.random() * 3);
+    target.sitTimer = randomInRange(SERVED_CUSTOMER_STAY);
     return;
   }
 

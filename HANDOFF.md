@@ -1,5 +1,24 @@
 # LePub durable handoff
 
+## 2026-09-25 18:40 America/Toronto — drink pacing validated; main push next
+
+- Branch `main`, HEAD `30d3b0e`, upstream `origin/main` 0/0 before publication. The user's adjacent prior direction to push the completed work to main remains in force for this “Also” pacing follow-up. No deployment requested. Current edits in `game.js`, `src/regulars.js`, `tests/smoke.js`, `CLAUDE.md` and this handoff are local, uncommitted and unpushed.
+- Walk-ins now spend 16–24 seconds at the table after delivery, even if served with almost no patience left. Regulars wait 24–36s (Nazim), 30–44s (Sam), or 22–34s (Gerald) before ordering again; drunk/gone Nazim uses 0.75 of his normal interval. Initial orders, active-order patience, scoring, rounds, and shift goals retain their existing behavior. The first shift starts with three regular orders and six possible walk-in orders, with repeat orders available well before its 180s end; the 100-tip goal remains attainable by normal deliveries.
+- Validation PASS: `node tests/smoke.js` (10 scripts, 40 routes, serving and new late-delivery/reorder checks); `node tests/character-art.js` (10 kinds, 10 families, 5 guards); `node tests/assets.js` (31 checks); `node tests/alex.js` (13 gates); `node --check game.js`; `node --check tests/smoke.js`; `git diff --check` (only expected Windows line-ending notices). Source diff reviewed. No browser art check needed for a timing-only change.
+- Next: fetch `origin`, confirm main has not moved, commit the reviewed tree, push to `origin/main`, verify remote/CI, then add a final handoff checkpoint that matches Git status. No Vercel deploy in scope.
+
+## 2026-09-25 18:39 America/Toronto — drink-service pacing implemented, tests pending
+
+- Branch `main`, HEAD `30d3b0e`, `HEAD...origin/main` 0/0. User asked to slow drink turnover so the bartender gets breathing room. All current changes are local, uncommitted and unpushed; no deployment.
+- `game.js`: served walk-ins now remain seated 16–24 seconds from delivery, including late deliveries; Nazim's drunk/gone order multiplier is 0.75. `src/regulars.js`: reorders now wait Nazim 24–36s, Sam 30–44s, Gerald 22–34s. Initial order delays, patience, scoring, rounds and seat cap are unchanged. `CLAUDE.md` records timing. `tests/smoke.js` adds behavioral checks for a late-served walk-in staying then leaving and a regular pausing then reordering. `HANDOFF.md` contains the decision and this checkpoint.
+- No tests run since these edits. Next: run smoke/syntax/diff checks, resolve any failures, consider pacing effect on shift goals, then final handoff with exact Git status. No commit or push requested for this change.
+
+## 2026-09-25 18:37 America/Toronto — drink-service pacing decision
+
+- User reports that people finish drinks too quickly and the bartender must serve constantly. Current `main` HEAD `30d3b0e` matches `origin/main` (clean `git status --short --branch` at startup). Prior Alex release is complete; preserve it. No source changes, tests, commit, push or deployment yet for this request.
+- Inspected walk-in and regular order lifecycles. A served walk-in leaves within 3–6 seconds, even after a late delivery; regulars reorder in 6–18 seconds depending on person, with drunk Nazim faster still. Decision: give served walk-ins a full 16–24 second seated drinking period and regulars longer cooldowns while retaining their different personalities and Nazim's faster late-night rate. Keep the existing patience, scoring and round rules.
+- Next: implement timing changes, add a focused pacing regression check, run the smoke suite and inspect the diff. Record test results and actual Git status here before ending. All work remains local unless the user authorizes publication for this change.
+
 ## 2026-09-25 17:24 America/Toronto — Alex split-only release on main verified
 
 - User request delivered: Alex's photo likeness remains in his illustrated split sheet; the entire mace feature was removed from current gameplay, art contract, manifest, sound, asset files, docs and review evidence. Existing split timing, 22x7 blocker, fair scheduling, collision and cleanup remain. The personal photo is outside the repository; historical handoff entries below describe superseded prior work.
