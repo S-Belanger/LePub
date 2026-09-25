@@ -1,5 +1,16 @@
 # LePub durable handoff
 
+## 2026-09-25 19:05 America/Toronto — balance CI successful; preparing clean deployment tree
+
+- Branch `main`, gameplay commit `d0f35f5` synchronized 0/0 with `origin/main`; remote tip verified. GitHub `Validate game and character art` run `36199553925` for this exact gameplay commit completed SUCCESS: https://github.com/S-Belanger/LePub/actions/runs/36199553925. All local Node, syntax, browser and staged diff checks remain PASS; no gameplay edits since.
+- The only local modification is this `HANDOFF.md` release ledger, uncommitted. Next: commit and push it as a docs-only follow-up so the linked Vercel project deploys a clean tree, then run the user-authorized production deployment and live verification. No deployment performed yet. Production build should serve the `game.js` and `src/regulars.js` bytes from `d0f35f5`.
+
+## 2026-09-25 19:04 America/Toronto — balance commit pushed; production pending
+
+- Balance change committed as `d0f35f5` (`fix: balance service rhythm for solo play`) and pushed to `origin/main` (`07ba2db..d0f35f5`). Remote `refs/heads/main` verified at `d0f35f5850df95772f36b606aaa3ac23202f5940`; local `main`/`origin/main` synchronized 0/0. This post-push `HANDOFF.md` checkpoint is the only local uncommitted modification. No production deploy yet.
+- The committed five files are `game.js`, `src/regulars.js`, `tests/smoke.js`, `CLAUDE.md`, `HANDOFF.md`; exact timings and research rationale in the preceding checkpoints. All four local Node CI suites, three edited JS syntax checks, staged whitespace check and real local desktop/mobile Edge merge checks PASS. No source changes after validation.
+- GitHub CI run `36199553925` for `d0f35f5` is in progress: https://github.com/S-Belanger/LePub/actions/runs/36199553925. User explicitly authorized pushing to production once balance work is done. Next: wait for CI success, create a clean documented deployment commit if needed, run `vercel deploy --prod --yes`, then verify live browser behavior and exact served source hashes. No deployment or live claim yet.
+
 ## 2026-09-25 19:04 America/Toronto — balance release ready for publication
 
 - Branch `main`, HEAD `07ba2db`, freshly fetched `origin/main` still 0/0. Current local changes `game.js`, `src/regulars.js`, `tests/smoke.js`, `CLAUDE.md`, `HANDOFF.md` are uncommitted/unpushed; no production deployment yet. User explicitly authorized production publication after completion. Prior uncommitted handoff ledger remains included, not discarded.
