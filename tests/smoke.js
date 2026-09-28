@@ -199,6 +199,25 @@ function run() {
   assert(debug.reservedSeats().length === 3, 'Expected exactly three reserved regular seats.');
   assert(debug.regularState().length === 3, 'Expected exactly three named regulars.');
 
+  const tableDirections = { n: 'down', s: 'up', w: 'right', e: 'left' };
+  const benchDirections = ['right', 'down', 'left', 'left', 'up'];
+  const expectedSeatFacing = seat => seat.table.type === 'table'
+    ? tableDirections[seat.side]
+    : benchDirections[debug.BENCHES.indexOf(seat.table)];
+  const seatFacing = vm.runInContext('seatFacing', context);
+  for (const seat of debug.SEATS) {
+    const expected = expectedSeatFacing(seat);
+    assert(expected && seatFacing(seat) === expected,
+      `Seat at ${seat.x},${seat.y} should face ${expected}, got ${seatFacing(seat)}.`);
+  }
+  const resetRegular = vm.runInContext('resetRegular', context);
+  for (const regular of debug.regulars) {
+    regular.facing = 'down';
+    resetRegular(regular);
+    assert(regular.facing === expectedSeatFacing(regular.seat),
+      `${regular.name} should face the table after reset.`);
+  }
+
   const freeSeats = debug.freeGenericSeats();
   for (let i = 0; i < freeSeats; i++) debug.spawnCustomer();
   assert(debug.customers.length === freeSeats,
@@ -216,6 +235,8 @@ function run() {
     );
     assert(customer.sitTimer >= 45 && customer.sitTimer <= 65,
       'A seated walk-in should have enough order patience to route through the pub.');
+    assert(customer.facing === expectedSeatFacing(customer.seat),
+      `Walk-in at ${customer.seat.x},${customer.seat.y} should face ${expectedSeatFacing(customer.seat)}, got ${customer.facing}.`);
   }
 
   for (const customer of debug.customers) {

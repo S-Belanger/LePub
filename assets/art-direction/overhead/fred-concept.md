@@ -1,8 +1,10 @@
 # Fred overhead concept
 
-A hand-authored SVG concept for a proposed new cast member, Fred. It is a
-likeness and costume guide, not production art. Nothing in the game loads
-these files, and no family is declared in `src/character-art.js`.
+A hand-authored SVG concept for Fred. It remains a likeness and costume guide,
+not production art. Nothing in the game loads these concept files. The finished
+`fred-illustrated.png` atlas is declared in `src/character-art.js` and loaded
+as a fourth walk-in appearance; see
+[`fred-prompt.md`](../../sprites/fred-prompt.md) for production provenance.
 
 - `fred-concept.html` is the source. Open it directly or serve the repo. It
   shows idle in all four directions and a playing-size row, with the shipped

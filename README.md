@@ -20,8 +20,8 @@ The renderer uses a 4x internal art grid over the unchanged logical world, so
 fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
 light, and wood grain remain crisp without changing movement or collision.
 
-The cast now uses ten illustrated sprite atlases with four directions,
-including Alex's split and three distinct walk-in customers. The
+The cast now uses eleven illustrated sprite atlases with four directions,
+including Alex's split and four distinct walk-in customers, one of them Fred. The
 [visual system](docs/VISUAL-SYSTEM.md) defines texture, sprite detail, camera,
 materials and the required workflow for future additions. A shared character
 contract and CI check flag missing artwork and poses.

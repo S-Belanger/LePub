@@ -184,6 +184,7 @@ function makeTable(cx, cy, opts = {}) {
     h,
     seats,
     seatStyle,
+    facing: opts.facing ?? null,
     // Sort by the table top's own front edge, not the wider chair footprint —
     // a customer seated south is standing at the table's edge and should
     // draw in front of it, not behind.
@@ -245,7 +246,7 @@ const BAR_SEGMENTS = [
 // right so it clears the left wall bench. It was two chairs down each long
 // edge, which put the seats ~7px apart: fine for anonymous patrons, unreadable
 // once three 14x15 named characters sit there. One chair per side spreads them
-// out (Sam west, Gerald east, Nazim south facing the camera). The north side is
+// out (Sam west, Gerald east, Nazim south facing the table). The north side is
 // left chairless because the wall bench above it is already within reach.
 const TABLES = [
   makeTable(62, 40, { w: 40, h: 22, seats: { n: 0, s: 1, w: 1, e: 1 } }),   // regulars' booth
@@ -265,11 +266,11 @@ const TABLES = [
 // evenly-spaced-seats math and collider (for the "near their table" delivery
 // check) — `type: 'bench'` tells the renderer to skip drawing a tabletop.
 const BENCHES = [
-  makeTable(8, 43, { w: 6, h: 55, seats: { n: 0, s: 0, e: 3, w: 0 }, type: 'bench', seatStyle: 'bench' }),      // left wall
-  makeTable(163, 13, { w: 60, h: 8, seats: { n: 0, s: 3, e: 0, w: 0 }, type: 'bench', seatStyle: 'bench' }),    // top wall, right corner
-  makeTable(191, 68, { w: 6, h: 71, seats: { n: 0, s: 0, e: 0, w: 4 }, type: 'bench', seatStyle: 'bench' }),    // right wall, beside the long table
-  makeTable(152, 151, { w: 16, h: 74, seats: { n: 0, s: 0, e: 0, w: 3 }, type: 'bench' }), // chairs at the bar (stem side)
-  makeTable(51, 222, { w: 95, h: 14, seats: { n: 3, s: 0, e: 0, w: 0 }, type: 'bench' }),  // chairs at the bar (foot side)
+  makeTable(8, 43, { w: 6, h: 55, seats: { n: 0, s: 0, e: 3, w: 0 }, type: 'bench', seatStyle: 'bench', facing: 'right' }),      // left wall: into room
+  makeTable(163, 13, { w: 60, h: 8, seats: { n: 0, s: 3, e: 0, w: 0 }, type: 'bench', seatStyle: 'bench', facing: 'down' }),    // top wall: into room
+  makeTable(191, 68, { w: 6, h: 71, seats: { n: 0, s: 0, e: 0, w: 4 }, type: 'bench', seatStyle: 'bench', facing: 'left' }),    // right wall: into room
+  makeTable(152, 151, { w: 16, h: 74, seats: { n: 0, s: 0, e: 0, w: 3 }, type: 'bench', facing: 'left' }), // stools toward bar stem
+  makeTable(51, 222, { w: 95, h: 14, seats: { n: 3, s: 0, e: 0, w: 0 }, type: 'bench', facing: 'up' }),  // stools toward bar foot
 ];
 
 const FURNITURE = [...BAR_SEGMENTS, ...TABLES, ...BENCHES];
@@ -1075,7 +1076,7 @@ function spawnCustomer() {
   seat.occupied = true;
   const c = makeEntity('customer', DOOR.x, DOOR.y);
   c.palette = makeCustomerPalette();
-  c.look = Math.floor(Math.random() * 3);
+  c.look = Math.floor(Math.random() * CUSTOMER_ATLASES.length);
   c.state = 'entering';
   c.seat = seat;
   c.path = computeCustomerPath(DOOR, seat, seat.table);
@@ -1874,10 +1875,10 @@ const prefersReducedMotion = window.matchMedia
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
   : false;
 
-// A seat's occupant faces the table: south chair looks up, west chair looks
-// right, and so on. Benches and stools face away from the wall they sit on.
+// Table chairs face the tabletop. Bench/stool groups declare their real target:
+// away from a wall or toward the bar, rather than toward their layout rectangle.
 function seatFacing(seat) {
-  return seat.side === 's' ? 'up' : seat.side === 'n' ? 'down' : seat.side === 'w' ? 'right' : 'left';
+  return seat.table.facing || (seat.side === 's' ? 'up' : seat.side === 'n' ? 'down' : seat.side === 'w' ? 'right' : 'left');
 }
 
 function makeRegular(cfg) {
@@ -1902,6 +1903,7 @@ function makeRegular(cfg) {
 function resetRegular(r) {
   r.x = r.seat.x;
   r.y = r.seat.y;
+  r.facing = seatFacing(r.seat);
   r.orderType = null;
   r.orderPlacedAt = 0;
   r.orderAppearAt = 0;
@@ -5194,7 +5196,7 @@ function animIdFor(e) { return poseBase(e) + '.' + (e.facing || 'down'); }
 
 // Walk-in appearance uses the existing per-spawn look; gameplay identity and
 // the per-entity procedural palette remain intact for missing-sheet fallback.
-const CUSTOMER_ATLASES = ['customer-teal', 'customer-ochre', 'customer-blue'];
+const CUSTOMER_ATLASES = ['customer-teal', 'customer-ochre', 'customer-blue', 'fred'];
 function rasterFamilyFor(e) {
   return e.kind === 'customer' ? CUSTOMER_ATLASES[(e.look || 0) % CUSTOMER_ATLASES.length] : e.kind;
 }

@@ -28,9 +28,9 @@ Translate its visual language into the game rather than copying its camera:
 `floor-plan.png` / `floor-plan.json` are the room as the game plays it,
 rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
 
-## Status (2026-09-23)
+## Status (2026-09-28)
 
-The seven named characters (including Alex) and three walk-in looks now use new illustrated PNG
+The seven named characters (including Alex) and four walk-in looks, including Fred, now use new illustrated PNG
 sheets, measured into the existing atlas contract. The original procedural
 sprites remain fallbacks. `ART_SCALE=4` preserves source detail; continuous
 lighting replaces the coarse checkerboard overlay. The overhead camera and
