@@ -176,3 +176,15 @@ checked again before a blocker is added. The split blocks 22x7 for 5 seconds
 without damage. Last call, an active round,
 bathroom urgency or shift end releases the workout early. Exiting or timing
 out removes the visitor, and restart clears both blocker and schedule memory.
+
+## Fred
+
+Fred is the fourth walk-in appearance, using the existing customer routes,
+orders and hitbox. The September 28 photo controls his likeness: faded
+slate-blue baseball cap, short brown hair at the sides, dark brown beard,
+broad smile, white tee with a tiny pink/teal/yellow left-chest print, charcoal
+shorts, bare lower legs, navy sneakers and a small left-forearm tattoo.
+He has four authored directions with idle, two strides and talk; the talking
+row is currently reserved because walk-ins have no talk-state event. Keep the
+portrait outside the public asset tree and use the 21-world-unit scale shared
+by other customers. See [the accepted prompt and provenance](../assets/sprites/fred-prompt.md).

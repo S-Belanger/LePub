@@ -23,6 +23,7 @@ const CharacterArt = (() => {
     'customer-teal': person('Teal sweater', 'customer', 'talk'),
     'customer-ochre': person('Ochre jacket', 'customer', 'talk'),
     'customer-blue': person('Blue shirt', 'customer', 'talk'),
+    fred: person('Fred', 'customer', 'talk'),
     alex: person('Alex', 'alex', 'split', {
       // Shoe/hip floor contact, measured from this source's horizontal split.
       // Move the floor anchor 1.5 world units above the silhouette bottom.

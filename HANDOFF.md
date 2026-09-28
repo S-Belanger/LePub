@@ -1,5 +1,29 @@
 # LePub durable handoff
 
+## 2026-09-28 19:40 America/Toronto — exact main release browser-validated
+
+- Branch `release/fred-main`, HEAD `546dc79fb4a7473076d25f7d91f4b7878dc92522`, upstream `origin/main` 0/0 before commit; release source/assets/docs/tests staged, this handoff uncommitted. User requests Fred HD and seated facing correction pushed to main. The original main worktree's pre-existing local handoff remains untouched; feature branch is pushed at `720f3a7`.
+- Real Edge `node tools/validate-art.js` PASS on this exact main release tree: desktop 1280×720/mobile 390×844, 11/11 atlases loaded, 148 pose checks, movement/rotation/fallback, zero errors; outputs under `%TEMP%/lepub-fred-main-art-review`. Real Edge `node tools/validate-fred.js` PASS: 6 wall/bar seat and view checks, 24 direction/pose gallery captures, zero browser errors; outputs under `%TEMP%/lepub-fred-main-focused-review`. Inspected final desktop and phone `right-wall.png` and `down-idle.png`: Fred visibly faces into the room with his cap/beard/white tee readable at respective native sizes. Node/art exact-tree checks from previous checkpoint remain PASS. No new runtime edits since.
+- Next: stage this handoff, review staged diff/photo absence, commit clean main release, push main, verify remote/CI, write final handoff. No production deployment performed or claimed.
+
+## 2026-09-28 19:38 America/Toronto — clean main release passes Node checks
+
+- Branch `release/fred-main`, HEAD `546dc79fb4a7473076d25f7d91f4b7878dc92522`, upstream `origin/main` 0/0 before commit. User authorized main push after Fred HD and seating fix. All net release files except this `HANDOFF.md` are staged; no commit/push yet. Original main worktree's local handoff remains untouched. Feature branch is pushed at `720f3a7`.
+- Exact tree comparison `git diff --exit-code 720f3a7 -- . ':!HANDOFF.md'` PASS: release files match validated feature tip byte-for-byte except handoff. Current release tree and net patch contain no `assets/sprites/Fred.jpeg`; main will not inherit its feature-branch history. `git diff --cached --check` PASS.
+- Exact release worktree checks PASS: `node tests/character-art.js` 10 kinds/11 families/5 guards; `node tests/assets.js` 31; `node tests/smoke.js` 10 scripts/40 routes with seating assertions; `node tests/alex.js` 13 gates; `node --check` game, character contract, smoke and both browser validators. Next: real Edge art/focused checks here, inspect any new failures, then stage final release handoff, commit and push main, verify CI/remote. No production deployment.
+
+## 2026-09-28 19:36 America/Toronto — exact Fred release tree staged on main base
+
+- Worktree branch `release/fred-main`, HEAD `546dc79fb4a7473076d25f7d91f4b7878dc92522`, upstream `origin/main` 0/0 before this uncommitted release change. User requests Fred HD sprite, seated direction fix, and main push. Feature branch `art/fred-concept` is committed/pushed at `720f3a7`; original main worktree's pre-existing handoff remains untouched.
+- Applied the binary-safe net diff from `origin/main` to `720f3a7`, excluding `HANDOFF.md`, to this release worktree. Staged files are the finished gameplay/art/docs/tests plus the Fred concept HTML/PNG/MD; current release tree has **no `assets/sprites/Fred.jpeg`** and the applied patch contains no JPEG change, so main will not acquire the photo in this commit's history. This release `HANDOFF.md` has the previous and current checkpoints as the only unstaged file. `git diff --cached --check` PASS.
+- No validation run on this exact release worktree yet. Next: confirm all non-handoff files exactly match feature tip, run required Node and browser checks here, then stage release handoff, commit and push main, verify remote and CI. No main push or production deployment yet.
+
+## 2026-09-28 19:35 America/Toronto — clean main release worktree opened
+
+- User requests Fred's photo-based HD sprite, corrected seated character facing, and a push to main. This worktree is `C:\Users\fl1p_\Documents\Projects\LePub-fred-release`, branch `release/fred-main`, HEAD `546dc79fb4a7473076d25f7d91f4b7878dc92522`, upstream `origin/main` 0/0 before this checkpoint. The original `LePub` main worktree retains its pre-existing uncommitted handoff. The completed feature branch is `art/fred-concept` at pushed `720f3a7` (upstream 0/0), with one later local handoff checkpoint there.
+- Decision: apply the net final tree diff from `origin/main` to feature commit `720f3a7`, then commit/push this release worktree. This keeps the personal `Fred.jpeg` from entering main history; its earlier public feature-branch history cannot be undone by deleting the current file. No source files have changed in this release worktree yet; only this handoff checkpoint is uncommitted. No tests run in this worktree yet. Feature branch already passed character art, assets, smoke, Alex Node, broad/focused/Alex real Edge checks; details are in its handoff.
+- Next: apply exact net diff, verify `Fred.jpeg` absent and tree matches feature final (except handoff), run required checks on release worktree, commit/push main and verify CI/remote. No main push or production deployment yet.
+
 ## 2026-09-25 19:05 America/Toronto — balance CI successful; preparing clean deployment tree
 
 - Branch `main`, gameplay commit `d0f35f5` synchronized 0/0 with `origin/main`; remote tip verified. GitHub `Validate game and character art` run `36199553925` for this exact gameplay commit completed SUCCESS: https://github.com/S-Belanger/LePub/actions/runs/36199553925. All local Node, syntax, browser and staged diff checks remain PASS; no gameplay edits since.

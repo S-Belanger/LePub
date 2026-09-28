@@ -36,8 +36,8 @@ session(async (browser, url) => {
         d.spawnCustomer();
         const c = d.customers[d.customers.length - 1];
         const seat = c.seat;
-        Object.assign(c, { x: seat.x, y: seat.y, state: 'sitting', moving: false, look: i % 3,
-          facing: { n: 'down', s: 'up', w: 'right', e: 'left' }[seat.side], orderType: 'beer-blond', sitTimer: 35,
+        Object.assign(c, { x: seat.x, y: seat.y, state: 'sitting', moving: false, look: i % 4,
+          facing: seatFacing(seat), orderType: 'beer-blond', sitTimer: 35,
           patienceDuration: 40, orderAppearAt: -1 });
       }
       for (const id of ['nazim', 'sam', 'gerald']) {
