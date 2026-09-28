@@ -19,8 +19,9 @@ runtime smoke test for script loading, customer/waiter routing, and rendering;
 `node tests/assets.js` covers the raster asset registry. `node tools/export-sheets.js`
 regenerates `assets/sprites/*.png+json` from the procedural sets (needs Edge and
 playwright-core in the npx cache).
-Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png`, used for
-the game-over and completed-level splashes; `assets/planFloor.png` is the
+Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png` plus
+`LevelDone_2.jpg`–`LevelDone_6.jpg`, used for the game-over and completed-shift
+splashes (one per shift, holding on the last); `assets/planFloor.png` is the
 retained floor-plan reference the current layout is traced from.
 `assets/cover.png` and `assets/gameplay.png` are not loaded by the game — the
 first is a leftover from a canvas title screen that the HTML start overlay
@@ -229,7 +230,7 @@ Contact with the hunter removes one of three life segments instead of ending the
 
 The run is a sequence of **shifts**, and `getLevel()` returns the shift number — difficulty follows the shift, not the score, so losing tips never makes the room easier. A shift ends when `shiftTips` reaches `shiftTarget(n)` = 100 + 40(n−1), or, for the first `SHIFT_TIMED_COUNT` (5) shifts, when its `SHIFT_LENGTH` 180 s clock runs out. The final `LAST_CALL_TIME` 15 s are **last call**: bar bell, `lastCall` lines, no new walk-ins, patience drains ×`LAST_CALL_PATIENCE` (1.5), the HUD clock turns red and blinks under 5 s. Shifts ≥ 6 are untimed.
 
-`endShift()` snapshots `shiftTally` and freezes the floor; `drawShiftTallyOverlay` shows it on a walnut board over `LevelDone.png` (DONE in cream if the target was met, OVER in red if the clock beat you; served / forgotten / clutch / doubles / rounds / hits / best shift) and waits for Space, `E` or the touch action (`startNextShift()`). That press is the run's natural stopping point. The HUD sign reads `TIPS shift/target` on its top line and `TOTAL n  m:ss` beside the pints.
+`endShift()` snapshots `shiftTally` and freezes the floor; `drawShiftTallyOverlay` shows it on a walnut board over that shift's splash (`LEVEL_DONE_IMAGES` via `levelDoneImageFor(shift)`: `LevelDone.png` for shift 1, `LevelDone_N.jpg` for shifts 2–6, then `_6` from there on) (DONE in cream if the target was met, OVER in red if the clock beat you; served / forgotten / clutch / doubles / rounds / hits / best shift) and waits for Space, `E` or the touch action (`startNextShift()`). That press is the run's natural stopping point. The HUD sign reads `TIPS shift/target` on its top line and `TOTAL n  m:ss` beside the pints.
 
 Scaling clamps at `EFFECTIVE_LEVEL_CAP` (10) so the game plateaus, while the shift number keeps climbing. Per shift: hunter speed `min(60, 40 + lvl * 2.5)` — capped just under the player's 62 so a straight-line escape always exists — wider sight, faster repath, longer memory, a higher customer cap (`BASE_MAX_CUSTOMERS` 6 rising to 14), faster spawns, and a heavier night tint.
 

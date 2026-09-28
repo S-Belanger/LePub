@@ -78,9 +78,25 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', inva
 const caughtImage = new Image();
 caughtImage.src = 'assets/caught.jpg';
 
-// Splash image shown full-screen when a level is completed.
-const levelDoneImage = new Image();
-levelDoneImage.src = 'assets/LevelDone.png';
+// Splash images shown full-screen when a shift is completed: one per shift,
+// in order, holding on the last for every shift past the end of the list.
+const LEVEL_DONE_IMAGES = [
+  'assets/LevelDone.png',
+  'assets/LevelDone_2.jpg',
+  'assets/LevelDone_3.jpg',
+  'assets/LevelDone_4.jpg',
+  'assets/LevelDone_5.jpg',
+  'assets/LevelDone_6.jpg',
+].map(src => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+
+function levelDoneImageFor(shift) {
+  const i = Math.min(Math.max(shift, 1), LEVEL_DONE_IMAGES.length) - 1;
+  return LEVEL_DONE_IMAGES[i];
+}
 
 // ---- World ------------------------------------------------------------------
 // Portrait map (narrower than tall) to match the intended floor plan: a small
@@ -378,20 +394,45 @@ function collidesAt(e, x, y, exclude) {
 
 // Moves an entity by (dx, dy), resolving each axis independently so it can
 // slide along furniture/walls instead of stopping dead on diagonal moves.
+// Long moves (a hit shove, the Jameson bounce) are swept in MOVE_SUBSTEP
+// chunks: testing only the destination would let a 40px knock hop clean over
+// a counter thinner than the jump.
+const MOVE_SUBSTEP = 3;
+
 function tryMove(e, dx, dy) {
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / MOVE_SUBSTEP));
+  if (steps === 1) return tryMoveStep(e, e.x, e.y, dx, dy);
+  const sx = dx / steps;
+  const sy = dy / steps;
   let x = e.x;
   let y = e.y;
   let blockedX = false;
   let blockedY = false;
+  for (let i = 0; i < steps; i++) {
+    const r = tryMoveStep(e, x, y, blockedX ? 0 : sx, blockedY ? 0 : sy);
+    x = r.x;
+    y = r.y;
+    blockedX = blockedX || r.blockedX;
+    blockedY = blockedY || r.blockedY;
+    if ((blockedX || sx === 0) && (blockedY || sy === 0)) break;
+  }
+  return { x, y, blockedX, blockedY };
+}
+
+function tryMoveStep(e, x0, y0, dx, dy) {
+  let x = x0;
+  let y = y0;
+  let blockedX = false;
+  let blockedY = false;
 
   if (dx !== 0) {
-    const nx = clamp(e.x + dx, e.w / 2, WORLD_W - e.w / 2);
-    if (nx !== e.x && !collidesAt(e, nx, y)) x = nx;
+    const nx = clamp(x0 + dx, e.w / 2, WORLD_W - e.w / 2);
+    if (nx !== x0 && !collidesAt(e, nx, y)) x = nx;
     else blockedX = true;
   }
   if (dy !== 0) {
-    const ny = clamp(e.y + dy, e.h / 2, WORLD_H - e.h / 2);
-    if (ny !== e.y && !collidesAt(e, x, ny)) y = ny;
+    const ny = clamp(y0 + dy, e.h / 2, WORLD_H - e.h / 2);
+    if (ny !== y0 && !collidesAt(e, x, ny)) y = ny;
     else blockedY = true;
   }
   return { x, y, blockedX, blockedY };
@@ -847,7 +888,7 @@ function grantSmokeBreak() {
   if (hunterSmokeState) return;
   hunterSmokeState = 'leaving';
   clearHunterOrder();
-  removeFromTray(hunter);
+  dropFromTray(hunter);
   setHunterState('scanning');
   hunterAlert = null;
   hunterSlide = null;
@@ -930,6 +971,11 @@ function earnTips(n) {
 function loseTips(n) {
   score = Math.max(0, score - n);
   shiftTips = Math.max(0, shiftTips - n);
+}
+// A lost order: the penalty plus the tally line. Kept apart from loseTips so
+// a penalty that isn't a customer (wet pants) doesn't count as one.
+function forgetOrder() {
+  loseTips(FORGOTTEN_PENALTY);
   shiftStats.forgotten++;
 }
 
@@ -949,7 +995,7 @@ function endShift() {
 }
 
 function startNextShift() {
-  if (!shiftTally) return;
+  if (!shiftTally || caught) return;
   shiftTally = null;
   shift++;
   shiftClock = 0;
@@ -1100,7 +1146,7 @@ function updateCustomer(c, dt) {
     if (c.sitTimer <= 0) {
       c.seat.occupied = false;
       if (!c.served && c.orderType) {
-        loseTips(FORGOTTEN_PENALTY);
+        forgetOrder();
         addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
         noteOrderCleared(c);
         Sound.play('penalty');
@@ -1147,9 +1193,8 @@ function updateSpills(dt) {
 function scareOffCustomer(c) {
   c.seat.occupied = false;
   if (c.state === 'sitting' && !c.served && c.orderType) {
-    loseTips(FORGOTTEN_PENALTY);
-    shiftStats.forgotten++;
-    removeFromTray(c);
+    forgetOrder();
+    dropFromTray(c);
     addFloatingText(c.x, c.y - c.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
     noteOrderCleared(c);
     Sound.play('penalty');
@@ -1918,8 +1963,8 @@ function nazimIsFarGone(r) { return r.id === 'nazim' && (r.stage.id === 'drunk' 
 
 function regularPlaceOrder(r) {
   if (r.id === 'nazim' && r.waterOwed) {
-    // Gerald's doing. It is still Nazim's order to receive.
-    r.waterOwed = false;
+    // Gerald's doing. It is still Nazim's order to receive. Owed until it
+    // actually lands, so a water that lapses is simply asked for again.
     r.orderType = 'water';
   } else {
     r.orderType = pickWeightedOrderType(r.cfg.orderWeights);
@@ -1937,7 +1982,7 @@ function regularPlaceOrder(r) {
 // Their order lapsed unserved. Same penalty a walk-in costs, plus a mood hit —
 // they don't leave, they just remember.
 function regularGiveUp(r) {
-  loseTips(FORGOTTEN_PENALTY);
+  forgetOrder();
   addFloatingText(r.x, r.y - r.h - 4, '-' + FORGOTTEN_PENALTY, '#e84c3d');
   r.mood = clampMood(r.mood - 0.45);
   const lapsed = r.orderType;
@@ -2143,7 +2188,7 @@ const ROUND_WINDOW = 20;
 const ROUND_BONUS = 25;
 const ROUND_PATIENCE = 32;
 let roundTimer = 0;
-let round = null;   // { deadline, served }
+let round = null;   // { deadline, served, servedIds }
 
 function tryCallRound() {
   for (const r of regulars) if (r.orderType || r.wander) return false;
@@ -2153,13 +2198,18 @@ function tryCallRound() {
     r.sitTimer = ROUND_PATIENCE;
     r.patienceDuration = ROUND_PATIENCE;
   }
-  round = { deadline: gameTime + ROUND_WINDOW, served: 0 };
+  round = { deadline: gameTime + ROUND_WINDOW, served: 0, servedIds: new Set() };
   Dialogue.trigger('roundCalled', null);
   return true;
 }
 
 function noteRoundDelivery(r) {
   if (!round || !r.isRegular) return;
+  // Count people, not deliveries: a fast-reordering Nazim served twice must
+  // not stand in for a regular still waiting on his round.
+  if (!round.servedIds) round.servedIds = new Set();
+  if (round.servedIds.has(r.id)) return;
+  round.servedIds.add(r.id);
   round.served++;
   if (round.served >= regulars.length) {
     earnTips(ROUND_BONUS);
@@ -2433,7 +2483,8 @@ function resetGame() {
   roundTimer = randomInRange(ROUND_INTERVAL);
   Dialogue.reset();
   resetDialogueTriggers();
-  Assets.reset();
+  // Deliberately no Assets.reset(): the atlases load once per page, and
+  // staling them on a restart would drop any still decoding for good.
   if (hasPlayedBefore) {
     Sound.play('start');
     Dialogue.trigger('restart', null);
@@ -2487,6 +2538,14 @@ function removeFromTray(target) {
   for (let i = player.tray.length - 1; i >= 0; i--) {
     if (player.tray[i].customer === target) player.tray.splice(i, 1);
   }
+}
+
+// An item taken off the tray without being delivered: same as the retarget
+// loop's drop, one of the pair evaporated, so there is no double for a single.
+function dropFromTray(target) {
+  const before = player.tray.length;
+  removeFromTray(target);
+  if (player.tray.length < before) doubleArmed = false;
 }
 
 // The customer pushes a shot back across the table. Refresh, not stack: the
@@ -2587,6 +2646,7 @@ function completeDelivery(target) {
       stageChanged = recalcIntoxication(target);
       if (stageChanged && target.stage.id === 'gone') target.waterOwed = true;
     } else if (type === 'water') {
+      target.waterOwed = false;
       target.drinks = Math.max(0, target.drinks - NAZIM_WATER_SOBERS);
       stageChanged = recalcIntoxication(target);
       sobered = true;
@@ -2670,7 +2730,9 @@ function handleInteract() {
     if (pending) {
       pending.beingCarried = true;
       player.tray.push({ type: pending.orderType, customer: pending });
-      if (player.tray.length === TRAY_MAX) {
+      // Refilling a tray that is still armed keeps its hit record: an item
+      // already carried through a hit can't be laundered by a fresh pickup.
+      if (player.tray.length === TRAY_MAX && !doubleArmed) {
         doubleArmed = true;
         doubleHitFree = true;
       }
@@ -2714,6 +2776,9 @@ window.addEventListener('keydown', (e) => {
   // Name entry owns the keyboard outright while it is up: every other
   // shortcut would otherwise either eat a letter or drop the score.
   if (enteringName) {
+    // A key still held from running when the last hit landed would otherwise
+    // auto-repeat straight into the field. Backspace may repeat on purpose.
+    if (e.repeat && k !== 'backspace') { if (e.key === ' ') e.preventDefault(); return; }
     if (k === 'enter') finishNameEntry(true);
     else if (k === 'backspace') nameInput = nameInput.slice(0, -1);
     else if (k === 'escape') finishNameEntry(false);     // bail out; the score is lost
@@ -2725,7 +2790,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (k === 'escape') { toggleOverlay(); return; }
   if (!e.repeat && k === 'm') { toggleSound(); return; }
-  if (caught && e.key === ' ') { resetGame(); return; }
+  if (caught && e.key === ' ') { if (!e.repeat) resetGame(); e.preventDefault(); return; }
   if (paused) return;
   if (shiftTally) {
     if (!e.repeat && (k === 'e' || e.key === ' ')) startNextShift();
@@ -3039,6 +3104,8 @@ function showHunterAlert(text, seconds) {
   hunterAlert = { text, timer: seconds };
 }
 
+const HUNTER_WAYPOINT_OVERSHOOT = 10;
+
 function hunterRouteTo(point) {
   hunterPath = computeCustomerPath(hunter, reachablePoint(hunter, point), null, HUNTER_FOOTPRINT);
   hunterPathIndex = 0;
@@ -3102,7 +3169,13 @@ function pickNewHunterDirection() {
   let aimAt = player;
   if (hunterPath && hunterPathIndex < hunterPath.length) {
     const wp = hunterPath[hunterPathIndex];
-    if (Math.hypot(wp.x - hunter.x, wp.y - hunter.y) < 3) hunterPathIndex++;
+    const wx = wp.x - hunter.x;
+    const wy = wp.y - hunter.y;
+    const wd = Math.hypot(wx, wy);
+    // Reached it, or ran a little past it on the last leg (it now lies behind
+    // his heading): aiming back at it would turn him round on the spot.
+    const overshot = wd < HUNTER_WAYPOINT_OVERSHOOT && wx * hunterDir.x + wy * hunterDir.y < 0;
+    if (wd < 3 || overshot) hunterPathIndex++;
     if (hunterPathIndex < hunterPath.length) aimAt = hunterPath[hunterPathIndex];
   }
   if (Math.random() < pauseChance) {
@@ -3218,7 +3291,9 @@ function updateHunter(dt) {
     }
     case 'chase': {
       // Keep or lose the trail.
-      if (hunterCanSeePlayer(hunterSightRange() * 1.5)) hunterLastSeenTimer = 0;
+      // Fleeing a Jameson he faces away from her by design, so the sight cone
+      // would lose her mid-retreat; he knows exactly who he's running from.
+      if (jamesonActive() || hunterCanSeePlayer(hunterSightRange() * 1.5)) hunterLastSeenTimer = 0;
       else hunterLastSeenTimer += dt;
       if (hunterLastSeenTimer > hunterLoseTime()) {
         setHunterState('lost', HUNTER_LOST_TIME);
@@ -3329,7 +3404,9 @@ function update(dt) {
   gameTime += dt;
 
   // The tally board freezes the floor until the player starts the next shift.
-  if (shiftTally) return;
+  // gameTime still runs (bubble timing reads it), so a live round's deadline
+  // is carried forward with it rather than expiring behind the board.
+  if (shiftTally) { if (round) round.deadline += dt; return; }
   // Hit-stop: a few frames of nothing so a hit reads as an impact.
   if (hitStopTimer > 0) { hitStopTimer -= dt; return; }
   if (pintKnockTimer > 0) pintKnockTimer -= dt;
@@ -3599,8 +3676,9 @@ function update(dt) {
 
   // Shift clock and target, checked last so it catches every way tips could
   // have changed this frame. Freezes gameplay on the next frame via the guard
-  // above.
-  updateShift(dt);
+  // above. Not once the run is over: a final hit on the same frame as the
+  // clock or target would otherwise open a tally board behind the caught one.
+  if (!caught) updateShift(dt);
 }
 
 // ---- Render -----------------------------------------------------------------
@@ -6059,8 +6137,8 @@ function drawCaughtOverlay() {
 // The end-of-shift tally: what the shift paid, what it cost, and a prompt
 // for the next one. This is the run's natural pause, so it waits for a press.
 function drawShiftTallyOverlay() {
-  drawSplashImage(levelDoneImage, 'rgba(7,12,18,0.34)');
   const t = shiftTally;
+  drawSplashImage(levelDoneImageFor(t.shift), 'rgba(7,12,18,0.34)');
   const st = t.stats;
   const title = 'SHIFT ' + t.shift + (t.madeTarget ? ' DONE' : ' OVER');
   const rows = [

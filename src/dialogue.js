@@ -165,12 +165,6 @@ const Dialogue = (function () {
 
     const nazimStage = bound.getNazimStageId();
 
-    // A high-priority reaction clears queued ambient filler so the important
-    // line isn't stuck behind three seconds of small talk.
-    if (priority >= 3 && queue.length) {
-      queue = queue.filter(q => q.priority >= priority);
-    }
-
     const singles = [];
     for (const l of DIALOGUE_LINES) {
       if (l.category !== category) continue;
@@ -182,6 +176,14 @@ const Dialogue = (function () {
       if (exchangeEligible(ex, who, nazimStage)) exchanges.push(ex);
     }
     if (!singles.length && !exchanges.length) return false;
+
+    // A high-priority reaction clears queued ambient filler so the important
+    // line isn't stuck behind three seconds of small talk. Only once there is
+    // something to say: flushing first would cut an exchange in half and
+    // then leave the room silent when nobody is eligible to react.
+    if (priority >= 3 && queue.length) {
+      queue = queue.filter(q => q.priority >= priority);
+    }
 
     // Exchanges are the treat, not the default: bias toward single lines so
     // three-way banter stays special.
