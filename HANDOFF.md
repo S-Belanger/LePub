@@ -1,5 +1,11 @@
 # LePub durable handoff
 
+## 2026-09-29 16:36 America/Toronto — pull conflict cleanup pushed and verified
+
+- User request fulfilled: the reported pull conflict was the previously resolved but uncommitted `HANDOFF.md` overlap. Branch `main`, HEAD `091449b69a9b749f6eca476598e6340d77f8eff5` at this checkpoint; `origin/main` and the live remote match it (`0/0`). `git status --short --branch` is clean. `git pull --ff-only origin main` succeeded with `Already up to date.`
+- Files changed for this task: only `HANDOFF.md`, preserving all prior local notes and recording this cleanup. Commits `8791e8a` and `091449b` are pushed. The earlier stash remains untouched. `git diff --cached --check` passed for both documentation commits; no conflict markers were found. No application tests or browser checks were run because gameplay, assets, and runtime code did not change.
+- No unresolved conflict or user-requested work remains. This final checkpoint itself is the only pending documentation addition at the moment recorded; next: commit and push it, then confirm the new HEAD equals remote main and the checkout is clean.
+
 ## 2026-09-29 16:35 America/Toronto — pull succeeds after handoff cleanup
 
 - User asked to resolve the reported pull conflict and push `main`. Branch `main`, HEAD `8791e8a04bd8a7f75cfa8a8f6e3eab59908c4858`, one commit ahead of `origin/main` at this checkpoint. The resolved `HANDOFF.md` history and preserved older notes are committed in `8791e8a`; no source, asset, or test file changed and the earlier stash was left intact.
