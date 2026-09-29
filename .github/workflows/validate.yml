@@ -10,7 +10,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node tests/character-art.js
-      - run: node tests/assets.js
-      - run: node tests/smoke.js
-      - run: node tests/alex.js
+      # Syntax of every shipped script, then the art contract, asset
+      # registry, smoke run and Alex scheduling tests.
+      - run: node tests/run.js

@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { session } = require('./browser-session');
-const art = require('../src/character-art');
+const art = require('../src/art/character-art');
 const familyCount = Object.keys(art.families).length;
 const out = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'lepub-art-final'));
 fs.mkdirSync(out, { recursive: true });
@@ -23,6 +23,11 @@ session(async (browser, url) => {
       window.requestAnimationFrame = callback => { window.__reviewFrame = callback; return 1; };
     });
     await page.goto(url, { waitUntil: 'networkidle' });
+    // Sheets finish decoding a moment after the network goes idle.
+    await page.waitForFunction(count => {
+      const all = Object.values(window.__debug.Assets.status());
+      return all.length === count && all.every(a => a.state !== 'loading');
+    }, familyCount, { timeout: 15000 }).catch(() => {});
     const assets = await page.evaluate(() => window.__debug.Assets.status());
     assert(Object.keys(assets).length === familyCount && Object.values(assets).every(a => a.state === 'ready'), name + ': all contracted atlases must load');
     await page.screenshot({ path: path.join(out, name + '-start.png') });
@@ -132,7 +137,7 @@ session(async (browser, url) => {
   const fallback = await browser.newPage();
   const fallbackErrors = [];
   fallback.on('pageerror', e => fallbackErrors.push(e.message));
-  await fallback.route('**/doe-illustrated.png', route => route.fulfill({ status: 404, body: '' }));
+  await fallback.route('**/doe-illustrated.webp', route => route.fulfill({ status: 404, body: '' }));
   await fallback.goto(url, { waitUntil: 'networkidle' });
   const fallbackResult = await fallback.evaluate(() => {
     const d = window.__debug;

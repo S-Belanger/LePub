@@ -1,0 +1,15 @@
+# Only the page, its scripts, styles and runtime assets are deployed.
+# Everything here is for development: masters, docs, tests and tooling.
+art-source/
+assets/art-direction/
+assets/sprites/prompts/
+assets/sprites/*.md
+docs/
+tests/
+tools/
+.claude/
+.github/
+AGENTS.md
+CLAUDE.md
+HANDOFF.md
+README.md

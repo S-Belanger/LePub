@@ -25,13 +25,13 @@ Translate its visual language into the game rather than copying its camera:
   dimensions;
 - favor crisp authored pixels and stepped light over smooth filters.
 
-`floor-plan.png` / `floor-plan.json` are the room as the game plays it,
-rendered from the furniture data (see `docs/ART-PLAN.md` §2b).
+`floor-plan.png` is the room as the game plays it, rendered from the
+furniture data in `src/game/world.js`.
 
 ## Status (2026-09-28)
 
-The seven named characters (including Alex) and four walk-in looks, including Fred, now use new illustrated PNG
-sheets, measured into the existing atlas contract. The original procedural
+The seven named characters (including Alex) and four walk-in looks, including Fred, now use illustrated
+sheets (PNG masters in `art-source/sprites/`, shipped as WebP), measured into the existing atlas contract. The original procedural
 sprites remain fallbacks. `ART_SCALE=4` preserves source detail; continuous
 lighting replaces the coarse checkerboard overlay. The overhead camera and
 approved floor plan remain. See [source and frame notes](../sprites/ILLUSTRATED.md)
@@ -43,9 +43,9 @@ Do not claim complete visual parity with the painted pub reference.
 
 ### Previous state (2026-09-16)
 
-The camera is now the high overhead of `overhead/gameplay-modernization-concept.png`
-(see `../../docs/overhaul/00-CAMERA-DIRECTION.md`, which supersedes the
-three-quarter wording below): the whole cast is generated overhead with four
+The camera is now the high overhead of `overhead/character-camera-study.png`
+(see `../../docs/VISUAL-SYSTEM.md`, which supersedes the three-quarter
+wording below): the whole cast is generated overhead with four
 directions and shipped as atlases in `../sprites/`; furniture, counter props
 and pendants are drawn for that camera over the same colliders; night
 lighting and the fireplace stay. Still to do: hand-cleaned production sheets
@@ -68,6 +68,5 @@ is called complete:
 6. HUD, dialogue, controls, and start overlay using the same walnut, parchment,
    burgundy, and brass material language.
 
-`../cover.png` remains a secondary reference for the worn, playful PC-game
-tone and the doe-versus-hunter character contrast. It is not a camera or room
-layout reference.
+The worn, playful PC-game tone and the doe-versus-hunter contrast of the old
+cover art (in git history) remain the character reference for tone.

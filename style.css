@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 /* The page shell is built from the same three materials as the in-canvas UI
-   (see the `UI` kit in game.js): walnut boards, brass fittings and parchment,
+   (see the `UI` kit in src/game/render/ui-kit.js): walnut boards, brass fittings and parchment,
    with burgundy leather for anything you press. The hexes here mirror the
    `PUB`/`UI` palettes so the DOM never looks like a different product from
    the canvas it frames. Corners stay square: stepped pixels, not rounded
@@ -205,8 +205,25 @@ canvas#game {
   background-repeat: no-repeat;
   filter: drop-shadow(0 1px 0 var(--ink));
 }
-.chip.sound.muted { color: #c7584a; }
-.chip.sound.muted::after {
+/* Music: a beamed pair of eighth notes, drawn in brass like the brackets. */
+.chip.music::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  --bar: linear-gradient(currentColor, currentColor);
+  background:
+    var(--bar) 4px 0 / 14px 3px,        /* beam */
+    var(--bar) 4px 0 / 2px 14px,        /* left stem */
+    var(--bar) 16px 0 / 2px 12px,       /* right stem */
+    var(--bar) 0 12px / 6px 5px,        /* left head */
+    var(--bar) 12px 10px / 6px 5px;     /* right head */
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 0 var(--ink));
+}
+.chip.sound.muted,
+.chip.music.muted { color: #c7584a; }
+.chip.sound.muted::after,
+.chip.music.muted::after {
   content: '';
   position: absolute;
   width: 30px;
@@ -311,33 +328,6 @@ canvas#game {
   text-shadow: 1px 1px 0 var(--ink);
 }
 
-/* The controls are a parchment menu card pinned to the sign. */
-.keys {
-  list-style: none;
-  margin: 0 auto 18px;
-  padding: 12px 10px;
-  width: min(100%, 420px);
-  display: grid;
-  gap: 8px;
-  font-size: clamp(6px, 2vw, 8px);
-  color: var(--ink);
-  background:
-    repeating-linear-gradient(0deg, rgba(120, 80, 30, 0.08) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
-    linear-gradient(180deg, var(--parchment-lit) 0 1px, var(--parchment) 1px calc(100% - 2px), var(--parchment-dark) calc(100% - 2px) 100%);
-  border: 1px solid var(--brass-dark);
-  box-shadow: inset 0 0 0 1px var(--parchment-lit), 0 2px 0 var(--ink);
-}
-.keys li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink);
-}
-.keys span { min-width: 96px; text-align: right; color: var(--leather); }
-.keys em { font-style: normal; color: var(--brass-dark); }
-
 /* Keycaps are brass. */
 kbd {
   font-family: inherit;
@@ -379,17 +369,272 @@ kbd {
     0 4px 0 var(--ink),
     0 0 18px var(--amber-glow);
 }
+.primary:disabled { cursor: progress; opacity: 0.7; filter: saturate(0.6); }
 .primary:active {
   transform: translateY(3px);
   box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--brass-dark), 0 1px 0 var(--ink);
 }
 
-.hint {
-  margin: 14px 0 0;
-  font-size: clamp(6px, 1.9vw, 7px);
-  line-height: 1.9;
+/* ---- The job in three steps, on the front of the sign ------------------ */
+.loop {
+  list-style: none;
+  margin: 0 auto 18px;
+  padding: 0;
+  width: min(100%, 440px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  counter-reset: step;
+}
+.loop li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 6px 10px;
+  font-size: clamp(6px, 1.9vw, 8px);
+  line-height: 1.7;
+  color: var(--ink);
+  counter-increment: step;
+}
+.loop li::before {
+  content: counter(step);
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  color: var(--ink);
+  background: var(--brass);
+  box-shadow: 0 0 0 1px var(--ink), inset 0 1px 0 var(--brass-lit);
+  z-index: 1;
+}
+.loop li,
+.rules-card {
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 80, 30, 0.08) 0 1px, rgba(0, 0, 0, 0) 1px 4px),
+    linear-gradient(180deg, var(--parchment-lit) 0 1px, var(--parchment) 1px calc(100% - 2px), var(--parchment-dark) calc(100% - 2px) 100%);
+  border: 1px solid var(--brass-dark);
+  box-shadow: inset 0 0 0 1px var(--parchment-lit), 0 2px 0 var(--ink);
+}
+.loop .art { height: 30px; }
+
+/* Station colours: the same three as BAR_STATIONS in src/game/world.js. */
+.st-taps { --st: #e6a93c; }
+.st-shelf { --st: #c56a9a; }
+.st-hatch { --st: #86b85e; }
+.swatches { display: flex; gap: 3px; height: 30px; align-items: center; }
+.swatches i,
+.mock-stations i,
+.mock-badge i {
+  display: inline-block;
+  width: 9px;
+  height: 14px;
+  background: var(--st);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+/* Art canvases: pixel icons stay crisp, painted atlases stay smooth. */
+canvas.art { display: block; height: 40px; width: auto; }
+canvas.art.pixel { image-rendering: pixelated; height: 22px; }
+canvas.art.big { height: 64px; }
+canvas.art.glow { filter: drop-shadow(0 0 6px #f0b84c) drop-shadow(0 0 2px #f6d688); }
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.primary.quiet {
+  background: linear-gradient(180deg, var(--walnut-lit) 0 2px, var(--walnut) 2px calc(100% - 3px), var(--walnut-dark) calc(100% - 3px) 100%);
+}
+
+/* ---- House rules booklet ------------------------------------------------ */
+.rules { margin: 20px auto 0; width: min(100%, 480px); text-align: left; }
+.rules[hidden] { display: none; }
+.rules-title {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: clamp(9px, 2.8vw, 12px);
+  letter-spacing: 3px;
+  color: var(--amber);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.rules-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: -1px;          /* tabs sit on the card's top edge */
+}
+.rules-tabs button {
+  font-family: inherit;
+  font-size: clamp(6px, 1.8vw, 7px);
+  letter-spacing: 1px;
+  padding: 8px 7px 7px;
+  min-height: 30px;
   color: var(--cream-dim);
-  text-shadow: 1px 1px 0 var(--ink);
+  background: var(--walnut-dark);
+  border: 1px solid var(--brass-dark);
+  border-bottom: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.rules-tabs button:hover,
+.rules-tabs button:focus-visible { color: var(--brass-lit); outline: none; }
+.rules-tabs button.active {
+  color: var(--ink);
+  background: var(--parchment-lit);
+  border-color: var(--brass);
+  position: relative;
+  z-index: 1;
+}
+.rules-card {
+  position: relative;
+  padding: 16px 14px 12px;
+  min-height: 260px;
+  color: var(--ink);
+  touch-action: pan-y;
+}
+.rule-page h3 {
+  margin: 0 0 12px;
+  font-size: clamp(8px, 2.4vw, 10px);
+  letter-spacing: 2px;
+  color: var(--leather);
+}
+.rule-page[hidden] { display: none; }
+.rule {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(125, 82, 26, 0.35);
+}
+.rule:first-of-type { border-top: none; padding-top: 0; }
+.rule > :first-child { justify-self: center; }
+.rule p {
+  margin: 0;
+  font-size: clamp(6px, 1.9vw, 8px);
+  line-height: 1.85;
+}
+.rule em { font-style: normal; color: var(--leather); }
+
+/* Little mock-ups of real UI, so the page shows what to look for. */
+.mock-ticket {
+  position: relative;
+  padding: 7px 5px 4px;
+  background: var(--parchment-lit);
+  box-shadow: 0 0 0 2px var(--brass-dark), 0 0 0 3px var(--ink);
+}
+.mock-ticket .patience {
+  position: absolute; left: -1px; right: -1px; top: -6px; height: 4px;
+  background: var(--walnut-dark); box-shadow: 0 0 0 1px var(--ink);
+}
+.mock-ticket .patience b { display: block; height: 100%; background: #6cc04a; animation: patience 4s linear infinite; }
+@keyframes patience {
+  0% { width: 100%; background: #6cc04a; }
+  55% { background: #6cc04a; }
+  60% { background: #e0b43c; }
+  82% { background: #e0b43c; }
+  85% { background: #d0493a; }
+  100% { width: 4%; background: #d0493a; }
+}
+.mock-ticket .corner {
+  position: absolute; right: 0; top: 0; width: 7px; height: 7px;
+  background: linear-gradient(225deg, var(--st) 0 50%, transparent 50%);
+}
+.mock-float { display: grid; gap: 4px; font-size: 8px; text-shadow: 1px 1px 0 var(--ink); }
+.mock-float .good { color: #3ddc61; }
+.gold { color: var(--amber); }
+.bad { color: #d0493a; }
+.mock-hud,
+.mock-bar {
+  display: grid; gap: 4px; padding: 6px 7px;
+  font-size: 7px; color: var(--cream);
+  background: var(--walnut); box-shadow: 0 0 0 1px var(--brass-dark), 0 0 0 2px var(--ink);
+}
+.mock-bar b { display: block; width: 60px; height: 4px; background: #9fd0dc; box-shadow: 0 0 0 1px var(--ink); animation: blink 0.7s steps(2) infinite; }
+.mock-bar span { font-size: 6px; color: #9fd0dc; }
+@keyframes blink { 50% { background: #7a2c2c; } }
+.mock-stations { display: grid; gap: 4px; }
+.mock-stations span,
+.mock-badge .plaque {
+  display: inline-flex; gap: 4px; align-items: center;
+  padding: 3px 5px; font-size: 6px; color: var(--cream);
+  background: var(--brass-dark); box-shadow: 0 0 0 1px var(--ink);
+}
+.mock-stations i,
+.mock-badge i { width: 5px; height: 8px; }
+.mock-badge { display: inline-flex; align-items: center; gap: 2px; padding: 3px; box-shadow: 0 0 0 1px #e6a93c; animation: ring 1.2s ease-in-out infinite alternate; }
+.mock-badge b { font-size: 7px; font-weight: normal; padding: 2px 3px; color: var(--ink); background: #e6a93c; box-shadow: 0 0 0 1px var(--ink); }
+@keyframes ring { from { box-shadow: 0 0 0 1px rgba(230, 169, 60, 0.2); } to { box-shadow: 0 0 0 1px #e6a93c; } }
+.mock-prompt { display: inline-flex; gap: 5px; align-items: center; font-size: 8px; color: var(--cream); background: var(--walnut-dark); padding: 5px 6px; box-shadow: 0 0 0 1px var(--ink); }
+.mock-tray { display: flex; gap: 6px; }
+.mock-alert {
+  width: 26px; height: 30px; display: grid; place-items: center;
+  font-size: 18px; color: #d0493a; background: var(--parchment-lit);
+  box-shadow: 0 0 0 2px #d0493a, 0 0 0 3px var(--ink);
+}
+.mock-pints { display: flex; gap: 5px; }
+.mock-pints i {
+  width: 12px; height: 18px; display: block;
+  background: linear-gradient(180deg, transparent 0 100%);
+  box-shadow: inset 0 0 0 2px #cfe3e6, 0 0 0 1px var(--ink);
+}
+.mock-pints i.full { background: linear-gradient(180deg, #f1d9a8 0 3px, #f0b84c 3px 100%); }
+.mock-pack { display: flex; gap: 4px; }
+.mock-pack i { width: 12px; height: 14px; background: linear-gradient(180deg, #c0392b 0 4px, #e8e4d8 4px 100%); box-shadow: 0 0 0 1px var(--ink); }
+.mock-pack i.empty { background: rgba(0, 0, 0, 0.12); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.mock-round {
+  min-width: 40px; padding: 8px 6px; text-align: center;
+  font-size: 12px; color: var(--amber); text-shadow: 1px 1px 0 var(--ink);
+  background: var(--walnut); box-shadow: 0 0 0 2px var(--brass), 0 0 0 3px var(--ink);
+}
+.trio { display: flex; gap: 0; }
+.trio .art { height: 44px; margin: 0 -4px; }
+
+.controls { width: 100%; border-collapse: collapse; font-size: clamp(6px, 1.7vw, 7px); line-height: 1.6; }
+.controls th, .controls td { padding: 6px 3px; text-align: left; vertical-align: middle; border-top: 1px dashed rgba(125, 82, 26, 0.35); }
+.controls thead th { border-top: none; color: var(--leather); }
+.controls tbody th { color: var(--leather); font-weight: normal; }
+.controls kbd { padding: 2px 3px; font-size: 6px; }
+.bell {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+  font-size: 7px; font-weight: normal; color: var(--cream);
+  background: var(--leather); box-shadow: 0 0 0 1px var(--brass), 0 0 0 2px var(--ink);
+}
+.bell.small { background: var(--walnut-lit); }
+
+.rules-nav {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 10px; font-size: 8px; color: var(--cream-dim);
+}
+.step {
+  font-family: inherit; font-size: 12px; min-width: 44px; min-height: 36px;
+  color: var(--brass); background: var(--walnut-dark);
+  border: 1px solid var(--brass-dark); cursor: pointer; touch-action: manipulation;
+}
+.step:hover, .step:focus-visible { color: var(--brass-lit); border-color: var(--brass); outline: none; }
+
+.settings { margin-top: 16px; display: flex; justify-content: center; }
+.toggle {
+  font-family: inherit; font-size: clamp(6px, 1.9vw, 7px); letter-spacing: 1px;
+  padding: 9px 12px; min-height: 36px;
+  color: var(--cream-dim); background: transparent;
+  border: 1px dashed var(--brass-dark); cursor: pointer; touch-action: manipulation;
+}
+.toggle[aria-pressed="true"] { color: var(--brass-lit); border-style: solid; border-color: var(--brass); }
+.toggle:focus-visible { outline: 1px solid var(--brass-lit); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mock-ticket .patience b, .mock-badge, .mock-bar b { animation: none; }
 }
 
 /* ---- Caught-screen restart ------------------------------------------ */
@@ -400,6 +645,38 @@ kbd {
   bottom: calc(18px + var(--safe-b));
   z-index: 35;
 }
+
+/* ---- Touch name entry: a parchment field between leather buttons ------ */
+#name-entry {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(18px + var(--safe-b));
+  z-index: 35;
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  width: min(92vw, 420px);
+}
+#name-entry.hidden { display: none; }
+#name-field {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 16px;               /* 16px keeps iOS from zooming into the field */
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--parchment-lit) 0 2px, var(--parchment) 2px calc(100% - 2px), var(--parchment-dark) calc(100% - 2px) 100%);
+  border: 2px solid var(--brass);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px var(--ink), 0 4px 0 var(--ink);
+  outline: none;
+}
+#name-field:focus-visible { border-color: var(--brass-lit); }
+#name-field::placeholder { color: var(--parchment-dark); }
+#name-entry .primary { padding: 0 12px; }
 
 /* ---- Touch controls -------------------------------------------------- */
 #touch {
@@ -468,6 +745,18 @@ kbd {
   opacity: 0.68;
   transition: opacity 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease;
 }
+/* Lit when pressing it would grab or serve something (render/guidance.js). */
+.action.ready:not(.drop) {
+  opacity: 1;
+  animation: action-ready 0.9s ease-in-out infinite alternate;
+}
+@keyframes action-ready {
+  from { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px var(--brass-dark), 0 4px 0 var(--ink), 0 0 6px var(--amber-glow); }
+  to   { box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 2px var(--brass-lit), 0 4px 0 var(--ink), 0 0 26px rgba(240, 184, 76, 0.6); }
+}
+/* The caught screen has its own buttons; the stick and bell step aside. */
+body.caught #touch { display: none; }
+
 .action.active {
   opacity: 1;
   transform: translateY(4px);
@@ -492,4 +781,5 @@ body.touch .touch-only { display: inline; }
 
 @media (prefers-reduced-motion: reduce) {
   .primary, .action, .chip, .stick { transition: none; }
+  .action.ready:not(.drop) { animation: none; }
 }

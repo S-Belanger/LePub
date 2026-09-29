@@ -20,26 +20,188 @@
     <!-- Corner controls. Kept quiet until touched/hovered. -->
     <div id="top-bar">
       <button id="btn-help" type="button" class="chip board" aria-label="Help">?</button>
+      <button id="btn-music" type="button" class="chip board music" aria-label="Turn music off" aria-pressed="false"></button>
       <button id="btn-sound" type="button" class="chip board sound" aria-label="Mute sound effects" aria-pressed="false">SFX</button>
       <button id="btn-fullscreen" type="button" class="chip board full" aria-label="Toggle fullscreen"></button>
     </div>
 
-    <!-- Start / help overlay. Replaces the old permanent title block. -->
+    <!-- Start / pause panel, with the House Rules booklet folded inside it.
+         Illustrations are the game's own sprites, drawn by src/game/rules.js. -->
     <div id="overlay" class="overlay">
       <div class="panel board riveted">
         <div class="panel-scroll">
         <h1>LE PUB</h1>
         <p class="strap">THE CHASE</p>
         <p class="subtitle">Une chasse sans piti&eacute;&hellip; serve the regulars, dodge the hunter.</p>
-        <ul class="keys">
-          <li><span>Move</span><kbd>WASD</kbd><kbd>Arrows</kbd><em class="touch-only">left stick</em></li>
-          <li><span>Grab / Deliver</span><kbd>E</kbd><kbd>Space</kbd><em class="touch-only">right button</em></li>
-          <li><span>Drop cigarettes</span><kbd>C</kbd><em class="touch-only">left button</em></li>
-          <li><span>Sound</span><kbd>M</kbd><em class="touch-only">SFX button</em></li>
-          <li><span>Restart</span><kbd>Space</kbd><em class="touch-only">on-screen button</em></li>
-        </ul>
-        <button id="btn-start" type="button" class="primary">START SHIFT</button>
-        <p class="hint">Beers at the TAPS, wine at the SHELF, food from the KITCHEN. The tray holds two.<br>Nazim, Sam and Gerald are always at the corner table.</p>
+
+        <ol class="loop" aria-label="The job in three steps">
+          <li><canvas class="art" data-icon="beer-dark" width="1" height="1" aria-hidden="true"></canvas><span>Spot a ticket</span></li>
+          <li><span class="swatches" aria-hidden="true"><i class="st-taps"></i><i class="st-shelf"></i><i class="st-hatch"></i></span><span>Grab it at its counter</span></li>
+          <li><canvas class="art" data-sprite="hunter" data-anim="gun.down" width="1" height="1" aria-hidden="true"></canvas><span>Serve it. Dodge him.</span></li>
+        </ol>
+
+        <div class="panel-actions">
+          <button id="btn-start" type="button" class="primary">START SHIFT</button>
+          <button id="btn-rules" type="button" class="primary quiet" aria-expanded="false" aria-controls="rules">HOW TO PLAY</button>
+        </div>
+
+        <section id="rules" class="rules" hidden aria-label="House rules">
+          <h2 class="rules-title">HOUSE RULES</h2>
+          <div class="rules-tabs" role="tablist" aria-label="Chapters">
+            <button type="button" role="tab" data-page="0">JOB</button>
+            <button type="button" role="tab" data-page="1">BAR</button>
+            <button type="button" role="tab" data-page="2">HUNTER</button>
+            <button type="button" role="tab" data-page="3">PERKS</button>
+            <button type="button" role="tab" data-page="4">BOOTH</button>
+            <button type="button" role="tab" data-page="5">CHAOS</button>
+            <button type="button" role="tab" data-page="6">SHIFTS</button>
+            <button type="button" role="tab" data-page="7">KEYS</button>
+          </div>
+
+          <div class="rules-card">
+            <article class="rule-page" role="tabpanel">
+              <h3>THE JOB</h3>
+              <div class="rule">
+                <div class="mock-ticket" aria-hidden="true"><span class="patience"><b style="width:70%"></b></span><canvas class="art" data-icon="beer-blond" width="1" height="1"></canvas><i class="corner st-taps"></i></div>
+                <p>A ticket over someone's head is an order. The bar on top is their <em>patience</em>: green, amber, then red.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-float" aria-hidden="true"><span class="good">+18</span><span class="gold">+5 CLUTCH</span><span class="bad">-15</span></div>
+                <p>Fresher means bigger tips: <em>10 to 20</em>. A save in the red pays a <em>clutch</em> bonus. Let a ticket run out and it costs you 15.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-hud" aria-hidden="true"><span>SHIFT 1</span><span class="gold">TIPS 60/100</span></div>
+                <p>Every shift has a <em>tips target</em>. Make it before closing time.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>THE BAR</h3>
+              <div class="rule">
+                <div class="mock-stations" aria-hidden="true">
+                  <span><i class="st-taps"></i>TAPS</span><span><i class="st-shelf"></i>SHELF</span><span><i class="st-hatch"></i>KITCHEN</span>
+                </div>
+                <p>Beer and water at the <em>taps</em>. Wine and cocktails at the <em>shelf</em>. Food at the <em>kitchen</em>. A ticket's coloured corner tells you which.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-badge" aria-hidden="true"><span class="plaque"><i class="st-taps"></i>TAPS</span><b>3</b></div>
+                <p>The number on a counter is how many orders are waiting there. The <em>ringed</em> counter has the oldest one: go there next.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-prompt" aria-hidden="true"><kbd>E</kbd><span>GRAB</span></div>
+                <p>Stand at the counter and press the button to <em>grab</em>. Walk it over and press again to <em>serve</em>. The prompt by your head says which.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-tray" aria-hidden="true"><canvas class="art" data-icon="wine" width="1" height="1"></canvas><canvas class="art" data-icon="food" width="1" height="1"></canvas></div>
+                <p>The tray holds <em>two</em>. A full one slows you down, but landing both without getting caught pays a <em>double</em> bonus.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>THE HUNTER</h3>
+              <div class="rule">
+                <canvas class="art big" data-sprite="hunter" data-anim="gun.right" width="1" height="1" aria-hidden="true"></canvas>
+                <p>He walks in a little after opening and prowls. He only sees <em>what's in front of him</em>, or hears you right behind him.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-alert" aria-hidden="true">!</div>
+                <p>A <em>!</em> means he's seen you and he's coming. A red glow at the screen edge means he's close; an arrow shows where.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-pints" aria-hidden="true"><i class="full"></i><i class="full"></i><i></i></div>
+                <p>Each catch costs one of your <em>three pints</em>. Keep clear for a few seconds and they refill. Lose all three and it's over.</p>
+              </div>
+              <div class="rule">
+                <canvas class="art big" data-sprite="hunter" data-anim="drink.down" width="1" height="1" aria-hidden="true"></canvas>
+                <p>He orders pints too (red ticket). Serve him and he <em>sits down to drink</em> it. Good tip, and a breather for you.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>PERKS</h3>
+              <div class="rule">
+                <canvas class="art big glow" data-sprite="doe" data-anim="idle.down" width="1" height="1" aria-hidden="true"></canvas>
+                <p>About two drink deliveries in five earn you a <em>Jameson</em>: 10 seconds where he can't touch you. He runs, and bumping him bounces him off.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-pack" aria-hidden="true"><i></i><i></i><i class="empty"></i></div>
+                <p>Every 5 deliveries you pocket a <em>pack of smokes</em> (up to 3). Drop one in his path and he steps outside for a cigarette.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>THE BOOTH</h3>
+              <div class="rule">
+                <div class="trio" aria-hidden="true">
+                  <canvas class="art" data-sprite="sam" data-anim="idle.down" width="1" height="1"></canvas>
+                  <canvas class="art" data-sprite="nazim" data-anim="idle.down" width="1" height="1"></canvas>
+                  <canvas class="art" data-sprite="gerald" data-anim="idle.down" width="1" height="1"></canvas>
+                </div>
+                <p><em>Sam, Nazim and Gerald</em> own the corner booth all night. Amber tickets are theirs. Gerald is the least patient man in the building.</p>
+              </div>
+              <div class="rule">
+                <canvas class="art big" data-sprite="nazim" data-anim="slump.down" width="1" height="1" aria-hidden="true"></canvas>
+                <p>Every drink moves <em>Nazim</em> along, sober to gone. Drunk Nazim tips double but knocks pints over, and spills slow everyone down. Once he's gone, a <em>water</em> sobers him up.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-round" aria-hidden="true">+25</div>
+                <p>Now and then they call <em>a round</em>: serve all three within 20 seconds for a bonus.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>CHAOS</h3>
+              <div class="rule">
+                <div class="mock-bar wc" aria-hidden="true"><b></b><span>TO THE WC 42S</span></div>
+                <p>Three Jamesons fill the <em>bladder</em>. You then have 60 seconds to reach the <em>WC</em> (bottom right). Miss it: -20 tips and a puddle the busboy has to mop.</p>
+              </div>
+              <div class="rule">
+                <canvas class="art big" data-sprite="alex" data-anim="split.down" width="1" height="1" aria-hidden="true"></canvas>
+                <p><em>Alex</em> drops by to do the splits. An amber outline warns you first, then he blocks that spot for a few seconds.</p>
+              </div>
+              <div class="rule">
+                <canvas class="art big" data-sprite="waiter" data-anim="idle.down" width="1" height="1" aria-hidden="true"></canvas>
+                <p><em>Jay</em> the waiter wipes down the bar, and the pub has a ghost. Both are harmless. Probably.</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>SHIFTS</h3>
+              <div class="rule">
+                <div class="mock-hud" aria-hidden="true"><span>TOTAL 240</span><span class="bad">0:12</span></div>
+                <p>The first five shifts last <em>3 minutes</em>. The last 15 seconds are <em>last call</em>: no new customers, and patience drains faster.</p>
+              </div>
+              <div class="rule">
+                <div class="mock-round" aria-hidden="true">2</div>
+                <p>Every shift is busier and the hunter sharper. From shift 6 there's no clock: just the target. How far can you go?</p>
+              </div>
+            </article>
+
+            <article class="rule-page" role="tabpanel" hidden>
+              <h3>CONTROLS</h3>
+              <table class="controls">
+                <thead><tr><th></th><th>KEYS</th><th>TOUCH</th><th>PAD</th></tr></thead>
+                <tbody>
+                  <tr><th>Move</th><td><kbd>WASD</kbd> <kbd>&larr;&uarr;&darr;&rarr;</kbd></td><td>Left stick</td><td>Stick / d-pad</td></tr>
+                  <tr><th>Grab / serve</th><td><kbd>E</kbd> <kbd>Space</kbd></td><td><b class="bell">E</b></td><td><kbd>A</kbd></td></tr>
+                  <tr><th>Drop smokes</th><td><kbd>C</kbd></td><td><b class="bell small">C</b></td><td><kbd>X</kbd></td></tr>
+                  <tr><th>Pause</th><td><kbd>Esc</kbd></td><td><kbd>?</kbd></td><td><kbd>Start</kbd></td></tr>
+                  <tr><th>Sound / music</th><td><kbd>M</kbd> <kbd>N</kbd></td><td>Top chips</td><td></td></tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+
+          <div class="rules-nav">
+            <button id="rules-prev" type="button" class="step" aria-label="Previous page">&lt;</button>
+            <span id="rules-count" aria-live="polite">1 / 8</span>
+            <button id="rules-next" type="button" class="step" aria-label="Next page">&gt;</button>
+          </div>
+        </section>
+
+        <div class="settings">
+          <button id="btn-hints" type="button" class="toggle" aria-pressed="true">TIP CARDS: ON</button>
+        </div>
         </div>
       </div>
     </div>
@@ -49,6 +211,15 @@
       <button id="btn-restart" type="button" class="primary">RESTART</button>
     </div>
 
+    <!-- Touch devices sign the tips ledger through a real text field, so the
+         phone's own keyboard can come up. Keyboards type straight into the canvas. -->
+    <form id="name-entry" class="hidden" autocomplete="off">
+      <input id="name-field" type="text" maxlength="12" autocapitalize="characters" autocorrect="off"
+             spellcheck="false" enterkeyhint="done" placeholder="YOUR NAME" aria-label="Your name for the tips ledger">
+      <button id="btn-name-save" type="submit" class="primary">SIGN</button>
+      <button id="btn-name-skip" type="button" class="primary quiet">SKIP</button>
+    </form>
+
     <!-- Touch controls, only shown on touch-capable devices. -->
     <div id="touch" class="hidden">
       <div id="stick" class="stick"><div class="stick-knob"></div></div>
@@ -57,15 +228,56 @@
     </div>
   </div>
 
-  <script src="src/pixelfont.js"></script>
-  <script src="src/scenery.js"></script>
-  <script src="src/sprites.js"></script>
-  <script src="src/dialogue-content.js"></script>
-  <script src="src/dialogue.js"></script>
-  <script src="src/regulars.js"></script>
-  <script src="src/sound.js"></script>
-  <script src="src/assets.js"></script>
-  <script src="src/character-art.js"></script>
-  <script src="game.js"></script>
+  <script src="src/engine/pixelfont.js"></script>
+  <script src="src/art/scenery.js"></script>
+  <script src="src/art/sprites.js"></script>
+  <script src="src/content/dialogue-content.js"></script>
+  <script src="src/engine/dialogue.js"></script>
+  <script src="src/content/regulars.js"></script>
+  <script src="src/engine/sound.js"></script>
+  <script src="src/engine/ambience.js"></script>
+  <script src="src/engine/assets.js"></script>
+  <script src="src/art/character-art.js"></script>
+  <script src="src/game/viewport.js"></script>
+  <script src="src/game/world.js"></script>
+  <script src="src/game/render/sprite-cache.js"></script>
+  <script src="src/game/collision.js"></script>
+  <script src="src/game/pathfinding.js"></script>
+  <script src="src/game/entities.js"></script>
+  <script src="src/game/player-status.js"></script>
+  <script src="src/game/shifts.js"></script>
+  <script src="src/game/customers.js"></script>
+  <script src="src/game/spills.js"></script>
+  <script src="src/game/visitors/ghost.js"></script>
+  <script src="src/game/visitors/waiter.js"></script>
+  <script src="src/game/visitors/busboy.js"></script>
+  <script src="src/game/visitors/alex.js"></script>
+  <script src="src/game/regulars.js"></script>
+  <script src="src/game/dialogue-triggers.js"></script>
+  <script src="src/game/round.js"></script>
+  <script src="src/game/highscores.js"></script>
+  <script src="src/game/reset.js"></script>
+  <script src="src/game/serving.js"></script>
+  <script src="src/game/input.js"></script>
+  <script src="src/game/shell.js"></script>
+  <script src="src/game/touch.js"></script>
+  <script src="src/game/gamepad.js"></script>
+  <script src="src/game/hints.js"></script>
+  <script src="src/game/rules.js"></script>
+  <script src="src/game/hunter.js"></script>
+  <script src="src/game/update.js"></script>
+  <script src="src/game/render/room.js"></script>
+  <script src="src/game/render/lighting.js"></script>
+  <script src="src/game/render/furniture.js"></script>
+  <script src="src/game/render/atmosphere.js"></script>
+  <script src="src/game/render/entities.js"></script>
+  <script src="src/game/render/ui-kit.js"></script>
+  <script src="src/game/render/bubbles.js"></script>
+  <script src="src/game/render/hud.js"></script>
+  <script src="src/game/render/guidance.js"></script>
+  <script src="src/game/render/overlays.js"></script>
+  <script src="src/game/render/render.js"></script>
+  <script src="src/game/main.js"></script>
+  <script src="src/game/debug.js"></script>
 </body>
 </html>

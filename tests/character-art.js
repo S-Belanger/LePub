@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const assert = require('assert/strict');
-const art = require('../src/character-art');
+const art = require('../src/art/character-art');
 const root = path.resolve(__dirname, '..');
 const context = vm.createContext({ console });
-for (const file of ['src/sprites.js', 'src/assets.js']) {
+for (const file of ['src/art/sprites.js', 'src/engine/assets.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context);
 }
 const kinds = vm.runInContext('Object.keys(SPRITES)', context);
@@ -61,12 +61,22 @@ function validateCoverage(spriteKinds, selected) {
   }
 }
 validateCoverage(kinds, records);
+// Every sheet ships as WebP (tools/build-sprites.js) encoded from a lossless
+// RGBA PNG master in art-source/sprites/ of exactly the same dimensions.
 for (const { meta } of records) {
-  const png = fs.readFileSync(path.join(root, 'assets/sprites', meta.image));
-  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', meta.image + ': PNG missing');
-  assert.equal(png.readUInt32BE(16), meta.imageSize.width, meta.image + ': width');
-  assert.equal(png.readUInt32BE(20), meta.imageSize.height, meta.image + ': height');
-  assert.equal(png[25], 6, meta.image + ': expected RGBA source');
+  const master = meta.image.replace(/.webp$/, '.png');
+  const png = fs.readFileSync(path.join(root, 'art-source/sprites', master));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', master + ': PNG master missing');
+  assert.equal(png.readUInt32BE(16), meta.imageSize.width, master + ': width');
+  assert.equal(png.readUInt32BE(20), meta.imageSize.height, master + ': height');
+  assert.equal(png[25], 6, master + ': expected RGBA master');
+  assert.match(meta.image, /.webp$/, meta.image + ': runtime sheet should be the WebP build');
+  const webp = fs.readFileSync(path.join(root, 'assets/sprites', meta.image));
+  assert.equal(webp.subarray(0, 4).toString(), 'RIFF', meta.image + ': not a RIFF file');
+  assert.equal(webp.subarray(8, 16).toString(), 'WEBPVP8X', meta.image + ': expected extended WebP with alpha');
+  assert.ok(webp[20] & 0x10, meta.image + ': alpha channel missing');
+  assert.equal(webp.readUIntLE(24, 3) + 1, meta.imageSize.width, meta.image + ': width');
+  assert.equal(webp.readUIntLE(27, 3) + 1, meta.imageSize.height, meta.image + ': height');
 }
 // Prove the guard catches the exact class of regression that let Alex ship old.
 assert.throws(() => validateCoverage([...kinds, 'new-regular'], records), /Undeclared character/);

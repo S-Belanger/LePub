@@ -10,9 +10,9 @@ These are AI-generated, visually reviewed assets, not hand-cleaned Aseprite art.
 
 Alex was added September 23 using Jay's sheet as reference, then his split
 appearance was edited September 25 to match the user's portrait without
-glasses; see [the current likeness prompts and limitations](alex-likeness.md)
-and [the original source prompt](alex-prompt.md). The current
-[visual system](../../docs/VISUAL-SYSTEM.md) and `src/character-art.js` govern
+glasses; see [the current likeness prompts and limitations](prompts/alex-likeness.md)
+and [the original source prompt](prompts/alex-prompt.md). The current
+[visual system](../../docs/VISUAL-SYSTEM.md) and `src/art/character-art.js` govern
 new characters. Importer, runtime pose selection and gallery share that
 contract; `node tests/character-art.js` enforces production coverage.
 
@@ -64,9 +64,12 @@ visual parity with the painted environment reference.
 `rasterFamilyFor` selects a walk-in sheet using its existing `look`; `kind`
 stays `customer`, with its old palette retained for fallback. The eleven selected
 sheets replace the former six procedural exports. On missing/invalid images,
-the existing per-family procedural renderer still runs. Original `doe.png`,
-`hunter.png`, etc. are preserved. The exporter must never append a competing
-procedural entry to the manifest for an illustrated family.
+the existing per-family procedural renderer still runs.
+
+Masters are the lossless PNGs in `art-source/sprites/` (not deployed). The
+game downloads WebP builds of them (`tools/build-sprites.js`, quality 0.95,
+lossless alpha, identical pixel dimensions so every rect and pivot holds):
+12.8 MB of masters ship as 3.8 MB.
 
 ## Prompt set and provenance
 
@@ -90,16 +93,16 @@ labels or grid. Match reference material detail rather than geometric blobs.
 
 | Source | Identity and pose instructions |
 | --- | --- |
-| `doe-illustrated.png` | Brown deer hood, small antlers, glasses, dark beard, cream chest, black boots; rows idle / left stride / right stride / pint in anatomical left hand. |
-| `hunter-illustrated.png` | Revised September 23 from the user's portrait: swept brown hair/high forehead, wide rectangular glasses, fuller cheeks, light chin stubble, no cap; red/black plaid sleeves, olive vest, shotgun slung over right shoulder. Same idle/walk rows; last row drinking. [Exact revision prompt](hunter-prompt.md). |
-| `nazim-illustrated.png` | Medium-brown skin, tousled dark hair, stubble, olive hoodie with hood down, charcoal trousers; idle / walk / leaning / deeply slumped, no furniture included. |
-| `sam-illustrated.png` | Navy flat cap, glasses, sandy side hair, burgundy/cream stripes, charcoal trousers; idle / two strides / talking. Follow-up edit: remove beard/moustache in all visible faces; retain glasses, positions and transparency. |
-| `gerald-illustrated.png` | Bald older man with grey side hair, moustache and eyebrows, ruddy skin, burgundy cardigan; idle / two strides / talking gesture. |
-| `waiter-illustrated.png` | Short dark hair, glasses, clean chin, black tee, pale waist apron; idle / two strides / teal cleaner bottle with red trigger in right hand. |
-| `customer-teal-illustrated.png` | Auburn-haired adult woman, teal knit sweater, charcoal trousers, brown boots; idle / two strides / talking. |
-| `customer-ochre-illustrated.png` | Darker-brown-skinned adult man, grey tweed flat cap, ochre overshirt, dark stubble; same rows. |
-| `customer-blue-illustrated.png` | Fair-skinned man, wavy dark hair, slate-blue rolled-sleeve shirt, charcoal trousers, clean chin; same rows. |
-| `fred-illustrated.png` | User-photo likeness: slate baseball cap, brown beard and grin, white small-print tee, charcoal shorts, bare legs, navy sneakers, left forearm tattoo; same rows. [Exact prompt and limits](fred-prompt.md). |
+| `doe` | Brown deer hood, small antlers, glasses, dark beard, cream chest, black boots; rows idle / left stride / right stride / pint in anatomical left hand. |
+| `hunter` | Revised September 23 from the user's portrait: swept brown hair/high forehead, wide rectangular glasses, fuller cheeks, light chin stubble, no cap; red/black plaid sleeves, olive vest, shotgun slung over right shoulder. Same idle/walk rows; last row drinking. [Exact revision prompt](prompts/hunter-prompt.md). |
+| `nazim` | Medium-brown skin, tousled dark hair, stubble, olive hoodie with hood down, charcoal trousers; idle / walk / leaning / deeply slumped, no furniture included. |
+| `sam` | Navy flat cap, glasses, sandy side hair, burgundy/cream stripes, charcoal trousers; idle / two strides / talking. Follow-up edit: remove beard/moustache in all visible faces; retain glasses, positions and transparency. |
+| `gerald` | Bald older man with grey side hair, moustache and eyebrows, ruddy skin, burgundy cardigan; idle / two strides / talking gesture. |
+| `waiter` | Short dark hair, glasses, clean chin, black tee, pale waist apron; idle / two strides / teal cleaner bottle with red trigger in right hand. |
+| `customer-teal` | Auburn-haired adult woman, teal knit sweater, charcoal trousers, brown boots; idle / two strides / talking. |
+| `customer-ochre` | Darker-brown-skinned adult man, grey tweed flat cap, ochre overshirt, dark stubble; same rows. |
+| `customer-blue` | Fair-skinned man, wavy dark hair, slate-blue rolled-sleeve shirt, charcoal trousers, clean chin; same rows. |
+| `fred` | User-photo likeness: slate baseball cap, brown beard and grin, white small-print tee, charcoal shorts, bare legs, navy sneakers, left forearm tattoo; same rows. [Exact prompt and limits](prompts/fred-prompt.md). |
 
 A combined customer-sheet attempt and its background-removal edit were rejected
 because they retained an opaque painted backdrop. Neither is shipped.
@@ -107,16 +110,13 @@ because they retained an opaque painted backdrop. Neither is shipped.
 ## Reproduce validation
 
 ```sh
-node tests/character-art.js
-node tests/smoke.js
-node tests/alex.js
-node tests/assets.js
-node tools/validate-art.js
-node tools/validate-alex.js
+node tests/run.js
+node tools/validate-art.js <out-dir>
 node tools/import-illustrated.js doe hunter nazim sam gerald waiter customer-teal customer-ochre customer-blue fred
+node tools/build-sprites.js
 ```
 
-The last command rebuilds metadata only; use `node tools/import-illustrated.js alex` for Alex. Browser tools require Edge and an
+`import-illustrated` rebuilds metadata only and `build-sprites` re-encodes the WebP; use `node tools/import-illustrated.js alex` for Alex. Browser tools require Edge and an
 existing `playwright-core` install (direct or in npm's npx cache); the game
 itself still has no runtime dependencies. Browser validation checks all eleven
 loaded sheets, animation coverage, reactions/poses, keyboard/touch movement,

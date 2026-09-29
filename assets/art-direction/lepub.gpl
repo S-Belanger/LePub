@@ -1,7 +1,7 @@
 GIMP Palette
-Name: LePub ART-PLAN palette
+Name: LePub palette
 Columns: 6
-# Exact 30-color palette transcribed from ART-PLAN.md
+# The 30-color harmony palette (see docs/VISUAL-SYSTEM.md).
  22  17  12	outline / ink #16110c
  24  21  21	outline / ink #181515
  86  56  39	walnut boards #563827

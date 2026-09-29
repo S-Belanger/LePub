@@ -3,18 +3,10 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
-const SCRIPT_FILES = [
-  'src/pixelfont.js',
-  'src/scenery.js',
-  'src/sprites.js',
-  'src/dialogue-content.js',
-  'src/dialogue.js',
-  'src/regulars.js',
-  'src/sound.js',
-  'src/assets.js',
-  'src/character-art.js',
-  'game.js',
-];
+// index.html is the single source of truth for which scripts load, and in
+// what order; the test reads it rather than keeping a second copy.
+const SCRIPT_FILES = [...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+  .matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 
 class ClassList {
   constructor() { this.values = new Set(); }
@@ -75,8 +67,8 @@ class Canvas extends Element {
 function createRuntime() {
   const elements = new Map();
   const ids = [
-    'stage', 'top-bar', 'btn-help', 'btn-sound', 'btn-fullscreen', 'overlay',
-    'btn-start', 'caught-actions', 'btn-restart', 'touch', 'stick', 'btn-action', 'btn-drop',
+    'stage', 'top-bar', 'btn-help', 'btn-sound', 'btn-music', 'btn-fullscreen', 'overlay',
+    'btn-start', 'caught-actions', 'btn-restart', 'name-entry', 'name-field', 'btn-name-skip', 'touch', 'stick', 'btn-action', 'btn-drop',
   ];
   for (const id of ids) elements.set(id, new Element(id));
   elements.set('game', new Canvas('game'));
@@ -99,6 +91,7 @@ function createRuntime() {
     querySelector(selector) {
       return selector === '#stick .stick-knob' ? elements.get('stick-knob') : null;
     },
+    querySelectorAll() { return []; },
     createElement(tag) { return tag === 'canvas' ? new Canvas() : new Element(); },
     addEventListener() {},
   };
@@ -217,6 +210,46 @@ function run() {
     assert(regular.facing === expectedSeatFacing(regular.seat),
       `${regular.name} should face the table after reset.`);
   }
+
+  // Draw order: a chair always sorts just behind whoever sits on it, a wall
+  // bench behind everyone on it, and a side-seated sitter after their table
+  // (they lean over its edge). Regressions here put chairs over laps.
+  const chairs = vm.runInContext('CHAIRS', context);
+  const seatedSortY = vm.runInContext('seatedSortY', context);
+  const isSeated = vm.runInContext('isSeated', context);
+  assert(chairs.length === debug.SEATS.filter(s => s.table.seatStyle !== 'bench').length,
+    'Every table and stool seat should have exactly one chair drawable.');
+  for (const chair of chairs) assert(chair.sortY < chair.y, `Chair at ${chair.x},${chair.y} must sort behind its sitter.`);
+  for (const bench of debug.BENCHES.filter(b => b.seatStyle === 'bench')) {
+    for (const seat of debug.SEATS.filter(s => s.table === bench)) {
+      assert(bench.sortY < seat.y, `Wall bench at ${bench.x},${bench.y} must sort behind its sitters.`);
+    }
+  }
+  for (const regular of debug.regulars) {
+    assert(isSeated(regular), `${regular.name} should count as seated.`);
+    if (regular.seat.side === 'w' || regular.seat.side === 'e') {
+      assert(seatedSortY(regular) > regular.seat.table.sortY, `${regular.name} should draw over the booth's edge.`);
+    }
+  }
+
+  // Tip cards and guidance: unique ids, and the action prompt agrees with
+  // what the button would actually do.
+  const hintIds = vm.runInContext('HINTS.map(h => h.id)', context);
+  assert(new Set(hintIds).size === hintIds.length, 'Tip card ids must be unique.');
+  for (const id of hintIds) {
+    const text = vm.runInContext(`HINTS.find(h => h.id === '${id}').text()`, context);
+    assert(typeof text === 'string' && text.length > 10, `Tip card ${id} needs text.`);
+  }
+  assert(vm.runInContext('interactPreview()', context) === null, 'No prompt away from counters and customers.');
+  vm.runInContext(`
+    const taps = BAR_SEGMENTS.find(b => b.station === 'taps');
+    player.x = taps.collider.x + 20; player.y = taps.collider.y + taps.collider.h + 6;
+    regularPlaceOrder(regularById.get('gerald'));
+    regularById.get('gerald').orderType = 'beer-dark';
+  `, context);
+  const preview = vm.runInContext('interactPreview()', context);
+  assert(preview && preview.word === 'GRAB' && preview.ready, `Expected a GRAB prompt at the taps, got ${JSON.stringify(preview)}.`);
+  debug.resetGame();
 
   const freeSeats = debug.freeGenericSeats();
   for (let i = 0; i < freeSeats; i++) debug.spawnCustomer();

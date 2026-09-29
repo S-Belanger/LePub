@@ -1,14 +1,16 @@
 // Measure generated source sheets and write frame metadata; never modifies the
-// source PNG. Usage: node tools/import-illustrated.js doe hunter
+// source PNG. Masters live in art-source/sprites/; run tools/build-sprites.js
+// afterwards to encode the WebP the game ships.
+// Usage: node tools/import-illustrated.js doe hunter
 // Four directions; row count and optional measured row cuts come from contract.
 const fs = require('fs');
 const path = require('path');
 const { ROOT, session } = require('./browser-session');
-const art = require('../src/character-art');
+const art = require('../src/art/character-art');
 const families = process.argv.slice(2);
 if (!families.length) throw new Error('Specify the illustrated families to import.');
 for (const family of families) {
-  if (!art.families[family]) throw new Error('Declare ' + family + ' in src/character-art.js first.');
+  if (!art.families[family]) throw new Error('Declare ' + family + ' in src/art/character-art.js first.');
 }
 
 session(async (browser, url) => {
@@ -18,7 +20,7 @@ session(async (browser, url) => {
     const spec = art.families[family];
     const measured = await page.evaluate(async ({ kind, rows, rowCuts }) => {
       const image = new Image();
-      image.src = 'assets/sprites/' + kind + '-illustrated.png';
+      image.src = 'art-source/sprites/' + kind + '-illustrated.png';
       await image.decode();
       const canvas = document.createElement('canvas');
       canvas.width = image.width; canvas.height = image.height;
@@ -68,7 +70,7 @@ session(async (browser, url) => {
     for (const [row, offset] of Object.entries(spec.floorOffsets || {})) {
       for (const dir of dirs) frames[row + '.' + dir].pivot.y -= offset * density;
     }
-    const meta = { schemaVersion: 1, assetId: 'lepub.' + family + '.illustrated', image: family + '-illustrated.png',
+    const meta = { schemaVersion: 1, assetId: 'lepub.' + family + '.illustrated', image: family + '-illustrated.webp',
       imageSize: { width: measured.width, height: measured.height }, frameSpace: 'untrimmed-source-pixels', pivotSpace: 'frame-local-pixels',
       authoredPixelsPerWorldUnit: density, alphaPolicy: 'translucent', palettePolicy: 'illustrated-reference', fallbackKey: family, directions: dirs,
       provenance: 'Built-in imagegen using documented overhead cast references; source PNG preserved. Bounds measured by tools/import-illustrated.js.', frames, animations };

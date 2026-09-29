@@ -1,58 +1,28 @@
-# LePub agent continuity rules
+# LePub agent rules
 
-## Mandatory startup
+Read `CLAUDE.md` first; it applies to every agent, not only Claude.
 
-Before changing the repository:
+## Before changing anything
 
-1. Read `HANDOFF.md` completely.
-2. Inspect `git status --short --branch` and compare it with the handoff.
-3. Preserve all uncommitted work unless the user explicitly asks to discard it.
-4. For visual, character, texture or UI work, read `docs/VISUAL-SYSTEM.md` and
-   view its linked shipped sprite references before authoring. It is the current
-   art standard; older art plans and historical handoffs do not override it.
+1. Read `HANDOFF.md` (one page: the current state and anything half-done).
+2. Check `git status --short --branch` against it. Never discard uncommitted
+   work you didn't make unless the user says so.
+3. For visual, character, texture or UI work, read `docs/VISUAL-SYSTEM.md`
+   and look at the shipped sprite sheets it links before authoring.
 
-## Character art requirements
+## Character art
 
-- Declare every new character/appearance in `src/character-art.js`, with
-  illustrated source art and all required directional/special poses.
-- Follow `docs/VISUAL-SYSTEM.md` for materials, camera, density, pivots and
-  review. Procedural fallback is resilience, not completed production artwork.
-  Existing busboy/ghost exceptions are explicit; do not copy them for new people.
-- Run `node tests/character-art.js`, `node tests/assets.js`, and
-  `node tests/smoke.js` before publishing character changes. Run real-browser
-  art checks and inspect desktop/mobile captures for visual changes; record
-  evidence and limits in `HANDOFF.md`.
+- Declare every new character in `src/art/character-art.js` with illustrated
+  source art and every required directional/special pose.
+- PNG masters go in `art-source/sprites/`; run `tools/import-illustrated.js`
+  then `tools/build-sprites.js`. Never hand-edit the WebP builds.
+- Run `node tests/run.js` and `node tools/validate-art.js <out-dir>`, and look
+  at the desktop and phone captures before calling art done.
 
-## Mandatory progress checkpoints
+## Handoff
 
-`HANDOFF.md` is the durable source of truth when a chat ends, context is
-compacted, or another agent continues the work. Do not wait until the end of a
-session to update it.
-
-Update `HANDOFF.md` immediately after any of these events:
-
-- pulling, merging, rebasing, switching branches, or resolving conflicts;
-- making a substantial code, design, asset, or architecture change;
-- discovering or fixing a bug;
-- completing a test or browser-validation milestone;
-- changing the agreed direction or making a material implementation decision;
-- encountering a blocker or leaving unfinished work.
-
-Before a long-running tool call or whenever the remaining context may be low,
-checkpoint first. A checkpoint must include:
-
-- local date/time, branch, HEAD commit, and upstream relationship;
-- what the user asked for and the decisions currently in force;
-- files changed and what changed in each;
-- tests run and their exact outcome;
-- unfinished work, risks, and the next concrete step;
-- whether changes are committed or pushed.
-
-Keep the newest checkpoint at the top. Preserve older checkpoints below it as
-history. Never include secrets, `.env` contents, credentials, or private keys.
-
-## Mandatory handoff
-
-Before ending a substantial work session, update `HANDOFF.md` one final time
-and make sure it agrees with the actual Git status. If the session terminates
-unexpectedly, the most recent milestone checkpoint is the failsafe.
+`HANDOFF.md` is overwritten, not appended: keep it to the current branch and
+its state, what was done this session, what's unfinished and the next step,
+and anything risky. Update it when you finish a session or stop mid-task.
+Never put secrets, `.env` contents or credentials in it. Git history is the
+log.

@@ -1,12 +1,12 @@
 // Asset registry tests: `node tests/assets.js`. Dependency-free; runs
-// src/assets.js in a bare vm context with fake I/O so the loader's contract,
+// src/engine/assets.js in a bare vm context with fake I/O so the loader's contract,
 // failure handling and lifecycle are exercised without a browser.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const context = vm.createContext({ console });
-vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'assets.js'), 'utf8'), context, { filename: 'assets.js' });
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'engine', 'assets.js'), 'utf8'), context, { filename: 'assets.js' });
 const Assets = vm.runInContext('Assets', context);
 
 let checks = 0;

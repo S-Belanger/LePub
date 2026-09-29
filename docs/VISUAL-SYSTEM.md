@@ -2,8 +2,8 @@
 
 This is the current art standard for every future session and contributor.
 Read it before adding or changing a character, texture, prop, effect or UI.
-It supersedes older three-quarter camera and procedural-character plans in
-`ART-PLAN.md`, `overhaul/`, and historical handoffs. The latest user direction
+It supersedes the older three-quarter camera and procedural-character plans
+(still readable in git history). The latest user direction
 and current handoff still control scope.
 
 ## The feeling
@@ -16,8 +16,8 @@ enough that people, drinks and hazards are easy to follow.
 
 ## References and precedence
 
-1. **Shipped character finish:** [Jay's sheet](../assets/sprites/waiter-illustrated.png)
-   and [Alex's sheet](../assets/sprites/alex-illustrated.png).
+1. **Shipped character finish:** [Jay's sheet](../art-source/sprites/waiter-illustrated.png)
+   and [Alex's sheet](../art-source/sprites/alex-illustrated.png).
    Inspect the PNG itself before authoring a new cast member.
 2. **Camera:** [character study](../assets/art-direction/overhead/character-camera-study.png).
    High overhead, visible crowns/shoulders, foreshortened torso/legs;
@@ -35,7 +35,7 @@ ghost's translucent procedural look is intentional.
 
 ## Materials and color
 
-Reuse `PUB` in `src/scenery.js`, `UI` in `game.js`, and matching shell colors
+Reuse `PUB` in `src/art/scenery.js`, `UI` in `src/game/render/ui-kit.js`, and matching shell colors
 in `style.css`. These are the current implementation sources, not a single
 generated token file. Coordinate changes to canvas and DOM together.
 
@@ -79,7 +79,7 @@ sprite or exporting procedural rows to PNG does not meet this standard.
 
 ## One character contract
 
-`src/character-art.js` is shared by runtime named-pose selection, importer,
+`src/art/character-art.js` is shared by runtime named-pose selection, importer,
 gallery and browser/Node validation. Each family declares its gameplay `kind`,
 name, target height, sheet rows and required animation sequences.
 `proceduralExceptions` lists the only current exceptions.
@@ -97,10 +97,12 @@ never squeeze unrelated states into idle to satisfy validation.
 
 1. Read this guide and view the camera study and a shipped illustrated PNG.
    Define identity, clothes/props, directions and every gameplay special pose.
-2. Declare the family in `src/character-art.js`. New `SPRITES` kinds without
+2. Declare the family in `src/art/character-art.js`. New `SPRITES` kinds without
    a contract fail validation. Customer variants share kind `customer`.
 3. Author using a shipped illustrated sheet as style reference. Save
-   `<family>-illustrated.png`; preserve source pixels. Record the tool, exact
+   `art-source/sprites/<family>-illustrated.png`; preserve source pixels. Then
+   `node tools/import-illustrated.js <family>` and
+   `node tools/build-sprites.js <family>` (the WebP the game ships). Record the tool, exact
    prompt, references and remaining limitations.
 4. Run `node tools/import-illustrated.js <family>`; inspect transparency,
    cropping, physical scale and pivots. Add its JSON to `manifest.json`.
@@ -115,15 +117,11 @@ never squeeze unrelated states into idle to satisfy validation.
 ### Acceptance and enforcement
 
 ```sh
-node tests/character-art.js
-node tests/assets.js
-node tests/smoke.js
-node tests/alex.js
-node tools/validate-art.js
-node tools/validate-alex.js
+node tests/run.js                 # syntax + contract + assets + smoke + Alex
+node tools/validate-art.js <dir>  # real Edge, desktop and phone captures
 ```
 
-The first four run in `.github/workflows/validate.yml` on pushes and PRs.
+`tests/run.js` is what `.github/workflows/validate.yml` runs on pushes and PRs.
 The art contract rejects undeclared people, missing/duplicate manifest families,
 legacy selections, insufficient density, scale drift and missing/wrong pose
 mappings. Loader tests cover invalid/missing assets; smoke covers gameplay.
@@ -145,7 +143,7 @@ heavy full beard; those belonged to the superseded generic design. Keep his
 olive vest, red/black plaid sleeves, olive trousers, boots and slung shotgun.
 All four directions and idle/two strides/drink poses share the same identity.
 Keep the portrait out of the public asset tree. See the
-[exact prompt and provenance](../assets/sprites/hunter-prompt.md).
+[exact prompt and provenance](../assets/sprites/prompts/hunter-prompt.md).
 
 ## Alex
 
@@ -160,8 +158,8 @@ is 1.5 world units above the cropped silhouette bottom. No pose-dependent
 art scaling or collider change. Other split directions are source variations
 for inspection; right/left source poses have imperfect rotated leg anatomy
 and are not used by the gameplay split. The personal portrait stays outside
-the public asset tree. [Current likeness prompts](../assets/sprites/alex-likeness.md)
-and [original source prompt](../assets/sprites/alex-prompt.md).
+the public asset tree. [Current likeness prompts](../assets/sprites/prompts/alex-likeness.md)
+and [original source prompt](../assets/sprites/prompts/alex-prompt.md).
 
 Visits start only after a 60–90 second opening delay, at least three deliveries
 and 30 seconds of the current shift. There is at most one visit per timed
@@ -187,4 +185,4 @@ shorts, bare lower legs, navy sneakers and a small left-forearm tattoo.
 He has four authored directions with idle, two strides and talk; the talking
 row is currently reserved because walk-ins have no talk-state event. Keep the
 portrait outside the public asset tree and use the 21-world-unit scale shared
-by other customers. See [the accepted prompt and provenance](../assets/sprites/fred-prompt.md).
+by other customers. See [the accepted prompt and provenance](../assets/sprites/prompts/fred-prompt.md).
