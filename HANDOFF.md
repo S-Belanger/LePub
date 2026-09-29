@@ -1,5 +1,11 @@
 # LePub durable handoff
 
+## 2026-09-29 16:35 America/Toronto — pull succeeds after handoff cleanup
+
+- User asked to resolve the reported pull conflict and push `main`. Branch `main`, HEAD `8791e8a04bd8a7f75cfa8a8f6e3eab59908c4858`, one commit ahead of `origin/main` at this checkpoint. The resolved `HANDOFF.md` history and preserved older notes are committed in `8791e8a`; no source, asset, or test file changed and the earlier stash was left intact.
+- `git pull --ff-only origin main` exited 0 with `Already up to date.` The working tree is clean, with no unmerged paths. Earlier `git diff --cached --check` passed and `rg` found no conflict markers. No application test was needed for this Git/documentation cleanup.
+- This checkpoint is not yet committed or pushed. Next: commit this pull result, push `main`, and verify local/remote SHAs and clean status. No known merge conflict remains; a concurrent remote update would require another fetch and integration.
+
 ## 2026-09-29 16:34 America/Toronto — pull conflict cleanup in progress
 
 - User asked to fix the reported Git pull conflict and push to `main`. Current branch `main`, HEAD `bd0e22b07955aa54843a1cd145bded2a23f70281`, upstream `origin/main` 0/0 after `git fetch origin --prune`; `git ls-remote` confirms the same remote SHA. There is no active unmerged conflict. The only working-tree change is `HANDOFF.md`, carrying the resolved Fred handoff and preserved older local notes; the existing stash remains untouched.
