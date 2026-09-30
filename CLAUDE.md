@@ -16,7 +16,8 @@ It's plain HTML/CSS/JS with **no build step, no package manager, and no runtime 
 
 There is no `package.json` or linter. `node tests/smoke.js` is a dependency-free
 runtime smoke test for script loading, customer/waiter routing, and rendering;
-`node tests/assets.js` covers the raster asset registry. `node tools/export-sheets.js`
+`node tests/assets.js` covers the raster asset registry; `node tests/alex.js` and
+`node tests/cellar.js` cover Alex's visits and the cellar mini-game. `node tools/export-sheets.js`
 regenerates `assets/sprites/*.png+json` from the procedural sets (needs Edge and
 playwright-core in the npx cache).
 Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png` plus
@@ -135,7 +136,7 @@ Walk-in customers cycle `entering → sitting → leaving` (`updateCustomer`), f
 
 **Customers are routed, not steered.** They have no real-time obstacle avoidance, but the floor plan is static, so `computeCustomerPath(from, to, excludeTable)` works a route out once — a coarse A* over `PATH_CELL` (8px) cells, then a line-of-sight string-pulling pass that collapses it to a handful of waypoints so the walk still reads as straight lines rather than grid-snapping. Exact segment/AABB checks use the same asymmetric, feet-anchored footprint as runtime collision; endpoint grid anchors are chosen only when the real endpoint can see them. It runs only when a customer starts entering or leaving, never per frame, and `c.path` / `c.pathIndex` are walked by `updateCustomer`. Per-step collision is still applied as a safety net, excluding the customer's own table. A seat with no walkable route falls back to a straight line, so a layout edit that seals a seat off shows up as customers walking through furniture — check with `__debug.computeCustomerPath` or run `node tests/smoke.js`.
 
-**The ghost** (`updateGhost`) is purely decorative: every 35–80s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
+**The ghost** (`updateGhost`) is purely decorative in the pub (the cellar has its own hostile one, §7b): every 35–80s an apparition drifts in a straight line across the pub, through walls and furniture alike, with no collision and no effect on score, hunter or player. It draws in the y-sorted pass via `drawGhost`, which deliberately skips the contact shadow `drawEntity` gives everyone else.
 
 **The waiter** (`updateWaiter`) is the other walk-on, and the one that actually uses the floor. He comes in through `DOOR`, walks a routed path (the same `computeCustomerPath`, with nothing excluded — he isn't headed for a seat) into the pocket the bar's L wraps around, stands against the upper-left counter and works it over with a spray bottle for `WAITER_SPRAY_TIME`, then routes back to the door and is removed. He has no order, no seat, no dialogue and no effect on score or the chase — changing any of that means giving him the customer order fields, not a new system. `drawWaiter` paints his sprite, then the droplets, then the sparks, so both read as coming off him rather than from under his hand.
 
@@ -197,6 +198,36 @@ While it is up:
 Refresh, not stack: a second shot restarts the clock. `jamesonTimer` and `jamesonBounceTimer` are cleared in `resetGame()`.
 
 Three shots fill the bladder and start a 60s bathroom timer. Reaching `BATHROOM` clears it; expiry loses 20 tips through the shared shift ledger and leaves a puddle that scares walk-ins away. The busboy routes to reachable puddles and mops them. Every five non-hunter deliveries earns a held cigarette pack (up to three); C or the touch C button drops one. A hunter who finds it clears his order and tray item, walks out, smokes for 15s, returns and resumes scanning. Smoke routes use `HUNTER_FOOTPRINT`; busboy/Alex routes use their own footprints. Alex visits for a split. The illustrated contract includes split.down. A 1.2s preparation cue and occupancy recheck precede a 22x7 blocker for 5s without damage. First entry waits 60–90s, three deliveries and 30s of the shift; later visits wait 120–180s after departure, at most once per timed shift. Entry defers for chase, recent hit, round, bathroom urgency, busy doorway or final 40s. Full split bounds exclude furniture, staff pocket, door and bathroom; routes are validated. Last call, round, bathroom urgency and shift end release an active blocker. Reset clears visit memory. See node tests/alex.js and docs/VISUAL-SYSTEM.md. The busboy remains an explicit procedural art-debt exception until dedicated overhead idle/walk/mop artwork is authored.
+
+### 7b. The cellar (berging bottles)
+
+The SHELF station pours from `shelfStock`. It starts at `SHELF_STOCK_START` (5), caps at `SHELF_STOCK_MAX` (8), carries across shifts and is reset by `resetGame`. Each shelf pickup takes one. At 0, a shelf press floats `EMPTY! CELLAR` and fires `shelfEmpty` instead of handing over the order. Stock shows as pips under the SHELF plaque. At `SHELF_LOW` (2) the hatch (`CELLAR_HATCH`, open floor in the staff pocket, clear of every counter's interact margin) gets an amber frame and a glow, pulsing at 0.
+
+Interact on the hatch calls `enterCellar()`, but only while a bottle's worth still fits on the shelf (`shelfHasRoom()`). **The cellar is a separate scene with its own coordinates** (`CELLAR_W` 176 × `CELLAR_H` 140). It has its own colliders (`CELLAR_COLLIDERS`, moved through `cellarTryMove`, not `tryMove`/`FURNITURE`), baked room canvas and camera. The Doe down there is a stand-in entity, `cellar.doe`. `player` stays at the hatch, so nothing upstairs that reads `player.x/y` ever sees cellar coordinates. While `cellar` is set:
+- `update()` drives `updateCellar()` instead of player movement.
+- `render()` draws `renderCellar()` plus the HUD instead of the pub.
+- `handleInteract()` routes to `cellarInteract()`.
+
+**The pub keeps running**: patience, spawns, regulars, the round and the shift clock all continue. The hunter is shut out:
+- `hunterCanSeePlayer()` returns false.
+- The catch check and the bathroom check stand down.
+- The Jameson "always sees her" chase exemption is off, so he loses the trail at the hatch.
+
+A walnut plate at the bottom of the cellar screen shows upstairs' open orders, the most urgent patience bar and the stock.
+
+Three bottles stand on the bench:
+1. Press at a bottle to seat the dispenser (`bare → capped`).
+2. **Hold** interact to heat it until it seals, which adds `SHELF_STOCK_PER_BOTTLE` (2). Heating takes `CELLAR_HEAT_TIME` (1.5 s), and a released bottle cools at `CELLAR_HEAT_COOL`. `interactHeld()` reads E/Space in `keys`, or `interactTouchHeld` from the touch action button; `clearHeldInputs` clears it.
+3. Sealing all three with no ghost hit pays `CELLAR_BERG_BONUS` (5) tips.
+
+Interact on the stairs goes back up with a `CELLAR_EXIT_GRACE` invulnerability window and a `cellarBack`/`cellarHaunted` remark.
+
+**The cellar ghost is hostile**, unlike the pub's:
+- `CELLAR_GHOST_DELAY` after entry, it drifts through walls toward the Doe.
+- Inside `CELLAR_GHOST_STRIKE_RANGE` it winds up (`cellarGhostWindup()`, shorter with level). It locks the Doe's spot at the *start* of the wind-up, marked by closing brackets, then lunges there. Moving during the wind-up is the dodge.
+- A hit (`hitCellarDoe`) shoves the Doe and stuns her for `CELLAR_STUN_TIME`. It knocks the dispenser off the bottle being worked (or the nearest capped one) and resets its heat. It never costs life.
+
+`endShift()` brings the Doe up quietly (`exitCellar(true)`); `resetGame()` clears `cellar`.
 
 ### 8. Dialogue
 
@@ -275,7 +306,7 @@ The shell uses the same materials as the canvas UI: `.board` is a walnut plank (
 
 Still the single source of truth for "new game" state. It resets `gameTime`, the player position, a collision-free hunter spawn, `caught`, life/invulnerability/regeneration, score/shift-tally state, `customers`, `floatingTexts`, `player.tray`, every seat's `occupied` flag and the spawn timer — and also builds or resets the regulars, calls `Dialogue.reset()`, calls `resetDialogueTriggers()`, fires the `restart` dialogue category (only if a run has already ended), clears held inputs, and syncs the caught-screen DOM.
 
-It also clears `enteringName`/`nameInput`, the Jameson/bladder/smoke timers and packs/puddles, the ghost, waiter, busboy and Alex, the tray and double state, the hunter's state machine and order (he restarts `arriving` at the door), spills, dynamic blockers, the round, the shift (number, clock, tips, tally, stats) and the hit-stop/pint-knock timers. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
+It also clears `enteringName`/`nameInput`, the Jameson/bladder/smoke timers and packs/puddles, the ghost, waiter, busboy and Alex, the cellar trip and shelf stock, the tray and double state, the hunter's state machine and order (he restarts `arriving` at the door), spills, dynamic blockers, the round, the shift (number, clock, tips, tally, stats) and the hit-stop/pint-knock timers. **Any new piece of mutable global run state needs to be reset here too**, or it will leak across a restart. Reserved seats are the deliberate exception: `reserved`/`regularId` are set once at load and never cleared.
 
 ## Development scaffolding
 
@@ -296,6 +327,7 @@ It also clears `enteringName`/`nameInput`, the Jameson/bladder/smoke timers and 
 | `getHunterState()` / `setHunterState(s, t?)` / `hunterCanSeePlayer()` / `hunterWantsPint()` | Drive the hunter's state machine, test his sight, make him order. |
 | `getShift()` / `setShift(n)` / `setShiftClock(t)` / `endShift()` / `startNextShift()` | Jump shifts, force last call, open and close the tally board. |
 | `getSpills()` / `getRound()` / `callRound()` / `startNazimWander()` | Nazim's consequences and the round, on demand. |
+| `getCellar()` / `enterCellar()` / `exitCellar()` / `getShelfStock()` / `setShelfStock(n)` / `spawnCellarGhost()` | Drive the cellar mini-game: drain the shelf, go down, summon its ghost. |
 | `getWaiter()` / `spawnWaiter()` | Send the waiter in now; the returned entity's `state`/`pose`/`mist` can be driven by hand. |
 | `loadHighScores()` / `saveHighScore()` / `clearHighScores()` / `getNameEntry()` | Inspect and wipe the stored table, and see the live name field. |
 | `regularState()` | Order, patience, mood, drinks, stage and pose for all three. |

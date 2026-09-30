@@ -873,7 +873,7 @@ function hunterOnSmokeBreak() { return hunterSmokeState !== null; }
 
 // Drops one held pack at the player's feet. No-op with nothing in reserve.
 function dropCigarette() {
-  if (caught || paused || shiftTally || cigaretteReserve <= 0) return;
+  if (caught || paused || shiftTally || cellar || cigaretteReserve <= 0) return;
   cigaretteReserve--;
   cigarettePacks.push({ x: player.x, y: player.y, ttl: CIGARETTE_PACK_TTL });
   Sound.play('pickup');
@@ -982,6 +982,7 @@ function forgetOrder() {
 
 function endShift() {
   if (alex && alex.state !== 'leaving') alexLeave();
+  exitCellar(true);
   shiftTally = {
     shift,
     tips: shiftTips,
@@ -2286,7 +2287,7 @@ function updateDialogueTriggers(dt, input) {
   if (nearMissCooldown > 0) nearMissCooldown -= dt;
   const catchDist = (player.w + hunter.w) / 2.4;
   const hunterDist = Math.hypot(player.x - hunter.x, player.y - hunter.y);
-  if (hunterState === 'chase' && hunterDist < catchDist * 2.3 && nearMissCooldown <= 0) {
+  if (!cellar && hunterState === 'chase' && hunterDist < catchDist * 2.3 && nearMissCooldown <= 0) {
     nearMissCooldown = 14;
     Dialogue.trigger('nearMiss', null);
   }
@@ -2460,6 +2461,9 @@ function resetGame() {
   floatingTexts.length = 0;
   ghost = null;
   ghostSpawnTimer = GHOST_INTERVAL_MIN + Math.random() * (GHOST_INTERVAL_MAX - GHOST_INTERVAL_MIN);
+  cellar = null;
+  shelfStock = SHELF_STOCK_START;
+  shelfEmptyHintTimer = 0;
   waiter = null;
   waiterLevel = 0;
   waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
@@ -2710,6 +2714,7 @@ function nearestBarSegment() {
 
 function handleInteract() {
   if (caught) return;
+  if (cellar) { cellarInteract(); return; }
 
   // Deliver first: whichever tray order belongs to someone in reach. Each
   // item's customer is kept valid (or reassigned) by the per-frame check in
@@ -2721,6 +2726,15 @@ function handleInteract() {
     }
   }
 
+  // The hatch sits on open floor away from every counter, so it goes before
+  // the bar without shadowing a pickup.
+  if (nearCellarHatch()) {
+    if (shelfHasRoom()) { enterCellar(); return; }
+    addFloatingText(player.x, player.y - player.h - 4, 'SHELF FULL', PUB.creamDim);
+    registerWhiff();
+    return;
+  }
+
   const seg = nearestBarSegment();
   if (seg) {
     if (player.tray.length >= TRAY_MAX) {
@@ -2729,7 +2743,18 @@ function handleInteract() {
       return;
     }
     const pending = findOldestPendingOrder(BAR_STATIONS[seg.station].types);
+    // The shelf pours from stock; dry, it points the Doe at the hatch.
+    if (pending && seg.station === 'shelf' && shelfStock <= 0) {
+      addFloatingText(player.x, player.y - player.h - 4, 'EMPTY! CELLAR', PUB.tomato);
+      Sound.play('whiff');
+      if (shelfEmptyHintTimer <= 0) {
+        shelfEmptyHintTimer = 12;
+        Dialogue.trigger('shelfEmpty', null);
+      }
+      return;
+    }
     if (pending) {
+      if (seg.station === 'shelf') shelfStock--;
       pending.beingCarried = true;
       player.tray.push({ type: pending.orderType, customer: pending });
       // Refilling a tray that is still armed keeps its hit record: an item
@@ -2770,6 +2795,7 @@ window.addEventListener('keydown', Sound.unlock, { once: true, capture: true });
 function clearHeldInputs() {
   keys.clear();
   releaseStick();
+  interactTouchHeld = false;
 }
 
 window.addEventListener('keydown', (e) => {
@@ -3008,10 +3034,11 @@ if (touchEl.action) {
     touchEl.action.classList.add('active');
     if (caught) resetGame();
     else if (shiftTally) startNextShift();
-    else if (!paused) handleInteract();
+    else if (!paused) { handleInteract(); interactTouchHeld = true; }
     e.preventDefault();
   });
-  const endAction = () => touchEl.action.classList.remove('active');
+  // Held, the bell is also the cellar's heat gun.
+  const endAction = () => { touchEl.action.classList.remove('active'); interactTouchHeld = false; };
   touchEl.action.addEventListener('pointerup', endAction);
   touchEl.action.addEventListener('pointercancel', endAction);
   touchEl.action.addEventListener('pointerleave', endAction);
@@ -3117,6 +3144,7 @@ function hunterRouteTo(point) {
 // of him, then a clear line through the furniture. Standing at his elbow
 // counts regardless — he can hear a deer breathing.
 function hunterCanSeePlayer(range) {
+  if (cellar) return false;   // down the hatch: nothing to see or hear
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.hypot(dx, dy);
@@ -3295,7 +3323,7 @@ function updateHunter(dt) {
       // Keep or lose the trail.
       // Fleeing a Jameson he faces away from her by design, so the sight cone
       // would lose her mid-retreat; he knows exactly who he's running from.
-      if (jamesonActive() || hunterCanSeePlayer(hunterSightRange() * 1.5)) hunterLastSeenTimer = 0;
+      if ((jamesonActive() && !cellar) || hunterCanSeePlayer(hunterSightRange() * 1.5)) hunterLastSeenTimer = 0;
       else hunterLastSeenTimer += dt;
       if (hunterLastSeenTimer > hunterLoseTime()) {
         setHunterState('lost', HUNTER_LOST_TIME);
@@ -3414,14 +3442,21 @@ function update(dt) {
   if (pintKnockTimer > 0) pintKnockTimer -= dt;
 
   // Player movement (slides along furniture/walls via per-axis collision).
+  // Down in the cellar the input drives the stand-in Doe instead, and the
+  // real one stands still at the hatch.
   const input = getInputVector();
-  player.speed = (player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED) * spillSlowAt(player.x, player.y);
-  player.moving = input.x !== 0 || input.y !== 0;
-  if (input.x !== 0) player.flip = input.x < 0;
-  faceToward(player, input.x, input.y);
-  const playerMove = tryMove(player, input.x * player.speed * dt, input.y * player.speed * dt);
-  player.x = playerMove.x;
-  player.y = playerMove.y;
+  if (cellar) {
+    updateCellar(dt, input);
+  } else {
+    player.speed = (player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED) * spillSlowAt(player.x, player.y);
+    player.moving = input.x !== 0 || input.y !== 0;
+    if (input.x !== 0) player.flip = input.x < 0;
+    faceToward(player, input.x, input.y);
+    const playerMove = tryMove(player, input.x * player.speed * dt, input.y * player.speed * dt);
+    player.x = playerMove.x;
+    player.y = playerMove.y;
+  }
+  if (shelfEmptyHintTimer > 0) shelfEmptyHintTimer -= dt;
 
   const hunterLvl = Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1;
   hunter.speed = Math.min(60, 40 + hunterLvl * 2.5) * spillSlowAt(hunter.x, hunter.y);
@@ -3591,7 +3626,7 @@ function update(dt) {
   // through the timer buys no extra time to get there.
   if (wetPantsTimer > 0) wetPantsTimer -= dt;
   if (bladderUrgentTimer > 0) {
-    if (Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y) < BLADDER_REACH_RADIUS) {
+    if (!cellar && Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y) < BLADDER_REACH_RADIUS) {
       bladderUrgentTimer = 0;
       bladderLevel = 0;
       Sound.play('bathroomRelief');
@@ -3631,7 +3666,7 @@ function update(dt) {
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
   const hunterCanCatch = hunterState !== 'arriving' && hunterState !== 'drinking';
-  const touching = hunterCanCatch && !hunterOnSmokeBreak() && dist < (player.w + hunter.w) / 2.4;
+  const touching = hunterCanCatch && !cellar && !hunterOnSmokeBreak() && dist < (player.w + hunter.w) / 2.4;
 
   // On a Jameson the collision still happens, it just runs the other way:
   // the hunter is the one shoved clear, and the player walks through.
@@ -3681,6 +3716,360 @@ function update(dt) {
   // above. Not once the run is over: a final hit on the same frame as the
   // clock or target would otherwise open a tally board behind the caught one.
   if (!caught) updateShift(dt);
+}
+
+// ---- The cellar: berging bottles while the ghost has a go -------------------
+// The SHELF station (wine, cocktails) pours from a finite stock. Run it low
+// and the Doe goes down the hatch in the staff pocket to berg fresh bottles:
+// seat a dispenser on each one (a press), then heat it until the seal takes
+// (a hold). Down there the ghost is not scenery — it stalks, winds up and
+// lunges, and a hit knocks the dispenser off whatever bottle was being worked.
+// It never costs life: that stays the hunter's job.
+//
+// The pub keeps running upstairs — patience drains, the regulars talk — but
+// the hunter can't see or touch a Doe who isn't on the floor, so a chase
+// ends at the hatch. The cellar is its own little space with its own
+// coordinates, colliders and camera, and the Doe down there is a stand-in
+// entity (`cellar.doe`), so nothing upstairs that reads player.x/y ever sees
+// cellar coordinates. `player` itself waits at the hatch.
+const SHELF_STOCK_MAX = 8;
+const SHELF_STOCK_START = 5;
+const SHELF_STOCK_PER_BOTTLE = 2;
+const SHELF_LOW = 2;
+let shelfStock = SHELF_STOCK_START;
+let shelfEmptyHintTimer = 0;
+
+// A trapdoor on open floor in the staff pocket: no collider, walked over like
+// the rug it sits beside. Clear of all three counters' interact margins, so a
+// press here can never be read as a pickup (or the reverse).
+const CELLAR_HATCH = { x: 52, y: 142, w: 16, h: 10 };
+const CELLAR_HATCH_RANGE = 8;
+
+const CELLAR_W = 176;
+const CELLAR_H = 140;
+const CELLAR_WALL = 16;   // rear stone band
+const CELLAR_SIDE = 6;
+const CELLAR_STAIRS = { x: 74, y: 116, w: 28, h: 24 };
+const CELLAR_SPAWN = { x: 88, y: 124 };
+const CELLAR_BENCH = { x: 28, y: 16, w: 120, h: 14 };
+const CELLAR_COLLIDERS = [
+  CELLAR_BENCH,
+  { x: 6, y: 50, w: 22, h: 42 },     // barrels, left
+  { x: 150, y: 44, w: 20, h: 54 },   // wine rack, right
+  { x: 78, y: 68, w: 20, h: 14 },    // crate stack, middle
+  { x: 66, y: 116, w: 8, h: 24 },    // stair walls
+  { x: 102, y: 116, w: 8, h: 24 },
+];
+const CELLAR_BOTTLE_XS = [52, 88, 124];
+const CELLAR_BOTTLE_Y = CELLAR_BENCH.y + 4;             // bottle base on the bench
+const CELLAR_WORK_DY = 16;                              // reach below the bench edge
+const CELLAR_WORK_DX = 12;
+const CELLAR_HEAT_TIME = 1.5;
+const CELLAR_HEAT_COOL = 0.35;                          // heat lost per second off the gun
+const CELLAR_BERG_BONUS = 5;
+const CELLAR_EXIT_GRACE = 1.2;
+
+const CELLAR_GHOST_DELAY = 1.6;
+const CELLAR_GHOST_STRIKE_RANGE = 34;
+const CELLAR_GHOST_LUNGE_SPEED = 110;
+const CELLAR_GHOST_LUNGE_TIME = 0.34;
+const CELLAR_GHOST_RECOVER = 1.6;
+const CELLAR_GHOST_HIT_RADIUS = 9;
+const CELLAR_STUN_TIME = 0.5;
+const CELLAR_SHOVE = 16;
+
+function cellarLevelSteps() { return Math.min(getLevel(), EFFECTIVE_LEVEL_CAP) - 1; }
+function cellarGhostSpeed() { return 16 + cellarLevelSteps() * 1.6; }
+function cellarGhostWindup() { return Math.max(0.36, 0.62 - cellarLevelSteps() * 0.03); }
+
+let cellar = null;
+let interactTouchHeld = false;
+
+function inCellar() { return cellar !== null; }
+function shelfHasRoom() { return shelfStock <= SHELF_STOCK_MAX - SHELF_STOCK_PER_BOTTLE; }
+function nearCellarHatch() { return nearRect(player.x, player.y, CELLAR_HATCH, CELLAR_HATCH_RANGE); }
+function interactHeld() { return keys.has('e') || keys.has(' ') || interactTouchHeld; }
+
+function enterCellar() {
+  const doe = makeEntity('doe', CELLAR_SPAWN.x, CELLAR_SPAWN.y);
+  doe.facing = 'up';
+  doe.reaction = null;
+  cellar = {
+    doe,
+    bottles: CELLAR_BOTTLE_XS.map(x => ({ x, state: 'bare', heat: 0 })),
+    ghost: null,
+    ghostTimer: CELLAR_GHOST_DELAY,
+    stun: 0,
+    hits: 0,
+    sealed: 0,
+    heating: null,
+    hinted: false,
+    texts: [],
+    sparks: [],
+  };
+  player.moving = false;
+  Sound.play('cellarDown');
+}
+
+// `quiet` is the shift ending under the Doe: no cue, no remark, just back on
+// the floor for the tally board.
+function exitCellar(quiet) {
+  if (!cellar) return;
+  const trip = cellar;
+  cellar = null;
+  hitInvulnTimer = Math.max(hitInvulnTimer, CELLAR_EXIT_GRACE);
+  player.facing = 'down';
+  if (quiet) return;
+  Sound.play('cellarUp');
+  if (trip.sealed > 0) Dialogue.trigger(trip.hits > 0 ? 'cellarHaunted' : 'cellarBack', null);
+}
+
+function cellarText(x, y, text, color) {
+  cellar.texts.push({ x, y, text, color, ttl: 1.2 });
+}
+
+function cellarBottleInReach() {
+  const d = cellar.doe;
+  if (d.y > CELLAR_BENCH.y + CELLAR_BENCH.h + CELLAR_WORK_DY) return null;
+  let best = null;
+  let bestDx = CELLAR_WORK_DX;
+  for (const b of cellar.bottles) {
+    const dx = Math.abs(d.x - b.x);
+    if (dx < bestDx) { bestDx = dx; best = b; }
+  }
+  return best;
+}
+
+function cellarInteract() {
+  const c = cellar;
+  const d = c.doe;
+  if (c.stun > 0) return;
+  if (nearRect(d.x, d.y, CELLAR_STAIRS, 2)) { exitCellar(false); return; }
+  const b = cellarBottleInReach();
+  if (b && b.state === 'bare') {
+    b.state = 'capped';
+    b.heat = 0;
+    Sound.play('dispenser');
+    if (!c.hinted) {
+      c.hinted = true;
+      cellarText(b.x, CELLAR_BOTTLE_Y - 10, 'HOLD TO HEAT', PUB.cream);
+    }
+    return;
+  }
+  if (b && b.state === 'capped') return;   // heating is the hold, see updateCellar
+  if (b && b.state === 'sealed') cellarText(b.x, CELLAR_BOTTLE_Y - 10, 'SEALED', PUB.creamDim);
+  Sound.play('whiff');
+}
+
+function cellarTryMove(e, dx, dy) {
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / MOVE_SUBSTEP));
+  let x = e.x;
+  let y = e.y;
+  const hit = (px, py) => {
+    const box = getFootBox(e, px, py);
+    for (const r of CELLAR_COLLIDERS) if (rectsOverlap(box, r)) return true;
+    return false;
+  };
+  for (let i = 0; i < steps; i++) {
+    const nx = clamp(x + dx / steps, CELLAR_SIDE + 5, CELLAR_W - CELLAR_SIDE - 5);
+    if (!hit(nx, y)) x = nx;
+    const ny = clamp(y + dy / steps, CELLAR_WALL + 8, CELLAR_H - 1);
+    if (!hit(x, ny)) y = ny;
+  }
+  e.x = x;
+  e.y = y;
+}
+
+function sealBottle(b) {
+  const c = cellar;
+  b.state = 'sealed';
+  b.heat = 1;
+  c.sealed++;
+  const before = shelfStock;
+  shelfStock = Math.min(SHELF_STOCK_MAX, shelfStock + SHELF_STOCK_PER_BOTTLE);
+  Sound.play('deliver');
+  cellarText(b.x, CELLAR_BOTTLE_Y - 10, 'SEALED +' + (shelfStock - before), PUB.amber);
+  for (let i = 0; i < 10; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 12 + Math.random() * 24;
+    c.sparks.push({ x: b.x, y: CELLAR_BOTTLE_Y - 6, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 10,
+      ttl: 0.4, maxTtl: 0.4, color: Math.random() < 0.5 ? '#fff2c8' : PUB.amber, size: 1 });
+  }
+  if (c.bottles.every(bt => bt.state === 'sealed')) {
+    if (c.hits === 0) {
+      earnTips(CELLAR_BERG_BONUS);
+      cellarText(c.doe.x, c.doe.y - 24, 'CLEAN BERG +' + CELLAR_BERG_BONUS, PUB.amber);
+    }
+    cellarText(CELLAR_SPAWN.x, CELLAR_STAIRS.y - 4, 'ALL DONE - UP!', PUB.cream);
+  }
+}
+
+function hitCellarDoe() {
+  const c = cellar;
+  const d = c.doe;
+  const g = c.ghost;
+  c.hits++;
+  c.stun = CELLAR_STUN_TIME;
+  react(d, 'hit');
+  const away = Math.atan2(d.y - g.y, d.x - g.x);
+  cellarTryMove(d, Math.cos(away) * CELLAR_SHOVE, Math.sin(away) * CELLAR_SHOVE);
+  // The bottle being worked, or failing that the nearest capped one in arm's
+  // reach, loses its dispenser and all its heat.
+  let knocked = c.heating;
+  if (!knocked) {
+    let best = 26;
+    for (const b of c.bottles) {
+      if (b.state !== 'capped') continue;
+      const dist = Math.hypot(d.x - b.x, d.y - CELLAR_BOTTLE_Y);
+      if (dist < best) { best = dist; knocked = b; }
+    }
+  }
+  cellarText(d.x, d.y - 22, 'BOO!', PUB.coolPale);
+  if (knocked) {
+    knocked.state = 'bare';
+    knocked.heat = 0;
+    cellarText(knocked.x, CELLAR_BOTTLE_Y - 10, 'KNOCKED OFF', '#e84c3d');
+  }
+  c.heating = null;
+  Sound.play('ghostHit');
+}
+
+function spawnCellarGhost() {
+  const d = cellar.doe;
+  const fromRight = d.x < CELLAR_W / 2;
+  const g = makeEntity('ghost', fromRight ? CELLAR_W - 4 : 4, 40 + Math.random() * 60);
+  g.state = 'drift';
+  g.timer = 0;
+  g.phase = Math.random() * Math.PI * 2;
+  g.lunge = { x: 0, y: 0 };
+  g.aim = { x: 0, y: 0 };
+  g.moving = true;
+  cellar.ghost = g;
+}
+
+// Drift toward the Doe through walls and crates alike, then a readable tell:
+// it stops, swells and shakes while locked on where she stood, and lunges at
+// that spot. Moving during the wind-up is the dodge.
+function updateCellarGhost(dt) {
+  const c = cellar;
+  if (!c.ghost) {
+    c.ghostTimer -= dt;
+    if (c.ghostTimer <= 0) spawnCellarGhost();
+    return;
+  }
+  const g = c.ghost;
+  const d = c.doe;
+  g.phase += dt * 3;
+  const dx = d.x - g.x;
+  const dy = d.y - g.y;
+  const dist = Math.hypot(dx, dy) || 0.001;
+  if (g.state === 'drift') {
+    const speed = cellarGhostSpeed();
+    const wobble = Math.sin(g.phase) * 0.6;
+    g.x += (dx / dist + (-dy / dist) * wobble) * speed * dt;
+    g.y += (dy / dist + (dx / dist) * wobble) * speed * dt;
+    g.flip = dx < 0;
+    if (dist < CELLAR_GHOST_STRIKE_RANGE) {
+      g.state = 'windup';
+      g.timer = cellarGhostWindup();
+      g.aim.x = d.x;
+      g.aim.y = d.y;
+      Sound.play('ghostWindup');
+    }
+  } else if (g.state === 'windup') {
+    g.timer -= dt;
+    if (g.timer <= 0) {
+      const ax = g.aim.x - g.x;
+      const ay = g.aim.y - g.y;
+      const ad = Math.hypot(ax, ay) || 1;
+      g.lunge.x = ax / ad;
+      g.lunge.y = ay / ad;
+      g.state = 'lunge';
+      g.timer = CELLAR_GHOST_LUNGE_TIME;
+    }
+  } else if (g.state === 'lunge') {
+    g.timer -= dt;
+    g.x += g.lunge.x * CELLAR_GHOST_LUNGE_SPEED * dt;
+    g.y += g.lunge.y * CELLAR_GHOST_LUNGE_SPEED * dt;
+    g.flip = g.lunge.x < 0;
+    if (dist < CELLAR_GHOST_HIT_RADIUS && c.stun <= 0) {
+      hitCellarDoe();
+      g.state = 'recover';
+      g.timer = CELLAR_GHOST_RECOVER;
+    } else if (g.timer <= 0) {
+      g.state = 'recover';
+      g.timer = CELLAR_GHOST_RECOVER * 0.6;   // a miss: back sooner
+    }
+  } else {
+    // Recover: sulk away, faded, then come round again.
+    g.timer -= dt;
+    g.x -= (dx / dist) * cellarGhostSpeed() * 0.5 * dt;
+    g.y -= (dy / dist) * cellarGhostSpeed() * 0.5 * dt;
+    if (g.timer <= 0) g.state = 'drift';
+  }
+  g.x = clamp(g.x, 2, CELLAR_W - 2);
+  g.y = clamp(g.y, CELLAR_WALL, CELLAR_H - 4);
+}
+
+function updateCellar(dt, input) {
+  const c = cellar;
+  const d = c.doe;
+  if (c.stun > 0) c.stun -= dt;
+  const stunned = c.stun > 0;
+  const ix = stunned ? 0 : input.x;
+  const iy = stunned ? 0 : input.y;
+  d.speed = player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED;
+  d.moving = ix !== 0 || iy !== 0;
+  faceToward(d, ix, iy);
+  cellarTryMove(d, ix * d.speed * dt, iy * d.speed * dt);
+  tickLegs(d, dt);
+  if (d.reaction) {
+    d.reaction.t -= dt;
+    if (d.reaction.t <= 0) d.reaction = null;
+  }
+
+  // The heat gun: only while held, standing at a capped bottle. Stepping off
+  // lets the bottle cool rather than resetting it outright.
+  const b = stunned ? null : cellarBottleInReach();
+  c.heating = b && b.state === 'capped' && interactHeld() ? b : null;
+  for (const bt of c.bottles) {
+    if (bt.state !== 'capped') continue;
+    if (bt === c.heating) {
+      bt.heat += dt / CELLAR_HEAT_TIME;
+      if (bt.heat >= 1) { sealBottle(bt); c.heating = null; }
+    } else {
+      bt.heat = Math.max(0, bt.heat - dt * CELLAR_HEAT_COOL);
+    }
+  }
+  if (c.heating) {
+    if (!d.moving) d.facing = 'up';
+    Sound.play('heat');
+    // Flame licking from the gun at the Doe's hands to the dispenser's collar.
+    const fx = d.x + (c.heating.x - d.x) * 0.35;
+    const fy = d.y - 10;
+    const tx = c.heating.x - fx;
+    const ty = CELLAR_BOTTLE_Y - 5 - fy;
+    for (let i = 0; i < 2; i++) {
+      c.sparks.push({ x: fx, y: fy, vx: tx * 2.6 + (Math.random() - 0.5) * 10, vy: ty * 2.6 + (Math.random() - 0.5) * 6,
+        ttl: 0.3, maxTtl: 0.3, color: Math.random() < 0.35 ? '#ffe7a0' : Math.random() < 0.6 ? '#ff9a2a' : '#c8501a', size: 1 });
+    }
+  }
+
+  updateCellarGhost(dt);
+
+  for (let i = c.sparks.length - 1; i >= 0; i--) {
+    const s = c.sparks[i];
+    s.ttl -= dt;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    if (s.ttl <= 0) c.sparks.splice(i, 1);
+  }
+  for (let i = c.texts.length - 1; i >= 0; i--) {
+    const t = c.texts[i];
+    t.ttl -= dt;
+    t.y -= 10 * dt;
+    if (t.ttl <= 0) c.texts.splice(i, 1);
+  }
 }
 
 // ---- Render -----------------------------------------------------------------
@@ -4766,6 +5155,7 @@ function drawStationTag(bar, x, y, horizontal) {
   ctx.fillStyle = PUB.brass;
   ctx.fillRect(tx + 0.5, ty + 0.5, tw - 1, 0.5);
   fontDrawText(ctx, station.label, tx + 2, ty + 1, PUB.cream);
+  if (bar.station === 'shelf') drawShelfStockPips(tx + Math.round(tw / 2 - SHELF_STOCK_MAX * 1.5) + 0.5, ty + th + 2);
 }
 
 function drawCounterPlant(x, y) {
@@ -5185,6 +5575,7 @@ function jamesonPaletteFor(e) {
 // the same name the procedural sets key their frames by.
 function poseBase(e) {
   if (e === player && e.tray.length) return e.moving ? 'carryWalk' : 'carry';
+  if (cellar && e === cellar.doe && player.tray.length) return e.moving ? 'carryWalk' : 'carry';
   if (e === hunter) return hunterState === 'drinking' ? 'drink' : e.moving ? 'gunWalk' : 'gun';
   if (e.pose === 'spray' || e.pose === 'sprayB') return 'spray';
   const art = CharacterArt.families[rasterFamilyFor(e)];
@@ -5279,9 +5670,10 @@ function drawEntity(e, camX, camY) {
   // Tiny broken rings make the two gameplay roles instantly readable in a
   // crowded room without turning the pub into a neon arena. They sit under
   // the feet, preserve the authored silhouette, and survive the night grade.
-  if (e === player || e === hunter) {
-    ctx.globalAlpha = e === player ? 0.92 : 0.72;
-    ctx.fillStyle = e === player ? PUB.amber : PUB.tomato;
+  const isDoe = e === player || (cellar !== null && e === cellar.doe);
+  if (isDoe || e === hunter) {
+    ctx.globalAlpha = isDoe ? 0.92 : 0.72;
+    ctx.fillStyle = isDoe ? PUB.amber : PUB.tomato;
     ctx.fillRect(footX - 6, footY, 4, 1);
     ctx.fillRect(footX + 3, footY, 4, 1);
     ctx.fillRect(footX - 7, footY - 2, 1, 2);
@@ -5416,6 +5808,414 @@ function drawWaiter(w, camX, camY) {
     ctx.fillRect(Math.round(s.x - camX), Math.round(s.y - camY), s.size, s.size);
   }
   ctx.globalAlpha = 1;
+}
+
+// ---- Cellar rendering -------------------------------------------------------
+// Same recipe as the pub, darker: a baked room, the live props and people, a
+// multiply to near-black, then light painted back in — the Doe's lantern, the
+// pub's glow falling down the stairs, the heat gun, and the ghost's own cold
+// light, which is what lets you track it through the dark.
+function fillDisc(g, cx, cy, r, color) {
+  g.fillStyle = color;
+  for (let dy = -r; dy < r; dy += 0.5) {
+    const half = Math.sqrt(Math.max(0, r * r - (dy + 0.25) * (dy + 0.25)));
+    g.fillRect(cx - half, cy + dy, half * 2, 0.5);
+  }
+}
+
+// Painted once into its own offscreen canvas, in cellar coordinates. The
+// `ctx` parameter shadows the screen context on purpose, as drawGround does.
+function drawCellarRoom(ctx) {
+  // Flagstones: staggered slabs on a cold stone ramp, mortar showing through.
+  ctx.fillStyle = '#141211';
+  ctx.fillRect(0, 0, CELLAR_W, CELLAR_H);
+  const flags = ['#3b3631', '#433d36', '#35302b', '#4a433b'];
+  for (let y = CELLAR_WALL, row = 0; y < CELLAR_H; y += 9, row++) {
+    for (let x = -((row & 1) * 6); x < CELLAR_W; x += 12) {
+      ctx.fillStyle = flags[Math.floor(floorHash(x, y) * flags.length) % flags.length];
+      ctx.fillRect(x + 0.5, y + 0.5, 11, 8);
+      ctx.fillStyle = 'rgba(255,230,190,0.05)';
+      ctx.fillRect(x + 0.5, y + 0.5, 11, 0.5);
+    }
+  }
+  // Damp patches.
+  ctx.fillStyle = 'rgba(10,20,22,0.35)';
+  ctx.fillRect(30, 96, 22, 10);
+  ctx.fillRect(122, 104, 18, 8);
+
+  // Rear wall: rough brick courses under a low ceiling beam.
+  ctx.fillStyle = '#1d1715';
+  ctx.fillRect(0, 0, CELLAR_W, CELLAR_WALL);
+  for (let y = 1, row = 0; y < CELLAR_WALL - 2; y += 3, row++) {
+    for (let x = (row & 1) * 3; x < CELLAR_W; x += 6) {
+      ctx.fillStyle = ((x + row) % 4) ? '#4a2c22' : '#3d241c';
+      ctx.fillRect(x + 0.5, y + 0.5, 5, 2);
+    }
+  }
+  ctx.fillStyle = '#2a1a12';
+  ctx.fillRect(0, CELLAR_WALL - 2, CELLAR_W, 2);
+  // Side walls.
+  ctx.fillStyle = '#1d1715';
+  ctx.fillRect(0, CELLAR_WALL, CELLAR_SIDE, CELLAR_H - CELLAR_WALL);
+  ctx.fillRect(CELLAR_W - CELLAR_SIDE, CELLAR_WALL, CELLAR_SIDE, CELLAR_H - CELLAR_WALL);
+  ctx.fillStyle = '#3d241c';
+  ctx.fillRect(CELLAR_SIDE - 1, CELLAR_WALL, 1, CELLAR_H - CELLAR_WALL);
+  ctx.fillRect(CELLAR_W - CELLAR_SIDE, CELLAR_WALL, 1, CELLAR_H - CELLAR_WALL);
+
+  // The stairs up: treads lightening toward the top, where the pub is.
+  const s = CELLAR_STAIRS;
+  for (let i = 0; i < 6; i++) {
+    const ty = s.y + i * 4;
+    ctx.fillStyle = i < 2 ? '#6a4630' : i < 4 ? '#8a5c38' : '#a8703f';
+    ctx.fillRect(s.x, ty, s.w, 3);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(s.x, ty + 3, s.w, 1);
+  }
+  for (const wall of CELLAR_COLLIDERS.slice(4)) {
+    ctx.fillStyle = '#2a1d17';
+    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+    ctx.fillStyle = '#4a2c22';
+    ctx.fillRect(wall.x + 1, wall.y, wall.w - 2, 1);
+  }
+
+  // Workbench along the rear wall.
+  const b = CELLAR_BENCH;
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(b.x + 1, b.y + 2, b.w, b.h);
+  ctx.fillStyle = PUB.tableEdge;
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.fillStyle = PUB.tableTop;
+  ctx.fillRect(b.x + 1, b.y, b.w - 2, b.h - 3);
+  ctx.fillStyle = PUB.tableTopLit;
+  ctx.fillRect(b.x + 1, b.y, b.w - 2, 1);
+  ctx.fillStyle = 'rgba(12,6,4,0.3)';
+  for (let gy = b.y + 3; gy < b.y + b.h - 3; gy += 3) ctx.fillRect(b.x + 3, gy, b.w - 6, 0.5);
+  // A crate of spare dispensers at the bench's end, and a coil of hose.
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(b.x + 3, b.y + 2, 10, 7);
+  ctx.fillStyle = '#7a5a3a';
+  ctx.fillRect(b.x + 3.5, b.y + 2.5, 9, 6);
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = '#9aa0a3';
+    ctx.fillRect(b.x + 4.5 + i * 3, b.y + 4, 2, 2);
+  }
+  fillDisc(ctx, b.x + b.w - 8, b.y + 6, 4, '#2f3a33');
+  fillDisc(ctx, b.x + b.w - 8, b.y + 6, 2.5, '#6b3f27');
+
+  // Barrels from above: staves inside two iron hoops.
+  const barrels = [[17, 58], [17, 76], [11, 88]];
+  for (const [bx, by] of barrels) {
+    fillDisc(ctx, bx + 1, by + 2, 8, PUB.tableShadow);
+    fillDisc(ctx, bx, by, 8, '#2a2622');
+    fillDisc(ctx, bx, by, 7, '#6b4128');
+    fillDisc(ctx, bx, by, 5.5, '#3a3430');
+    fillDisc(ctx, bx, by, 5, '#80502e');
+    ctx.fillStyle = 'rgba(12,6,4,0.35)';
+    for (let i = -4; i <= 4; i += 2) ctx.fillRect(bx + i, by - 4, 0.5, 8);
+    fillDisc(ctx, bx - 1, by - 1, 1, PUB.ink);
+  }
+
+  // Wine rack: a grid of bottle ends in dark diamonds.
+  const rack = CELLAR_COLLIDERS[2];
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(rack.x, rack.y, rack.w, rack.h);
+  ctx.fillStyle = '#5a3822';
+  ctx.fillRect(rack.x + 0.5, rack.y + 0.5, rack.w - 1, rack.h - 1);
+  const ends = [PUB.bottleGreen, PUB.bottleAmber, PUB.burgundy, '#5a2e6a'];
+  for (let ry = rack.y + 2, i = 0; ry < rack.y + rack.h - 3; ry += 5) {
+    for (let rx = rack.x + 2; rx < rack.x + rack.w - 3; rx += 5, i++) {
+      ctx.fillStyle = PUB.ink;
+      ctx.fillRect(rx, ry, 4, 4);
+      if (floorHash(rx, ry) < 0.18) continue;   // a few gaps
+      ctx.fillStyle = ends[i % ends.length];
+      ctx.fillRect(rx + 0.5, ry + 0.5, 3, 3);
+      ctx.fillStyle = '#fff2c8';
+      ctx.fillRect(rx + 1, ry + 1, 0.5, 0.5);
+    }
+  }
+
+  // Crates in the middle of the floor: the one thing worth walking around.
+  const crate = CELLAR_COLLIDERS[3];
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(crate.x + 1, crate.y + 2, crate.w, crate.h);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(crate.x, crate.y, crate.w, crate.h);
+  ctx.fillStyle = '#8a6a44';
+  ctx.fillRect(crate.x + 0.5, crate.y + 0.5, crate.w - 1, crate.h - 1);
+  ctx.fillStyle = '#5e4630';
+  ctx.fillRect(crate.x + crate.w / 2 - 0.25, crate.y, 0.5, crate.h);
+  for (let y = crate.y + 3; y < crate.y + crate.h; y += 4) ctx.fillRect(crate.x + 1, y, crate.w - 2, 0.5);
+  fontDrawText(ctx, 'XXX', crate.x + 3, crate.y + 5, '#3a2a1c');
+}
+
+let cellarCanvas = null;
+function buildCellarCanvas() {
+  const cv = document.createElement('canvas');
+  cv.width = CELLAR_W * ART_SCALE;
+  cv.height = CELLAR_H * ART_SCALE;
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.setTransform(ART_SCALE, 0, 0, ART_SCALE, 0, 0);
+  drawCellarRoom(g);
+  return cv;
+}
+
+function getCellarCamera() {
+  const d = cellar.doe;
+  const camX = viewW >= CELLAR_W ? (CELLAR_W - viewW) / 2 : clamp(d.x - viewW / 2, 0, CELLAR_W - viewW);
+  const camY = viewH >= CELLAR_H ? (CELLAR_H - viewH) / 2 : clamp(d.y - viewH / 2, 0, CELLAR_H - viewH);
+  return { x: Math.round(camX), y: Math.round(camY) };
+}
+
+// A bottle on the bench from high overhead: shoulders and neck, then whatever
+// is on it — bare glass, a brass dispenser, the collar reddening as it heats,
+// and the sealed band once it takes.
+function drawCellarBottle(b, camX, camY) {
+  const x = Math.round(b.x - camX);
+  const y = Math.round(CELLAR_BOTTLE_Y - camY);
+  ctx.fillStyle = PUB.tableShadow;
+  ctx.fillRect(x - 3, y + 6, 8, 2);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 3.5, y - 0.5, 7, 8);
+  ctx.fillStyle = PUB.bottleGreen;
+  ctx.fillRect(x - 3, y, 6, 7);
+  ctx.fillStyle = '#4f8a64';
+  ctx.fillRect(x - 3, y, 1, 5);
+  ctx.fillStyle = '#fff2c8';
+  ctx.fillRect(x - 2, y + 1, 0.5, 1.5);
+  // Neck.
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 1.5, y - 4, 3, 4.5);
+  ctx.fillStyle = PUB.bottleGreen;
+  ctx.fillRect(x - 1, y - 3.5, 2, 4);
+  if (b.state === 'bare') return;
+  // The dispenser: a brass collar with a spout, sitting on the neck.
+  const hot = b.state === 'capped' ? b.heat : 0;
+  const collar = b.state === 'sealed' ? PUB.amber
+    : hot > 0.66 ? '#e8620c' : hot > 0.33 ? '#c8501a' : PUB.brass;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 2.5, y - 6.5, 5, 3.5);
+  ctx.fillStyle = collar;
+  ctx.fillRect(x - 2, y - 6, 4, 2.5);
+  ctx.fillStyle = '#f6d688';
+  ctx.fillRect(x - 2, y - 6, 4, 0.5);
+  ctx.fillStyle = '#9aa0a3';
+  ctx.fillRect(x + 2, y - 5.5, 2, 1);           // spout
+  if (b.state === 'sealed') {
+    ctx.fillStyle = PUB.burgundy;                // wax seal band
+    ctx.fillRect(x - 1.5, y - 3.5, 3, 1);
+    return;
+  }
+}
+
+// Heat gauge over a capped bottle, same parchment-and-brass as a ticket.
+// Drawn after the lighting, like the order bubbles, so it's never dimmed.
+function drawCellarGauge(b, camX, camY) {
+  if (b.state !== 'capped') return;
+  const gw = 12;
+  const gx = Math.round(b.x - camX) - gw / 2;
+  const gy = Math.round(CELLAR_BOTTLE_Y - camY) - 12;
+  drawParchmentPlate(gx - 1, gy - 1, gw + 2, 4, UI.brassDark);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(gx, gy, gw, 2);
+  ctx.fillStyle = b.heat > 0.66 ? '#ffd86a' : '#e8620c';
+  ctx.fillRect(gx, gy, Math.ceil(gw * clamp(b.heat, 0, 1)), 2);
+}
+
+function drawCellarGhost(g, camX, camY) {
+  const sprite = SPRITES.ghost.idle;
+  let alpha = 0.72;
+  let ox = 0;
+  if (g.state === 'recover') alpha = 0.3;
+  else if (g.state === 'windup' && !prefersReducedMotion) {
+    ox = Math.floor(gameTime * 30) % 2 ? 0.5 : -0.5;
+    alpha = 0.9;
+  } else if (g.state === 'lunge') alpha = 0.95;
+  const bob = prefersReducedMotion ? 0 : Math.round(Math.sin(g.phase) * 2) / 2;
+  ctx.globalAlpha = alpha;
+  drawSprite(sprite, SPRITES.ghost.palette,
+    g.x - camX - spriteAnchorX(sprite, g.flip) + ox,
+    g.y - camY - spriteVisualH(sprite) - 4 + bob, g.flip);
+  ctx.globalAlpha = 1;
+}
+
+// The lunge target, marked on the floor during the wind-up: the dodge cue.
+// Over the lighting so it reads anywhere in the dark.
+function drawCellarGhostCue(g, camX, camY) {
+  if (g.state === 'windup') {
+    const tx = Math.round(g.aim.x - camX);
+    const ty = Math.round(g.aim.y - camY);
+    // Four brackets closing in as the wind-up runs out.
+    const close = Math.round(clamp(g.timer / cellarGhostWindup(), 0, 1) * 4);
+    const r = 5 + close;
+    ctx.fillStyle = PUB.coolPale;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(tx - r, ty - 2, 3, 1);
+    ctx.fillRect(tx + r - 2, ty - 2, 3, 1);
+    ctx.fillRect(tx - r, ty + 2, 3, 1);
+    ctx.fillRect(tx + r - 2, ty + 2, 3, 1);
+    ctx.fillRect(tx - r, ty - 2, 1, 5);
+    ctx.fillRect(tx + r, ty - 2, 1, 5);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// What's waiting upstairs, so a trip down is a decision rather than a blind
+// spot: the number of open orders and the most urgent one's patience.
+function drawCellarUpstairsPlate() {
+  let waiting = 0;
+  let worst = 1;
+  const note = e => {
+    if (!e.orderType || e.served) return;
+    waiting++;
+    worst = Math.min(worst, clamp(e.sitTimer / e.patienceDuration, 0, 1));
+  };
+  for (const c of customers) if (c.state === 'sitting') note(c);
+  for (const r of regulars) note(r);
+  if (hunterState !== 'arriving' && !hunterOnSmokeBreak()) note(hunter);
+  const line = 'UPSTAIRS ' + waiting + ' WAITING';
+  const stock = 'SHELF ' + shelfStock + '/' + SHELF_STOCK_MAX;
+  const w = Math.max(fontTextWidth(line), fontTextWidth(stock)) + 10;
+  const h = FONT_H * 2 + 12;
+  const x = Math.round((viewW - w) / 2);
+  const y = viewH - h - 3;
+  drawWalnutPlate(x, y, w, h);
+  fontDrawTextShadow(ctx, line, x + 5, y + 3, waiting ? PUB.cream : PUB.creamDim, UI.walnutDark);
+  if (waiting) {
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(x + 5, y + 4 + FONT_H, w - 10, 2);
+    ctx.fillStyle = patienceBarColor(worst);
+    ctx.fillRect(x + 5, y + 4 + FONT_H, Math.ceil((w - 10) * worst), 2);
+  }
+  fontDrawTextShadow(ctx, stock, x + 5, y + 8 + FONT_H, PUB.amber, UI.walnutDark);
+}
+
+function renderCellar() {
+  if (!cellarCanvas) cellarCanvas = buildCellarCanvas();
+  const c = cellar;
+  const cam = getCellarCamera();
+  const camX = cam.x;
+  const camY = cam.y;
+
+  drawBackdrop();
+  ctx.drawImage(cellarCanvas, 0, 0, CELLAR_W * ART_SCALE, CELLAR_H * ART_SCALE, -camX, -camY, CELLAR_W, CELLAR_H);
+  // Bottles after the Doe: she works them from just below the bench, and
+  // from this high up her head would otherwise hide the one in her hands.
+  drawEntity(c.doe, camX, camY);
+  for (const b of c.bottles) drawCellarBottle(b, camX, camY);
+  if (c.ghost) drawCellarGhost(c.ghost, camX, camY);
+
+  // Dark first, then the light back in: the Doe's lantern, a bare bulb over
+  // the bench, and the pub's glow falling down the stairs.
+  drawDarkness('#5a5262');
+  const d = c.doe;
+  const flicker = prefersReducedMotion ? 1 : 0.92 + 0.08 * Math.sin(gameTime * 13) * Math.sin(gameTime * 5.3);
+  drawGlow(glowFor(56, WARM_RGB, 0.4), d.x, d.y - 6, flicker, camX, camY);
+  drawGlow(glowFor(48, WARM_RGB, 0.24), CELLAR_SPAWN.x, CELLAR_BENCH.y + 10, 1, camX, camY);
+  drawGlow(glowFor(34, HOT_RGB, 0.32), CELLAR_SPAWN.x, CELLAR_H, 1, camX, camY);
+  for (const b of c.bottles) {
+    if (b.state === 'capped' && b.heat > 0) drawGlow(glowFor(12, FIRE_RGB, 0.6), b.x, CELLAR_BOTTLE_Y - 4, b.heat, camX, camY);
+  }
+  if (c.ghost) {
+    const g = c.ghost;
+    const a = g.state === 'recover' ? 0.35 : g.state === 'windup' ? 1 : 0.7;
+    drawGlow(glowFor(20, COOL_RGB, 0.45), g.x, g.y - 8, a, camX, camY);
+  }
+  ensureVignette();
+  ctx.drawImage(vignetteCanvas, 0, 0);
+
+  // Emissive and informational bits, over the grade.
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of c.sparks) {
+    ctx.globalAlpha = clamp(s.ttl / s.maxTtl, 0, 1);
+    ctx.fillStyle = s.color;
+    ctx.fillRect(Math.round(s.x - camX), Math.round(s.y - camY), s.size, s.size);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  if (c.ghost) drawCellarGhostCue(c.ghost, camX, camY);
+  for (const b of c.bottles) drawCellarGauge(b, camX, camY);
+
+  // Prompts: the way out, once there's a reason to take it.
+  if (nearRect(d.x, d.y, CELLAR_STAIRS, 2)) {
+    const label = 'E: UP';
+    fontDrawTextShadow(ctx, label, Math.round(d.x - camX - fontTextWidth(label) / 2), Math.round(d.y - camY - 26), PUB.cream);
+  }
+  for (const t of c.texts) {
+    const tw = fontTextWidth(t.text);
+    ctx.globalAlpha = clamp(t.ttl, 0, 1);
+    fontDrawTextShadow(ctx, t.text, Math.round(t.x - camX - tw / 2), Math.round(t.y - camY), t.color);
+  }
+  ctx.globalAlpha = 1;
+  // The tray still rides along, tickets and all.
+  for (const item of player.tray) {
+    const f = item.customer;
+    drawOrderBubble(d.x, entityHeadTop(d), camX, camY, item.type, false, f ? clamp(f.sitTimer / f.patienceDuration, 0, 1) : null);
+  }
+  drawCellarUpstairsPlate();
+}
+
+// The hatch upstairs, drawn flat on the floor under everyone.
+function drawCellarHatch(camX, camY) {
+  const h = CELLAR_HATCH;
+  const x = Math.round(h.x - camX);
+  const y = Math.round(h.y - camY);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 0.5, y - 0.5, h.w + 1, h.h + 1);
+  ctx.fillStyle = '#4a2e1e';
+  ctx.fillRect(x, y, h.w, h.h);
+  ctx.fillStyle = '#5e3a24';
+  for (let i = 0; i < h.w; i += 4) ctx.fillRect(x + i + 0.5, y + 0.5, 3, h.h - 1);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(x + h.w / 2 - 2, y + h.h / 2 - 0.5, 4, 1);    // ring pull
+  ctx.fillStyle = UI.brassDark;
+  ctx.fillRect(x + 1, y + 1, 1, 1);
+  ctx.fillRect(x + h.w - 2, y + 1, 1, 1);
+  ctx.fillRect(x + 1, y + h.h - 2, 1, 1);
+  ctx.fillRect(x + h.w - 2, y + h.h - 2, 1, 1);
+  // Low shelf: an amber frame on the boards, pulsing once it's empty. On the
+  // floor layer so people walk over it rather than under it.
+  if (shelfStock <= SHELF_LOW) {
+    const pulse = shelfStock === 0 && !prefersReducedMotion ? 0.55 + 0.45 * Math.sin(gameTime * 6) : 0.8;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = PUB.amber;
+    ctx.fillRect(x - 2, y - 2, h.w + 4, 1);
+    ctx.fillRect(x - 2, y + h.h + 1, h.w + 4, 1);
+    ctx.fillRect(x - 2, y - 2, 1, h.h + 4);
+    ctx.fillRect(x + h.w + 1, y - 2, 1, h.h + 4);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// The CELLAR prompt, drawn over the lighting so it reads in the dark, when
+// the Doe is standing on the hatch with room on the shelf.
+function drawCellarHatchCue(camX, camY) {
+  const h = CELLAR_HATCH;
+  const x = Math.round(h.x - camX);
+  const y = Math.round(h.y - camY);
+  // A little warm light up through the boards while the shelf is low, so the
+  // hatch can be found from across a dark room.
+  if (shelfStock <= SHELF_LOW) {
+    const pulse = shelfStock === 0 && !prefersReducedMotion ? 0.6 + 0.4 * Math.sin(gameTime * 6) : 0.7;
+    drawGlow(glowFor(16, WARM_RGB, 0.5), h.x + h.w / 2, h.y + h.h / 2, pulse, camX, camY);
+  }
+  if (nearCellarHatch() && shelfHasRoom()) {
+    const label = 'CELLAR';
+    fontDrawTextShadow(ctx, label, Math.round(x + h.w / 2 - fontTextWidth(label) / 2), y + h.h + 3, PUB.cream);
+  }
+}
+
+// Shelf stock as pips under the SHELF plaque: brass while there's plenty,
+// tomato once it's low.
+function drawShelfStockPips(x, y) {
+  const low = shelfStock <= SHELF_LOW;
+  for (let i = 0; i < SHELF_STOCK_MAX; i++) {
+    const px = x + i * 3;
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(px - 0.5, y - 0.5, 3, 3);
+    ctx.fillStyle = i < shelfStock ? (low ? PUB.tomato : PUB.amber) : '#3a2a1c';
+    ctx.fillRect(px, y, 2, 2);
+  }
 }
 
 function sortByY(a, b) { return a.sortY - b.sortY; }
@@ -6172,6 +6972,17 @@ function drawShiftTallyOverlay() {
 }
 
 function render() {
+  // Downstairs is its own scene; the HUD and the end-of-run boards still sit
+  // over it, because the shift clock and the tips are still live.
+  if (cellar) {
+    placedOrderBubbles.length = 0;
+    renderCellar();
+    drawHud();
+    if (caught) drawCaughtOverlay();
+    else if (shiftTally) drawShiftTallyOverlay();
+    return;
+  }
+
   const cam = getCamera();
   const camX = cam.x;
   const camY = cam.y;
@@ -6179,6 +6990,7 @@ function render() {
   drawBackdrop();
   drawRoom(camX, camY);
   drawDarkness(DARK_FLOOR);
+  drawCellarHatch(camX, camY);
   drawSpills(camX, camY);
   drawWetPantsPuddles(camX, camY);
   drawCigarettePacks(camX, camY);
@@ -6223,6 +7035,7 @@ function render() {
   drawFloorLight(camX, camY);
   drawForeground(camX, camY);
   drawGrade();
+  drawCellarHatchCue(camX, camY);
 
   // Order bubbles float above the scene and above the grade, so a patience bar
   // is never dimmed by the lighting.
@@ -6295,6 +7108,12 @@ window.__debug = {
   computeCustomerPath, findBlockingObstacle, segmentHitsRect, pointBlocked, PATH_MARGIN, PATH_CELL,
   getGhost: () => ghost,
   spawnGhost,
+  getCellar: () => cellar,
+  enterCellar,
+  exitCellar,
+  getShelfStock: () => shelfStock,
+  setShelfStock: (n) => { shelfStock = clamp(n | 0, 0, SHELF_STOCK_MAX); return shelfStock; },
+  spawnCellarGhost: () => { if (cellar) spawnCellarGhost(); return cellar && cellar.ghost; },
   getWaiter: () => waiter,
   spawnWaiter,
   waiterSchedule: () => ({ visitedThrough: waiterLevel, level: getLevel(), dueIn: +waiterDelay.toFixed(1) }),

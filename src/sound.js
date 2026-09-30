@@ -196,6 +196,42 @@ const Sound = (function () {
         tone(659, 0.07, { type: 'triangle', volume: 0.09, delay: 0.05 });
         tone(880, 0.12, { type: 'triangle', volume: 0.09, delay: 0.1 });
         break;
+      // Down the hatch: a creak and a few hollow steps, falling.
+      case 'cellarDown':
+        tone(330, 0.12, { to: 200, type: 'triangle', volume: 0.07 });
+        tone(140, 0.05, { type: 'triangle', volume: 0.06, delay: 0.14 });
+        tone(120, 0.05, { type: 'triangle', volume: 0.06, delay: 0.24 });
+        tone(100, 0.06, { type: 'triangle', volume: 0.06, delay: 0.34 });
+        break;
+      // Back up: the same steps, climbing.
+      case 'cellarUp':
+        tone(100, 0.05, { type: 'triangle', volume: 0.06 });
+        tone(120, 0.05, { type: 'triangle', volume: 0.06, delay: 0.1 });
+        tone(140, 0.05, { type: 'triangle', volume: 0.06, delay: 0.2 });
+        tone(200, 0.12, { to: 330, type: 'triangle', volume: 0.07, delay: 0.3 });
+        break;
+      // A dispenser seated on a neck: a short metal click.
+      case 'dispenser':
+        tone(1200, 0.03, { type: 'square', volume: 0.05 });
+        tone(800, 0.04, { type: 'triangle', volume: 0.05, delay: 0.03 });
+        break;
+      // The heat gun, re-fired while held: a low breathy hiss.
+      case 'heat':
+        if (!allow(name, 0.16)) return;
+        tone(150 + Math.random() * 40, 0.14, { type: 'sawtooth', volume: 0.018 });
+        break;
+      // The ghost drawing in before it lunges: a thin rising wail.
+      case 'ghostWindup':
+        if (!allow(name, 0.3)) return;
+        tone(440, 0.4, { to: 880, type: 'sine', volume: 0.05 });
+        tone(466, 0.4, { to: 932, type: 'sine', volume: 0.03 });
+        break;
+      // Caught by it: a hollow whoosh and the dispenser hitting stone.
+      case 'ghostHit':
+        tone(700, 0.18, { to: 160, type: 'sine', volume: 0.09 });
+        tone(1500, 0.04, { type: 'square', volume: 0.05, delay: 0.14 });
+        tone(1100, 0.05, { type: 'triangle', volume: 0.04, delay: 0.2 });
+        break;
       case 'caught':
         tone(155, 0.42, { to: 55, type: 'sawtooth', volume: 0.13 });
         tone(78, 0.3, { to: 42, type: 'square', volume: 0.1, delay: 0.13 });

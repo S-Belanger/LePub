@@ -220,6 +220,20 @@ const DIALOGUE_LINES = [
   { who: 'sam', category: 'wetPants', text: "That's a whole new stain on his night." },
   { who: 'gerald', category: 'wetPants', text: "And there it is. Slower than the hunter, this time." },
   { who: 'gerald', category: 'wetPants', rare: true, text: "In front of everyone, too. Beautiful.", weight: 0.7 },
+
+  // ----------------------------------------------------------------- CELLAR
+  // The shelf running dry, and what the booth makes of the trip downstairs.
+  // cellarBack is a clean berg; cellarHaunted is one where the ghost got him.
+  { who: 'nazim', category: 'shelfEmpty', text: "No wine? What is this, a church?" },
+  { who: 'sam', category: 'shelfEmpty', text: "Shelf's dry. Cellar, mate." },
+  { who: 'gerald', category: 'shelfEmpty', text: "The bottles live downstairs. Go visit them." },
+  { who: 'nazim', category: 'cellarBack', text: "He's back! With bottles!" },
+  { who: 'sam', category: 'cellarBack', text: "Clean berg. Tidy work." },
+  { who: 'gerald', category: 'cellarBack', text: "Took his time. The wine's worth it." },
+  { who: 'nazim', category: 'cellarHaunted', text: "Was that screaming? From the floor?" },
+  { who: 'sam', category: 'cellarHaunted', text: "He's pale. Paler. Something's down there." },
+  { who: 'gerald', category: 'cellarHaunted', text: "Met the landlord's ghost, did he?" },
+  { who: 'nazim', category: 'cellarHaunted', stage: ['drunk', 'gone'], text: "The see-through fella lives down there. I KNEW it." },
 ];
 
 // ---- Multi-character exchanges ---------------------------------------------
