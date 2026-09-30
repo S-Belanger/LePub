@@ -6744,8 +6744,50 @@ function getCamera() {
 // Compact, high contrast, and nothing the player doesn't need mid-chase.
 // Nazim's state deliberately isn't here — it's readable from how he looks and
 // what he says, which is the point of him.
+// The sign is opaque and sits in the top-left corner, so anyone standing behind
+// it would vanish. While a character's body overlaps it, it eases to see-through
+// and back; reduced motion pins the faded state instead of animating.
+const HUD_FADE_ALPHA = 0.35;
+const HUD_FADE_RATE = 6;
+const HUD_FADE_HALF_W = 8;
+let hudAlpha = 1;
+let hudFadeStamp = 0;
+
+function hudCoversSomeone(hud) {
+  if (cellar) return false;
+  const cam = getCamera();
+  const check = (e) => {
+    if (!e) return false;
+    const top = entityHeadTop(e) - cam.y;
+    const x = e.x - cam.x - HUD_FADE_HALF_W;
+    return x < hud.x + hud.w && x + HUD_FADE_HALF_W * 2 > hud.x &&
+      top < hud.y + hud.h && e.y - cam.y > hud.y;
+  };
+  if (check(player)) return true;
+  if (hunterState !== 'arriving' && !hunterOnSmokeBreak() && check(hunter)) return true;
+  for (const c of customers) if (check(c)) return true;
+  for (const r of regulars) if (check(r)) return true;
+  return check(waiter) || check(busboy) || check(alex);
+}
+
+function updateHudFade(hud) {
+  const now = performance.now();
+  const dt = Math.min((now - hudFadeStamp) / 1000, 0.1);
+  hudFadeStamp = now;
+  const target = hudCoversSomeone(hud) ? HUD_FADE_ALPHA : 1;
+  if (prefersReducedMotion) { hudAlpha = target; return; }
+  hudAlpha += (target - hudAlpha) * Math.min(1, dt * HUD_FADE_RATE);
+}
+
 function drawHud() {
   const hud = measureHud();
+  updateHudFade(hud);
+  ctx.globalAlpha = hudAlpha;
+  drawHudBody(hud);
+  ctx.globalAlpha = 1;
+}
+
+function drawHudBody(hud) {
   const labels = hudLabels();
   const boardY = hud.y + HUD_CHAIN_H;
   const boardH = hud.h - HUD_CHAIN_H;
