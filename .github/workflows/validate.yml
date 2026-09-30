@@ -14,3 +14,4 @@ jobs:
       - run: node tests/assets.js
       - run: node tests/smoke.js
       - run: node tests/alex.js
+      - run: node tests/cellar.js
