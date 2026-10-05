@@ -196,6 +196,13 @@ const Sound = (function () {
         tone(659, 0.07, { type: 'triangle', volume: 0.09, delay: 0.05 });
         tone(880, 0.12, { type: 'triangle', volume: 0.09, delay: 0.1 });
         break;
+      // Nick, again: a low flutter that sags, then a short squeaky tail.
+      case 'fart':
+        if (!allow(name, 0.3)) return;
+        tone(130, 0.2, { to: 70, type: 'sawtooth', volume: 0.08 });
+        tone(95, 0.12, { to: 60, type: 'square', volume: 0.045, delay: 0.04 });
+        tone(210, 0.05, { to: 150, type: 'sawtooth', volume: 0.05, delay: 0.22 });
+        break;
       // Down the hatch: a creak and a few hollow steps, falling.
       case 'cellarDown':
         tone(330, 0.12, { to: 200, type: 'triangle', volume: 0.07 });

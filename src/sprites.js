@@ -1381,6 +1381,17 @@ function ohFigure(spec, dir, f, opts) {
   // Feet: two ovals; stepping frames offset them.
   const footY = 40 + bob;
   const stepA = f === 1 ? -2 : f === 2 ? 2 : 0;
+  // Trousers in a colour of their own (the uniform's white pants): two short
+  // legs under the feet, so the body ellipse above doesn't swallow them.
+  const paintFeet = () => {
+    if (side) {
+      ohEllipse(g, cx + 3 + stepA, footY, 4, 2.2, B.feet);
+      ohEllipse(g, cx - 3 - stepA, footY + 1, 4, 2.2, B.feet);
+    } else {
+      ohEllipse(g, cx - 5, footY + stepA * 0.5, 3.2, 2.4, B.feet);
+      ohEllipse(g, cx + 5, footY - stepA * 0.5, 3.2, 2.4, B.feet);
+    }
+  };
   if (side) {
     ohEllipse(g, cx + 3 + stepA, footY, 4, 2.2, B.feet);
     ohEllipse(g, cx - 3 - stepA, footY + 1, 4, 2.2, B.feet);
@@ -1414,6 +1425,17 @@ function ohFigure(spec, dir, f, opts) {
       if (g[y][x] === B.coat && ((x >> 1) + (y >> 1)) % 2 === 0) g[y][x] = B.pattern;
     }
   }
+  // Trousers over the jersey hem, in their own colour, then the feet again on top.
+  if (B.legs) {
+    if (side) {
+      ohEllipse(g, cx + 3 + stepA, footY - 3, 4, 4.5, B.legs);
+      ohEllipse(g, cx - 3 - stepA, footY - 2, 4, 4.5, B.legs);
+    } else {
+      ohEllipse(g, cx - 5, footY - 3 + stepA * 0.5, 4.5, 4.5, B.legs);
+      ohEllipse(g, cx + 5, footY - 3 - stepA * 0.5, 4.5, 4.5, B.legs);
+    }
+    paintFeet();
+  }
   // Head dome. A lean/slump pushes the head toward what the figure faces.
   const lean = (opts && opts.lean) || 0;
   const headY = 20 + bob + (dir === 'down' ? lean * 3 : dir === 'up' ? -lean * 3 : lean);
@@ -1433,8 +1455,16 @@ function ohFigure(spec, dir, f, opts) {
     // A ball cap from above: crown with radial seams, a brim on the facing
     // side, and ear flaps hanging either side.
     const c = H.color;
-    if (dir === 'down') { ohRect(g, hx - 10, headY + 8, 20, 4, c); ohRect(g, hx - 9, headY + 12, 18, 1, H.dark); }
-    if (side) { ohRect(g, hx + 6, headY + 3, 8, 3, c); ohRect(g, hx + 7, headY + 6, 7, 1, H.dark); }
+    // `backwards` turns the cap round: the brim sits behind the head, so from
+    // above it shows past the crown when he faces away, not toward us.
+    if (H.backwards) {
+      if (dir === 'down') { ohRect(g, hx - 7, headY - ry - 3, 14, 4, c); ohRect(g, hx - 6, headY - ry + 1, 12, 1, H.dark); }
+      if (dir === 'up') { ohRect(g, hx - 10, headY + 8, 20, 4, c); ohRect(g, hx - 9, headY + 12, 18, 1, H.dark); }
+      if (side) { ohRect(g, hx - 14, headY + 3, 8, 3, c); ohRect(g, hx - 14, headY + 6, 7, 1, H.dark); }
+    } else {
+      if (dir === 'down') { ohRect(g, hx - 10, headY + 8, 20, 4, c); ohRect(g, hx - 9, headY + 12, 18, 1, H.dark); }
+      if (side) { ohRect(g, hx + 6, headY + 3, 8, 3, c); ohRect(g, hx + 7, headY + 6, 7, 1, H.dark); }
+    }
     for (let y = headY - ry + 1; y < headY + 6; y++) ohPut(g, hx, y, H.dark);
     for (let x = hx - rx + 1; x < hx + rx; x++) ohPut(g, x, headY - 1, H.dark);
     if (H.flaps) {
@@ -1611,6 +1641,28 @@ const OH_WAITER = ohSheetSet({
   face: { skin: 'k', glasses: true },
 }, { h: ['H', 'h'], t: ['t', 's'], a: ['m', 'a'] }, Object.assign({}, WAITER_PALETTE, { i: '#16110c', x: '#2a1a10', G: '#cfe6ee' }), ['spray']);
 
+// Nick: a ginger-bearded man in a baseball uniform — red jersey, white pants,
+// red cap worn backwards (see the Nick block in game.js; he farts a lot).
+const NICK_PALETTE = {
+  '.': null,
+  i: '#181515',
+  // Colours are the pub's own anchors (see docs/VISUAL-SYSTEM.md "Clothes"):
+  // burgundy upholstery for the jersey, the slate chair-blue for the cap and
+  // parchment tones for the pants, so he sits in the room instead of on it.
+  r: '#8d342f', R: '#a14439', Q: '#652b2b',   // burgundy jersey
+  c: '#263d43', C: '#42636a', D: '#17272c',   // slate cap
+  w: '#e6d8b4', W: '#f1d9a8', V: '#bfa579',   // parchment pants
+  k: '#f0c090', J: '#f8d9b0', K: '#c9855e',   // skin
+  e: '#a8561f', E: '#c8742c', F: '#7e3f14',   // ginger beard
+  s: '#1a1512', S: '#3a2c22',                  // cleats
+  x: '#2a1a10',
+};
+const OH_NICK = ohSheetSet({
+  head: { kind: 'cap', color: 'c', dark: 'D', backwards: true },
+  body: { coat: 'r', hand: 'k', feet: 's', legs: 'w' },
+  face: { skin: 'k', beard: 'e', moustache: 'e' },
+}, { r: ['R', 'Q'], c: ['C', 'c'], w: ['W', 'V'], k: ['J', 'K'], e: ['E', 'F'], s: ['S', 's'] }, NICK_PALETTE, []);
+
 // Walk-ins come in three head shapes over the six palette looks: hair, a
 // flat cap in the trouser colour, a round cap in the shirt's dark tone.
 const OH_CUSTOMER_VARIANTS = [
@@ -1646,6 +1698,7 @@ const SPRITES = {
   customer: OH_CUSTOMER,
   ghost: { idle: OH_GHOST, walk: OH_GHOST, palette: GHOST_PALETTE },
   waiter: OH_WAITER,
+  nick: OH_NICK,
   nazim: OH_NAZIM,
   sam: OH_SAM,
   gerald: OH_GERALD,

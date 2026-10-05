@@ -116,6 +116,7 @@ const ENTITY_HITBOXES = {
   waiter: { w: 14, h: 17 },
   busboy: { w: 14, h: 17 },
   alex: { w: 14, h: 17 },
+  nick: { w: 14, h: 17 },
   nazim: { w: 14, h: 15 },
   sam: { w: 14, h: 15 },
   gerald: { w: 14, h: 15 },
@@ -467,6 +468,7 @@ const CUSTOMER_FOOTPRINT = footprintFor('customer');
 const HUNTER_FOOTPRINT = footprintFor('hunter', 4);
 const BUSBOY_FOOTPRINT = footprintFor('busboy');
 const ALEX_FOOTPRINT = footprintFor('alex');
+const NICK_FOOTPRINT = footprintFor('nick');
 
 // Exact line-segment/AABB test. Sampling a fixed number of points can skip a
 // thin chair collider on a long diagonal, which made the smoothing pass turn
@@ -695,7 +697,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: hitbox.w,
     h: hitbox.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : 54,
+    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : kind === 'nick' ? 42 : 54,
     flip: false,
     facing: 'down',   // down | up | right | left — visual only, from movement
     legTimer: 0,
@@ -1260,12 +1262,14 @@ function updateGhost(dt) {
 // walks a routed path and respects furniture like everybody else. `waiter` is
 // null whenever nobody is on shift, which is most of the time.
 let waiter = null;
-// He owes each level exactly one visit, taken at a random moment inside it
-// rather than the instant the level ticks over — a shift, not a cutscene.
-// `waiterLevel` is the highest level he has already shown up for, so losing
-// points and re-crossing a threshold doesn't send him round again.
+// First visit lands at a random moment shortly into the run, then he comes
+// back every WAITER_REPEAT_MIN–MAX seconds. `waiterLevel` is only recorded for
+// the debug helper now.
 const WAITER_DELAY_MIN = 15;
 const WAITER_DELAY_MAX = 55;
+// After the first visit he returns on a timer, not once per level.
+const WAITER_REPEAT_MIN = 60;
+const WAITER_REPEAT_MAX = 100;
 let waiterLevel = 0;
 let waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
 const WAITER_SPRAY_TIME = 7;        // seconds spent working the counter
@@ -1420,12 +1424,12 @@ function waiterSparkBurst() {
 }
 
 function updateWaiter(dt) {
-  if (!waiter && getLevel() > waiterLevel) {
+  if (!waiter) {
     waiterDelay -= dt;
     if (waiterDelay <= 0) {
       spawnWaiter();
       waiterLevel = getLevel();
-      waiterDelay = WAITER_DELAY_MIN + Math.random() * (WAITER_DELAY_MAX - WAITER_DELAY_MIN);
+      waiterDelay = WAITER_REPEAT_MIN + Math.random() * (WAITER_REPEAT_MAX - WAITER_REPEAT_MIN);
     }
   }
   if (!waiter) return;
@@ -1649,10 +1653,10 @@ function updateBusboy(dt) {
 // not damage. Fair scheduling and a preparation cue
 // keep it from ambushing an occupied space. `alex` is null between visits.
 let alex = null;
-const ALEX_INTERVAL_MIN = 120; // Cooldown starts after he leaves, not on entry.
-const ALEX_INTERVAL_MAX = 180;
-const ALEX_FIRST_MIN = 60;
-const ALEX_FIRST_MAX = 90;
+const ALEX_INTERVAL_MIN = 25; // Cooldown starts after he leaves, not on entry.
+const ALEX_INTERVAL_MAX = 45;
+const ALEX_FIRST_MIN = 15;
+const ALEX_FIRST_MAX = 25;
 let alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
 let alexLastVisitShift = 0;
 const ALEX_SPLIT_TIME = 5;
@@ -1686,7 +1690,7 @@ function alexArea(x, y) {
 
 function alexPeople() {
   return [player, ...(hunterState !== 'arriving' && hunterSmokeState !== 'outside' ? [hunter] : []),
-    ...customers, ...regulars, waiter, busboy].filter(Boolean);
+    ...customers, ...regulars, waiter, busboy, nick].filter(Boolean);
 }
 
 function alexSpotClear(x, y) {
@@ -1701,8 +1705,8 @@ function alexSpotClear(x, y) {
 }
 
 function canScheduleAlex() {
-  return !alex && !paused && !caught && !shiftTally && gameTime >= 45 && shiftClock >= 30 &&
-    shiftStats.deliveries >= 3 && (!shiftIsTimed() || alexLastVisitShift !== shift) &&
+  return !alex && !paused && !caught && !shiftTally && gameTime >= 12 && shiftClock >= 8 &&
+    shiftStats.deliveries >= 1 &&
     shiftTimeLeft() > 40 && !round && bladderUrgentTimer <= 0 && hunterState !== 'chase' &&
     regenDelayTimer <= 0 && !alexPeople().some(e => Math.hypot(e.x - DOOR.x, e.y - DOOR.y) < 22);
 }
@@ -1844,6 +1848,214 @@ function updateAlex(dt) {
   } else if (alex.state === 'leaving') {
     alex.travelTimer += dt;
     if (alexFollowPath(dt) || alex.travelTimer > ALEX_STUCK_TIMEOUT) dismissAlex();
+  }
+}
+
+// ---- Nick: the baseball-uniform waiter who farts a lot. Every minute or so he
+// ambles in through the door, strolls to a few spots on the floor, stops at
+// each one to let one go, and wanders back out. Pure scenery like the busboy:
+// no order, no seat, no collider, no effect on score or the chase — just green
+// clouds that hang about for a few seconds and the odd apology over his head.
+// `nick` is null between visits; `fartClouds` outlives him on purpose, so what
+// he leaves behind keeps drifting after he has gone.
+let nick = null;
+const fartClouds = [];
+const NICK_FIRST_MIN = 20;
+const NICK_FIRST_MAX = 40;
+const NICK_REPEAT_MIN = 45;
+const NICK_REPEAT_MAX = 85;
+let nickDelay = NICK_FIRST_MIN + Math.random() * (NICK_FIRST_MAX - NICK_FIRST_MIN);
+const NICK_STOPS_MIN = 3;
+const NICK_STOPS_MAX = 4;
+const NICK_LINGER_TIME = 1.6;       // standing about at each stop
+const NICK_FART_MIN = 1.4;          // gap between farts, walking or standing
+const NICK_FART_MAX = 3.4;
+const NICK_LINE_CHANCE = 0.4;
+const NICK_LINE_TTL = 2;
+const NICK_LINES = ['Pardon !', 'Pas moi !', 'Oups.', 'C\'etait le chien.'];
+const NICK_STUCK_TIMEOUT = 14;      // per leg; a bad draw ends the visit, not him
+const FART_PUFFS = 5;
+const FART_CLOUD_TTL_MIN = 3.2;
+const FART_CLOUD_TTL_MAX = 4.6;
+// Muted olive, not neon: it sits in the same warm dark as the green enamel
+// lamp shades and bottle glass instead of glowing against them.
+const FART_COLORS = ['#9aa85a', '#7d8f4a', '#5f7240'];
+
+function nickRoute(from, to) {
+  const route = computeCustomerPath(from, to, null, NICK_FOOTPRINT);
+  let cursor = from;
+  for (const next of route) {
+    if (findBlockingObstacle(cursor, next, null, NICK_FOOTPRINT)) return null;
+    cursor = next;
+  }
+  return route.length ? route : null;
+}
+
+// A random open spot he can both stand on and actually walk to from where he
+// is. The staff pocket is open floor, not a collider, so it is excluded by
+// hand, same as for Alex.
+function pickNickStop(from) {
+  for (let i = 0; i < 30; i++) {
+    const x = 18 + Math.random() * (WORLD_W - 36);
+    const y = 24 + Math.random() * (WORLD_H - 64);
+    const box = { x: x - 7, y: y - 17, w: 14, h: 17 };
+    if (rectsOverlap(box, BAR_STAFF_AREA) || pointBlocked(x, y, null, NICK_FOOTPRINT)) continue;
+    const path = nickRoute(from, { x, y });
+    if (path) return { x, y, path };
+  }
+  return null;
+}
+
+function spawnNick() {
+  if (nick) return null;
+  const first = pickNickStop(DOOR);
+  if (!first) return null;
+  nick = makeEntity('nick', DOOR.x, DOOR.y);
+  nick.state = 'entering';
+  nick.stopsLeft = NICK_STOPS_MIN + Math.floor(Math.random() * (NICK_STOPS_MAX - NICK_STOPS_MIN + 1));
+  nick.path = first.path;
+  nick.pathIndex = 0;
+  nick.travelTimer = 0;
+  nick.lingerTimer = 0;
+  nick.fartTimer = NICK_FART_MIN + Math.random() * (NICK_FART_MAX - NICK_FART_MIN);
+  nick.line = null;
+  nick.lineTtl = 0;
+  nick.lineFrame = PUB.burgundy;
+  return nick;
+}
+
+function dismissNick() {
+  nick = null;
+  nickDelay = NICK_REPEAT_MIN + Math.random() * (NICK_REPEAT_MAX - NICK_REPEAT_MIN);
+}
+
+// Same routed walk as the others', against `nick`.
+function nickFollowPath(dt) {
+  const target = nick.path[nick.pathIndex];
+  const dx = target.x - nick.x;
+  const dy = target.y - nick.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1.5) {
+    nick.x = target.x;
+    nick.y = target.y;
+    if (nick.pathIndex < nick.path.length - 1) { nick.pathIndex++; return false; }
+    nick.moving = false;
+    return true;
+  }
+  const step = Math.min(dist, nick.speed * dt);
+  const nx = clamp(nick.x + (dx / dist) * step, nick.w / 2, WORLD_W - nick.w / 2);
+  if (!collidesAt(nick, nx, nick.y)) nick.x = nx;
+  const ny = clamp(nick.y + (dy / dist) * step, nick.h / 2, WORLD_H - nick.h / 2);
+  if (!collidesAt(nick, nick.x, ny)) nick.y = ny;
+  nick.flip = dx < 0;
+  faceToward(nick, dx, dy);
+  nick.moving = true;
+  return false;
+}
+
+// The cloud forms behind him — opposite to the way he faces — at hip height.
+function nickFart() {
+  const back = { down: [0, -1], up: [0, 1], right: [-1, 0], left: [1, 0] }[nick.facing] || [0, -1];
+  const ox = nick.x + back[0] * 7;
+  const oy = nick.y - 4 + back[1] * 5;
+  for (let i = 0; i < FART_PUFFS; i++) {
+    fartClouds.push({
+      x: ox + (Math.random() - 0.5) * 6,
+      y: oy + (Math.random() - 0.5) * 4,
+      vx: back[0] * (3 + Math.random() * 5) + (Math.random() - 0.5) * 4,
+      vy: back[1] * (3 + Math.random() * 5) - 2 - Math.random() * 3,
+      age: 0,
+      ttl: FART_CLOUD_TTL_MIN + Math.random() * (FART_CLOUD_TTL_MAX - FART_CLOUD_TTL_MIN),
+      r: 2 + Math.random() * 2,
+      color: FART_COLORS[Math.floor(Math.random() * FART_COLORS.length)],
+    });
+  }
+  Sound.play('fart');
+  nick.sorryTimer = 0.8;
+  if (!nick.line && Math.random() < NICK_LINE_CHANCE) {
+    nick.line = NICK_LINES[Math.floor(Math.random() * NICK_LINES.length)];
+    nick.lineTtl = NICK_LINE_TTL;
+  }
+}
+
+function nickLeave() {
+  nick.state = 'leaving';
+  nick.travelTimer = 0;
+  nick.path = nickRoute(nick, reachablePoint(nick, DOOR));
+  nick.pathIndex = 0;
+  if (!nick.path) dismissNick();
+}
+
+function updateFartClouds(dt) {
+  for (let i = fartClouds.length - 1; i >= 0; i--) {
+    const c = fartClouds[i];
+    c.age += dt;
+    if (c.age >= c.ttl) { fartClouds.splice(i, 1); continue; }
+    c.x += c.vx * dt;
+    c.y += c.vy * dt;
+    // Drag: the burst spreads out quickly, then just hangs there.
+    c.vx *= Math.max(0, 1 - 1.6 * dt);
+    c.vy *= Math.max(0, 1 - 1.6 * dt);
+  }
+}
+
+function updateNick(dt) {
+  updateFartClouds(dt);
+  if (paused || caught || shiftTally) return;
+  if (!nick) {
+    nickDelay -= dt;
+    if (nickDelay <= 0) {
+      if (gameTime >= 15 && !isLastCall() && !cellar) spawnNick();
+      if (!nick) nickDelay = 10; // floor too busy or no route: try again soon
+    }
+    return;
+  }
+
+  if (nick.line) {
+    nick.lineTtl -= dt;
+    if (nick.lineTtl <= 0) nick.line = null;
+  }
+  // Last call clears the floor: he heads for the door like everyone else.
+  if (nick.state !== 'leaving' && isLastCall()) { nickLeave(); if (!nick) return; }
+
+  // The special sheet row is an apologetic "oops" gesture, held briefly after
+  // each one while he is standing still. Until his illustrated atlas exists the
+  // procedural set has no 'sorry' frame and falls back to idle.
+  nick.sorryTimer = Math.max(0, (nick.sorryTimer || 0) - dt);
+  nick.pose = !nick.moving && nick.sorryTimer > 0 ? 'sorry' : null;
+
+  nick.fartTimer -= dt;
+  if (nick.fartTimer <= 0 && nick.state !== 'leaving') {
+    nickFart();
+    nick.fartTimer = NICK_FART_MIN + Math.random() * (NICK_FART_MAX - NICK_FART_MIN);
+  }
+
+  if (nick.state === 'entering') {
+    nick.travelTimer += dt;
+    if (nickFollowPath(dt)) {
+      nick.state = 'lingering';
+      nick.lingerTimer = NICK_LINGER_TIME;
+    } else if (nick.travelTimer > NICK_STUCK_TIMEOUT) {
+      dismissNick();
+    }
+  } else if (nick.state === 'lingering') {
+    nick.moving = false;
+    nick.lingerTimer -= dt;
+    if (nick.lingerTimer <= 0) {
+      nick.stopsLeft--;
+      const next = nick.stopsLeft > 0 ? pickNickStop(nick) : null;
+      if (next) {
+        nick.path = next.path;
+        nick.pathIndex = 0;
+        nick.travelTimer = 0;
+        nick.state = 'entering';
+      } else {
+        nickLeave();
+      }
+    }
+  } else if (nick.state === 'leaving') {
+    nick.travelTimer += dt;
+    if (nickFollowPath(dt) || nick.travelTimer > NICK_STUCK_TIMEOUT) dismissNick();
   }
 }
 
@@ -2476,6 +2688,9 @@ function resetGame() {
     if (idx !== -1) FURNITURE.splice(idx, 1);
   }
   alex = null;
+  nick = null;
+  fartClouds.length = 0;
+  nickDelay = NICK_FIRST_MIN + Math.random() * (NICK_FIRST_MAX - NICK_FIRST_MIN);
   alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
   alexLastVisitShift = 0;
   // The regulars persist across restarts as characters, but every scrap of
@@ -3561,6 +3776,7 @@ function update(dt) {
   updateWaiter(dt);
   updateBusboy(dt);
   updateAlex(dt);
+  updateNick(dt);
   updateDialogueTriggers(dt, input);
   updateAmbient(dt);
 
@@ -3607,6 +3823,7 @@ function update(dt) {
   if (waiter) tickLegs(waiter, dt);
   if (busboy) tickLegs(busboy, dt);
   if (alex) tickLegs(alex, dt);
+  if (nick) tickLegs(nick, dt);
 
   // The Jameson counting itself down. Sliding is dropped for its duration so
   // the wall-following that exists to close distance can't be used to keep it.
@@ -5704,6 +5921,23 @@ function drawEntity(e, camX, camY) {
   }
 }
 
+// Over the whole y-sorted pass rather than inside it: a cloud hangs at hip
+// height and billows past whoever is standing in it. Rounded blocks, growing
+// as they age and thinning out, so it reads as a puff and not a sticker.
+function drawFartClouds(camX, camY) {
+  for (const c of fartClouds) {
+    const t = c.age / c.ttl;
+    const r = Math.round(c.r + t * 3);
+    const x = Math.round(c.x - camX);
+    const y = Math.round(c.y - camY);
+    ctx.globalAlpha = (t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85) * 0.55;
+    ctx.fillStyle = c.color;
+    ctx.fillRect(x - r, y - r + 1, r * 2, r * 2 - 2);
+    ctx.fillRect(x - r + 1, y - r, r * 2 - 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawAlexWorkoutArea(camX, camY) {
   if (!alex || alex.state !== 'preparing') return;
   const box = alexArea(alex.x, alex.y);
@@ -6629,14 +6863,16 @@ function drawPackIcon(x, y, filled) {
 // for the three regulars, and a walk-on with one fixed line doesn't need any
 // of it. A plain box above his head, same ink/cream as a dialogue bubble so
 // it still reads as speech.
-function drawBusboyLine(camX, camY) {
-  if (!busboy || !busboy.line) return;
-  const text = busboy.line;
+function drawWalkOnLine(e, camX, camY) {
+  if (!e || !e.line) return;
+  const text = e.line;
   const bw = fontTextWidth(text) + DIALOGUE_PAD * 2;
   const bh = FONT_H + DIALOGUE_PAD * 2;
-  const bx = clamp(Math.round(busboy.x - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
-  const by = Math.round(busboy.y - busboy.h - camY - bh - 4);
-  drawParchmentPlate(bx, by, bw, bh, PUB.ink);
+  const bx = clamp(Math.round(e.x - camX - bw / 2), 2, Math.max(2, viewW - bw - 2));
+  const by = Math.round(e.y - e.h - camY - bh - 4);
+  // The frame colour is the speaker's accent, as with the regulars; Nick's is
+  // the burgundy of his jersey, the busboy keeps plain ink.
+  drawParchmentPlate(bx, by, bw, bh, e.lineFrame || PUB.ink);
   fontDrawText(ctx, text, bx + DIALOGUE_PAD, by + DIALOGUE_PAD, DIALOGUE_INK);
 }
 
@@ -7062,6 +7298,7 @@ function render() {
   // blocking collider is a separate FURNITURE entry pushed/popped in
   // updateAlex, not anything drawn here.
   if (alex) pushDrawable(alex.y, 'entity', alex);
+  if (nick) pushDrawable(nick.y, 'entity', nick);
   drawList.sort(sortByY);
   for (const d of drawList) {
     if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
@@ -7069,6 +7306,7 @@ function render() {
     else if (d.type === 'waiter') drawWaiter(d.ref, camX, camY);
     else drawEntity(d.ref, camX, camY);
   }
+  drawFartClouds(camX, camY);
 
   // Night base over everything drawn so far, then the lamps paint the room
   // back in — people included, so a character between pools is genuinely in
@@ -7095,7 +7333,8 @@ function render() {
   }
 
   drawDialogueBubbles(camX, camY);
-  drawBusboyLine(camX, camY);
+  drawWalkOnLine(busboy, camX, camY);
+  drawWalkOnLine(nick, camX, camY);
 
   // Floating score/penalty feedback, fading out as it drifts up.
   for (const t of floatingTexts) {
@@ -7160,6 +7399,9 @@ window.__debug = {
   spawnWaiter,
   waiterSchedule: () => ({ visitedThrough: waiterLevel, level: getLevel(), dueIn: +waiterDelay.toFixed(1) }),
   getBusboy: () => busboy,
+  getNick: () => nick,
+  spawnNick,
+  getFartClouds: () => fartClouds,
   spawnBusboy,
   getAlex: () => alex,
   spawnAlex,

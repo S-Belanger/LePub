@@ -33,6 +33,7 @@ const CharacterArt = (() => {
   };
   const proceduralExceptions = {
     ghost: 'Intentional translucent apparition; keep its procedural material.',
+    nick: 'Procedural overhead set (ohFigure) only; needs a dedicated illustrated idle/walk sheet like the rest of the cast. Do not copy for new people.',
     busboy: 'Legacy art debt from the gameplay merge; needs a dedicated illustrated idle/walk/mop sheet. Do not copy for new people.',
   };
   return { directions, families, proceduralExceptions, minSourceDensity: 4 };

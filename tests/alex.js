@@ -24,8 +24,8 @@ function arrive() {
   return a;
 }
 const gates = [
-  ['opening grace', 'gameTime = 20'], ['shift warmup', 'shiftClock = 5'],
-  ['service progress', 'shiftStats.deliveries = 2'], ['same timed shift', 'alexLastVisitShift = shift'],
+  ['opening grace', 'gameTime = 5'], ['shift warmup', 'shiftClock = 3'],
+  ['service progress', 'shiftStats.deliveries = 0'],
   ['closing window', 'shiftClock = SHIFT_LENGTH - 35'], ['round', 'round = { deadline: gameTime + 20, served: 0 }'],
   ['bathroom', 'bladderUrgentTimer = 40'], ['chase', "hunterState = 'chase'"],
   ['recent hit', 'regenDelayTimer = 2'], ['busy door', 'player.x = DOOR.x; player.y = DOOR.y'],
@@ -39,21 +39,22 @@ for (const [label, condition] of gates) {
 }
 ready();
 const initial = d.alexSchedule();
-assert(initial.dueIn >= 60 && initial.dueIn <= 90, 'Fresh run grace period');
+assert(initial.dueIn >= 15 && initial.dueIn <= 25, 'Fresh run grace period');
 run('alexDelay = 0; updateAlex(0.01)');
 assert(d.getAlex(), 'Eligible scheduler must actually create a visitor');
 run('dismissAlex()');
-assert(d.alexSchedule().dueIn >= 120 && d.alexSchedule().dueIn <= 180, 'Long cooldown begins at departure');
+assert(d.alexSchedule().dueIn >= 25 && d.alexSchedule().dueIn <= 45, 'Long cooldown begins at departure');
 assert.equal(d.alexSchedule().lastVisitShift, 1, 'Departure must retain visit cap');
 run('alexDelay = 0; updateAlex(0.01)');
-assert.equal(d.getAlex(), null, 'No second visitor in same timed shift');
+assert(d.getAlex(), 'A second visit in the same timed shift is allowed once the cooldown ends');
+run('dismissAlex()');
 run('shift = 2; shiftClock = 70; alexDelay = 0; updateAlex(0.01)');
 for (let i = 0; i < 20 && !d.getAlex(); i++) run('updateAlex(10)');
 assert(d.getAlex(), 'Clear shift must eventually admit a reachable visitor');
 assert.equal(d.getAlex().state, 'entering', 'Later visits still perform the split');
 run('dismissAlex(); shift = 6; alexLastVisitShift = 6');
 assert(run('canScheduleAlex()'), 'Endless shifts use cooldown instead of permanent once-per-shift exclusion');
-run('alexDelay = 120; updateAlex(119)');
+run('alexDelay = 25; updateAlex(24)');
 assert.equal(d.getAlex(), null, 'Long cooldown cannot be bypassed');
 
 {
@@ -83,7 +84,7 @@ assert.equal(d.getAlex(), null, 'Long cooldown cannot be bypassed');
   assert(!run("FURNITURE.some(f => f.type === 'alex')"), 'Workout expiry removes collision');
   for (let i = 0; i < 400 && d.getAlex(); i++) run('updateAlex(0.05)');
   assert.equal(d.getAlex(), null, 'Visitor exits or times out instead of staying forever');
-  assert(d.alexSchedule().dueIn >= 120, 'Departure arms full cooldown');
+  assert(d.alexSchedule().dueIn >= 25, 'Departure arms full cooldown');
 }
 for (const interrupt of ['bladderUrgentTimer = 10', 'shiftClock = SHIFT_LENGTH - 10', 'round = { deadline: gameTime + 20 }', 'endShift()']) {
   ready(); arrive(); run('updateAlex(ALEX_PREPARE_TIME + 0.01)');
