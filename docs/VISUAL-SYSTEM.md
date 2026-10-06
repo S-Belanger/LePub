@@ -56,6 +56,14 @@ floor tiles, plastic surfaces, neon outlines and generic rounded/glass UI.
 UI uses walnut signs, parchment tickets and brass/leather controls. Reuse
 `drawWalnutPlate`, `drawParchmentPlate` and the existing pixel font.
 
+The current portrait layout's compact walnut score strip has reserved space
+above the scrolling pub and remains fixed when temporary status bars appear.
+Keep booth patrons clear of the sign; fading an overlapping sign is insufficient.
+Desktop retains its corner sign and body-overlap fade. Preserve integer art
+scale, world positions and colliders when changing viewport/camera clearance.
+See [the mobile HUD review](art-review/mobile-hud/README.md) for current captures
+and actual four-phone validation.
+
 ## What HD means here
 
 HD means newly authored detail: hair clumps, glasses, beard, clothing seams,

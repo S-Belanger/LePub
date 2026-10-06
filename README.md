@@ -37,13 +37,13 @@
   </tr>
   <tr>
     <td align="center">
-      <a href="docs/art-review/nick/full-cast/desktop-gameplay.png">
-        <img src="docs/art-review/nick/full-cast/desktop-gameplay.png" width="650" alt="Desktop gameplay: the deer waiter, hunter, orders and amber-lit pub">
+      <a href="docs/art-review/mobile-hud/full-cast/desktop-gameplay.png">
+        <img src="docs/art-review/mobile-hud/full-cast/desktop-gameplay.png" width="650" alt="Desktop gameplay: the deer waiter, hunter, orders and amber-lit pub">
       </a>
     </td>
     <td align="center">
-      <a href="docs/art-review/nick/full-cast/mobile-gameplay.png">
-        <img src="docs/art-review/nick/full-cast/mobile-gameplay.png" width="170" alt="Portrait gameplay with the full pub, virtual movement stick and action buttons">
+      <a href="docs/art-review/mobile-hud/full-cast/mobile-gameplay.png">
+        <img src="docs/art-review/mobile-hud/full-cast/mobile-gameplay.png" width="170" alt="Portrait gameplay: separate score strip, visible booth patrons, virtual stick and action buttons">
       </a>
     </td>
   </tr>
@@ -109,6 +109,15 @@ package dependency.
 
 Sound initializes after interaction. Fullscreen and audio controls depend on
 browser support; gameplay remains available without them.
+
+### Cigarette packs
+
+Earn a pack every **five customer deliveries** and hold up to **three**. Press `C` (or
+tap the `C` button) to drop one **at your feet**, where the hunter will pass.
+When he gets close enough to pick it up, he leaves the pub for a **15-second
+smoke break outside**, then returns. Dropping a pack does **not** attract him
+from across the room; place it in his path. Untouched packs disappear after
+**25 seconds**. The pack icons on the scorecard show your reserve.
 
 ## Meet the cast
 
@@ -185,11 +194,12 @@ node tests/assets.js
 node tests/smoke.js
 node tests/alex.js
 node tests/cellar.js
+node tests/hud.js
 git diff --check
 ```
 
 These check the character contract and assets, customer routes and gameplay,
-Alex's lifecycle and the cellar. The smoke suite uses a DOM/canvas stand-in;
+Alex's lifecycle, the cellar and mobile HUD/camera geometry. The smoke suite uses a DOM/canvas stand-in;
 it does not replace a real-browser visual review.
 
 ### Browser and art review
@@ -197,6 +207,7 @@ it does not replace a real-browser visual review.
 ```powershell
 node tools/validate-art.js
 node tools/validate-nick.js
+node tools/validate-hud.js
 ```
 
 The current browser harness requires local **Microsoft Edge** and an existing
@@ -204,6 +215,7 @@ The current browser harness requires local **Microsoft Edge** and an existing
 requirements, separate from the game and its dependency-free preview server.
 It captures desktop/phone-emulation evidence and exercises assets, input,
 rotation and fallback; Nick's focused check drives his real special-pose lifecycle.
+The HUD check covers four phone sizes, booth clearance, help, statuses and cellar.
 Inspect the captures as well as the reports. See the
 [review instructions](docs/claude/05-REVIEW-TROUBLESHOOTING.md) for prerequisites,
 commands, acceptance criteria and verification limits.

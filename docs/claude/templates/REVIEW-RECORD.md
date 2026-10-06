@@ -43,6 +43,7 @@ decision, not proof by itself; link the actual files/commands/results.
 | Smoke | Not run | |
 | Alex | Not run | |
 | Cellar | Not run | |
+| HUD | Not run | |
 | Edited JS syntax | Not run | |
 | Diff check | Not run | |
 | Broad real-browser art | Not run | |

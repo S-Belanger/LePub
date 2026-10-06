@@ -47,8 +47,13 @@ function applyViewport() {
   const portrait = availH > availW;
   const base = portrait ? VIEW_BASE_PORTRAIT : VIEW_BASE_LANDSCAPE;
   const scale = Math.max(1, Math.floor(Math.min(availW / base.w, availH / base.h)));
+  // Keep the integer art scale, but leave the mobile help/sound buttons their
+  // own band. Short phones must not shrink all the art to make this space.
+  const toolbar = document.getElementById('top-bar').getBoundingClientRect();
+  const toolbarH = portrait ? Math.ceil((toolbar.bottom || 54) + 6) : 0;
+  document.getElementById('stage').style.top = toolbarH + 'px';
   const w = clamp(Math.floor(availW / scale), VIEW_MIN.w, VIEW_MAX.w);
-  const h = clamp(Math.floor(availH / scale), VIEW_MIN.h, VIEW_MAX.h);
+  const h = clamp(Math.floor((availH - toolbarH) / scale), VIEW_MIN.h, VIEW_MAX.h);
   if (w === viewW && h === viewH && scale === pixelScale && portrait === viewIsPortrait) return;
 
   viewW = w;
@@ -6760,6 +6765,8 @@ function rectsTouch(a, b) {
 const hudRect = { x: 3, y: 0, w: 0, h: 0 };
 const HUD_CHAIN_H = 3;   // brass chain between the top of the frame and the sign
 const HUD_PAD_X = 6;     // clears the corner rivets
+const MOBILE_HUD_H = 27;
+function hudSceneTop() { return viewIsPortrait ? MOBILE_HUD_H + 3 : 0; }
 // Life is three pints on the sign. Each is PINT_W × PINT_H and drains from the
 // top as that third of the bar goes, so a hit reads as a pint knocked over
 // and regeneration as the glass filling back up.
@@ -6808,6 +6815,11 @@ const PACK_ICON_GAP = 2;
 function packRowWidth() { return CIGARETTE_RESERVE_MAX * PACK_ICON_W + (CIGARETTE_RESERVE_MAX - 1) * PACK_ICON_GAP; }
 
 function measureHud() {
+  if (viewIsPortrait) {
+    hudRect.w = viewW - 6;
+    hudRect.h = MOBILE_HUD_H;
+    return hudRect;
+  }
   const labels = hudLabels();
   const textW = fontTextWidth(labels.shift) + 6 + fontTextWidth(labels.tips);
   const rowTwoW = lifeBarWidth() + 6 + fontTextWidth(labels.total) + (labels.clock ? 6 + fontTextWidth(labels.clock) : 0);
@@ -6969,9 +6981,11 @@ function getCamera() {
   const camX = viewW >= WORLD_W
     ? (WORLD_W - viewW) / 2
     : clamp(player.x - viewW / 2, 0, WORLD_W - viewW);
-  const camY = viewH >= WORLD_H
-    ? (WORLD_H - viewH) / 2
-    : clamp(player.y - viewH / 2, 0, WORLD_H - viewH);
+  const sceneTop = hudSceneTop();
+  const sceneH = viewH - sceneTop;
+  const camY = (sceneH >= WORLD_H
+    ? (WORLD_H - sceneH) / 2
+    : clamp(player.y - sceneH / 2, 0, WORLD_H - sceneH)) - sceneTop;
   return { x: Math.round(camX), y: Math.round(camY) };
 }
 
@@ -7007,6 +7021,7 @@ function hudCoversSomeone(hud) {
 }
 
 function updateHudFade(hud) {
+  if (viewIsPortrait) { hudAlpha = 1; hudFadeStamp = performance.now(); return; }
   const now = performance.now();
   const dt = Math.min((now - hudFadeStamp) / 1000, 0.1);
   hudFadeStamp = now;
@@ -7028,6 +7043,7 @@ function drawHudBody(hud) {
   const boardY = hud.y + HUD_CHAIN_H;
   const boardH = hud.h - HUD_CHAIN_H;
   drawWalnutPlate(hud.x, boardY, hud.w, boardH, { chains: HUD_CHAIN_H });
+  if (viewIsPortrait) { drawMobileHudBody(hud, labels, boardY); return; }
 
   const textY = boardY + 4;
   let tx = hud.x + HUD_PAD_X;
@@ -7038,6 +7054,33 @@ function drawHudBody(hud) {
   fontDrawTextShadow(ctx, labels.tips.slice(5), tx + fontTextWidth('TIPS '), textY, PUB.amber, UI.walnutDark);
 
   const pintY = textY + FONT_H + 3;
+  drawHudPints(hud, pintY);
+  // Running total beside the pints, and the shift clock — red once it's
+  // last call, blinking through the final five seconds.
+  let rx = hud.x + HUD_PAD_X + lifeBarWidth() + 6;
+  fontDrawTextShadow(ctx, labels.total, rx, pintY + 1, PUB.creamDim, UI.walnutDark);
+  if (labels.clock) {
+    rx += fontTextWidth(labels.total) + 6;
+    drawHudClock(labels.clock, rx, pintY + 1);
+  }
+
+  // Held cigarette packs, right under the life bar.
+  const packY = pintY + PINT_H + 4;
+  for (let i = 0; i < CIGARETTE_RESERVE_MAX; i++) {
+    const x = hud.x + 3 + i * (PACK_ICON_W + PACK_ICON_GAP);
+    drawPackIcon(x, packY, i < cigaretteReserve);
+  }
+
+  // Status bars keep the desktop sign's existing stacked layout.
+  let rowY = packY + PACK_ICON_H + 3;
+  if (jamesonActive()) {
+    drawJamesonBar(hud.x + 3, rowY, lifeBarWidth());
+    rowY += JAMESON_BAR_H + 3;
+  }
+  if (bladderLevel > 0 || bladderUrgentTimer > 0) drawBladderBar(hud.x + 3, rowY, lifeBarWidth());
+}
+
+function drawHudPints(hud, pintY) {
   for (let i = 0; i < LIFE_SEGMENT_COUNT; i++) {
     let x = hud.x + HUD_PAD_X + i * (PINT_W + PINT_GAP);
     // The pint that just went rocks on the rail and throws a splash.
@@ -7052,55 +7095,49 @@ function drawHudBody(hud) {
   }
   // Brass coaster rail under the pints so they sit on something.
   drawBrassRule(hud.x + HUD_PAD_X - 1, pintY + PINT_H, lifeBarWidth() + 2);
-  // Running total beside the pints, and the shift clock — red once it's
-  // last call, blinking through the final five seconds.
-  let rx = hud.x + HUD_PAD_X + lifeBarWidth() + 6;
-  fontDrawTextShadow(ctx, labels.total, rx, pintY + 1, PUB.creamDim, UI.walnutDark);
-  if (labels.clock) {
-    rx += fontTextWidth(labels.total) + 6;
-    const left = shiftTimeLeft();
-    const blink = left <= 5 && Math.floor(gameTime * 4) % 2 === 0;
-    if (!blink) fontDrawTextShadow(ctx, labels.clock, rx, pintY + 1, isLastCall() ? PUB.tomato : PUB.cream, UI.walnutDark);
-  }
+}
 
-  // Held cigarette packs, right under the life bar.
-  const packY = pintY + PINT_H + 4;
-  for (let i = 0; i < CIGARETTE_RESERVE_MAX; i++) {
-    const x = hud.x + 3 + i * (PACK_ICON_W + PACK_ICON_GAP);
-    drawPackIcon(x, packY, i < cigaretteReserve);
-  }
+function drawHudClock(clock, x, y) {
+  const left = shiftTimeLeft();
+  const blink = left <= 5 && Math.floor(gameTime * 4) % 2 === 0;
+  if (!blink) fontDrawTextShadow(ctx, clock, x, y, isLastCall() ? PUB.tomato : PUB.cream, UI.walnutDark);
+}
 
-  // The shot's remaining seconds: one unbroken amber bar under the life
-  // segments, blinking through its last stretch alongside the sprite tint so
-  // the two warnings agree.
-  let rowY = packY + PACK_ICON_H + 3;
-  if (jamesonActive()) {
-    const jx = hud.x + 3;
-    const jw = lifeBarWidth();
-    ctx.fillStyle = PUB.ink;
-    ctx.fillRect(jx - 1, rowY - 1, jw + 2, JAMESON_BAR_H + 2);
-    const blink = jamesonTimer < JAMESON_WARN_TIME && !prefersReducedMotion &&
-      Math.floor(gameTime * 9) % 2 === 0;
-    ctx.fillStyle = blink ? PUB.amberDim : PUB.amber;
-    ctx.fillRect(jx, rowY, Math.ceil(jw * clamp(jamesonTimer / JAMESON_DURATION, 0, 1)), JAMESON_BAR_H);
-    rowY += JAMESON_BAR_H + 3;
-  }
+function drawJamesonBar(jx, rowY, jw) {
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(jx - 1, rowY - 1, jw + 2, JAMESON_BAR_H + 2);
+  const blink = jamesonTimer < JAMESON_WARN_TIME && !prefersReducedMotion &&
+    Math.floor(gameTime * 9) % 2 === 0;
+  ctx.fillStyle = blink ? PUB.amberDim : PUB.amber;
+  ctx.fillRect(jx, rowY, Math.ceil(jw * clamp(jamesonTimer / JAMESON_DURATION, 0, 1)), JAMESON_BAR_H);
+}
 
-  // The bladder: a pale blue fill while it's just topping up, then a countdown
-  // once full — same bar, same slot, so the plate reads as one system rather
-  // than two. Its own blink (independent of the Jameson one above) is what
-  // sells "the clock is actually running out" once it's the bathroom dash.
-  if (bladderLevel > 0 || bladderUrgentTimer > 0) {
-    const bx = hud.x + 3;
-    const bw = lifeBarWidth();
-    ctx.fillStyle = PUB.ink;
-    ctx.fillRect(bx - 1, rowY - 1, bw + 2, BLADDER_BAR_H + 2);
-    const urgent = bladderUrgentTimer > 0;
-    const frac = urgent ? clamp(bladderUrgentTimer / BLADDER_TIME_LIMIT, 0, 1) : bladderLevel / BLADDER_MAX;
-    const blink = urgent && !prefersReducedMotion && Math.floor(gameTime * 11) % 2 === 0;
-    ctx.fillStyle = blink ? PUB.burgundy : (urgent ? PUB.coolPale : PUB.cool);
-    ctx.fillRect(bx, rowY, Math.ceil(bw * frac), BLADDER_BAR_H);
-  }
+function drawBladderBar(bx, rowY, bw) {
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(bx - 1, rowY - 1, bw + 2, BLADDER_BAR_H + 2);
+  const urgent = bladderUrgentTimer > 0;
+  const frac = urgent ? clamp(bladderUrgentTimer / BLADDER_TIME_LIMIT, 0, 1) : bladderLevel / BLADDER_MAX;
+  const blink = urgent && !prefersReducedMotion && Math.floor(gameTime * 11) % 2 === 0;
+  ctx.fillStyle = blink ? PUB.burgundy : (urgent ? PUB.coolPale : PUB.cool);
+  ctx.fillRect(bx, rowY, Math.ceil(bw * frac), BLADDER_BAR_H);
+}
+
+function drawMobileHudBody(hud, labels, boardY) {
+  const x = hud.x + HUD_PAD_X;
+  const textY = boardY + 3;
+  fontDrawTextShadow(ctx, labels.shift, x, textY, PUB.creamDim, UI.walnutDark);
+  fontDrawTextShadow(ctx, labels.tips, x + fontTextWidth(labels.shift) + 6, textY, PUB.amber, UI.walnutDark);
+  if (labels.clock) drawHudClock(labels.clock, hud.x + hud.w - HUD_PAD_X - fontTextWidth(labels.clock), textY);
+  const pintY = textY + FONT_H + 2;
+  drawHudPints(hud, pintY);
+  fontDrawTextShadow(ctx, labels.total, x + lifeBarWidth() + 6, pintY + 1, PUB.creamDim, UI.walnutDark);
+  const packX = hud.x + hud.w - HUD_PAD_X - packRowWidth();
+  fontDrawTextShadow(ctx, 'C', packX - fontTextWidth('C') - 4, pintY + 1, PUB.creamDim, UI.walnutDark);
+  for (let i = 0; i < CIGARETTE_RESERVE_MAX; i++) drawPackIcon(packX + i * (PACK_ICON_W + PACK_ICON_GAP), pintY + 1, i < cigaretteReserve);
+  // Fixed slots prevent temporary statuses from moving the camera or patrons.
+  const statusY = pintY + PINT_H + 2;
+  if (jamesonActive()) drawJamesonBar(x, statusY, lifeBarWidth());
+  if (bladderLevel > 0 || bladderUrgentTimer > 0) drawBladderBar(packX, statusY, packRowWidth());
 }
 
 // Cover-fits a splash image into the internal resolution and drops a tint
@@ -7266,6 +7303,14 @@ function render() {
   const camY = cam.y;
 
   drawBackdrop();
+  // The portrait sign has its own space; the pub can scroll underneath that
+  // boundary, never underneath the sign itself.
+  if (viewIsPortrait) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, hudSceneTop(), viewW, viewH - hudSceneTop());
+    ctx.clip();
+  }
   drawRoom(camX, camY);
   drawDarkness(DARK_FLOOR);
   drawCellarHatch(camX, camY);
@@ -7344,6 +7389,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
 
+  if (viewIsPortrait) ctx.restore();
   drawHud();
 
   if (caught) drawCaughtOverlay();

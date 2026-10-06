@@ -1,0 +1,282 @@
+[
+  {
+    "width": 390,
+    "height": 844,
+    "layout": {
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 189,
+        "h": 27
+      },
+      "cam": {
+        "x": 0,
+        "y": -30
+      },
+      "bodies": [
+        {
+          "id": "nazim",
+          "head": 65.59274193548387,
+          "feet": 86,
+          "covered": false
+        },
+        {
+          "id": "sam",
+          "head": 49.16216216216216,
+          "feet": 70,
+          "covered": false
+        },
+        {
+          "id": "gerald",
+          "head": 49.16935483870968,
+          "feet": 70,
+          "covered": false
+        }
+      ],
+      "viewport": {
+        "viewW": 195,
+        "viewH": 360,
+        "pixelScale": 2,
+        "portrait": true
+      },
+      "toolbarBottom": 54,
+      "canvasTop": 92,
+      "statusStable": true,
+      "labelClearance": 98,
+      "bottomClearance": 95,
+      "original": {
+        "x": 62,
+        "y": 164
+      }
+    },
+    "rotated": {
+      "viewport": {
+        "viewW": 320,
+        "viewH": 195,
+        "pixelScale": 2,
+        "portrait": false
+      },
+      "x": 62,
+      "y": 164,
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 84,
+        "h": 47
+      }
+    },
+    "cellar": true,
+    "help": true,
+    "errors": []
+  },
+  {
+    "width": 375,
+    "height": 667,
+    "layout": {
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 181,
+        "h": 27
+      },
+      "cam": {
+        "x": 0,
+        "y": -30
+      },
+      "bodies": [
+        {
+          "id": "nazim",
+          "head": 65.59274193548387,
+          "feet": 86,
+          "covered": false
+        },
+        {
+          "id": "sam",
+          "head": 49.16216216216216,
+          "feet": 70,
+          "covered": false
+        },
+        {
+          "id": "gerald",
+          "head": 49.16935483870968,
+          "feet": 70,
+          "covered": false
+        }
+      ],
+      "viewport": {
+        "viewW": 187,
+        "viewH": 303,
+        "pixelScale": 2,
+        "portrait": true
+      },
+      "toolbarBottom": 54,
+      "canvasTop": 60.5,
+      "statusStable": true,
+      "labelClearance": 90,
+      "bottomClearance": 87,
+      "original": {
+        "x": 62,
+        "y": 100
+      }
+    },
+    "rotated": {
+      "viewport": {
+        "viewW": 320,
+        "viewH": 187,
+        "pixelScale": 2,
+        "portrait": false
+      },
+      "x": 62,
+      "y": 100,
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 84,
+        "h": 47
+      }
+    },
+    "cellar": true,
+    "help": true,
+    "errors": []
+  },
+  {
+    "width": 360,
+    "height": 780,
+    "layout": {
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 174,
+        "h": 27
+      },
+      "cam": {
+        "x": 0,
+        "y": -30
+      },
+      "bodies": [
+        {
+          "id": "nazim",
+          "head": 65.59274193548387,
+          "feet": 86,
+          "covered": false
+        },
+        {
+          "id": "sam",
+          "head": 49.16216216216216,
+          "feet": 70,
+          "covered": false
+        },
+        {
+          "id": "gerald",
+          "head": 49.16935483870968,
+          "feet": 70,
+          "covered": false
+        }
+      ],
+      "viewport": {
+        "viewW": 180,
+        "viewH": 360,
+        "pixelScale": 2,
+        "portrait": true
+      },
+      "toolbarBottom": 54,
+      "canvasTop": 60,
+      "statusStable": true,
+      "labelClearance": 83,
+      "bottomClearance": 80,
+      "original": {
+        "x": 62,
+        "y": 100
+      }
+    },
+    "rotated": {
+      "viewport": {
+        "viewW": 320,
+        "viewH": 180,
+        "pixelScale": 2,
+        "portrait": false
+      },
+      "x": 62,
+      "y": 100,
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 84,
+        "h": 47
+      }
+    },
+    "cellar": true,
+    "help": true,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "layout": {
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 314,
+        "h": 27
+      },
+      "cam": {
+        "x": -60,
+        "y": -30
+      },
+      "bodies": [
+        {
+          "id": "nazim",
+          "head": 65.59274193548387,
+          "feet": 86,
+          "covered": false
+        },
+        {
+          "id": "sam",
+          "head": 49.16216216216216,
+          "feet": 70,
+          "covered": false
+        },
+        {
+          "id": "gerald",
+          "head": 49.16935483870968,
+          "feet": 70,
+          "covered": false
+        }
+      ],
+      "viewport": {
+        "viewW": 320,
+        "viewH": 360,
+        "pixelScale": 1,
+        "portrait": true
+      },
+      "toolbarBottom": 54,
+      "canvasTop": 134,
+      "statusStable": true,
+      "labelClearance": 223,
+      "bottomClearance": 220,
+      "original": {
+        "x": 62,
+        "y": 100
+      }
+    },
+    "rotated": {
+      "viewport": {
+        "viewW": 320,
+        "viewH": 320,
+        "pixelScale": 1,
+        "portrait": false
+      },
+      "x": 62,
+      "y": 100,
+      "hud": {
+        "x": 3,
+        "y": 0,
+        "w": 84,
+        "h": 47
+      }
+    },
+    "cellar": true,
+    "help": true,
+    "errors": []
+  }
+]

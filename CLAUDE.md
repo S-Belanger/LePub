@@ -32,7 +32,10 @@ It's plain HTML/CSS/JS with **no build step, no package manager, and no runtime 
 There is no `package.json` or linter. `node tests/smoke.js` is a dependency-free
 runtime smoke test for script loading, customer/waiter routing, and rendering;
 `node tests/assets.js` covers the raster asset registry; `node tests/alex.js` and
-`node tests/cellar.js` cover Alex's visits and the cellar mini-game. `node tools/export-sheets.js`
+`node tests/cellar.js` cover Alex's visits and the cellar mini-game.
+`node tests/hud.js` checks mobile booth clearance, stable score geometry and
+orientation. Portrait uses a reserved walnut score strip above the scrolling
+scene; keep that clearance when changing camera/UI. `node tools/export-sheets.js`
 regenerates `assets/sprites/*.png+json` from the procedural sets (needs Edge and
 playwright-core in the npx cache).
 Runtime image assets are `assets/caught.jpg` and `assets/LevelDone.png` plus

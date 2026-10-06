@@ -55,6 +55,11 @@ function makeCanvasContext() {
     fillText() {},
     drawImage() {},
     setTransform() {},
+    save() {},
+    restore() {},
+    beginPath() {},
+    rect() {},
+    clip() {},
     putImageData() {},
     createImageData(width, height) {
       return { data: new Uint8ClampedArray(width * height * 4), width, height };

@@ -105,8 +105,6 @@
 - Next: final diff/log review, authorized main commit/push, independent remote
   SHA and actual published README checks, then a publication receipt.
 
-## Checks and publication
-
 ### 13:03 — publication progress, exact assistant text
 
 > The quick-start command works without installing dependencies, and the README’s current screenshots and cast previews are ready. I’m publishing the update to `main`, then checking the actual GitHub page and recording the publication result.
@@ -116,5 +114,29 @@
 
 ## Checks and publication
 
+### 13:03:17 — README published and remote verified
+
+- Staged/checked5 intended documentation files; staged diff check PASS.
+- Commit `ec3b8796983109a3d6ed41f49fa76ed6d25bb429`,
+  `docs: refresh GitHub README and current Vercel demo`, created and pushed.
+- `git push origin main` PASS; independent `git ls-remote origin refs/heads/main`
+  matched local HEAD exactly; main synchronized and working tree clean.
+- Final actual GitHub README view/API/blob/image checks and receipt next. Removed
+  a duplicate journal section heading in this documentation follow-up.
+
 At record creation: new live homepage check passed; README edit not yet written,
 render/link checks not run, not committed/pushed. Append actual outcomes below.
+
+### 13:04:37 — actual published README verified; task extended by HUD/help feedback
+
+- Actual GitHub page HTTP200; title/icons/new content appear without local DOM
+  substitution. All7 image/badge sources load; all16 actual generated/navigation
+  anchors resolve;3 new live links, no obsolete domain. Inspected published
+  desktop/mobile captures. GitHub README API blob0afc2c0263f93e6fb13b07aaa9d3a816d10cd116
+  equals `git rev-parse HEAD:README.md`.
+- GitHub CI ec3b879 completed successfully. New Vercel Nick metadata HTTP200;
+  earlier new live homepage check PASS. No physical-device/full live-game QA claim.
+- User reports scorecard occluding patrons in the mobile image, then requests a
+  cigarette-pack explanation. Continuing that bug/help work in
+  [a separate journal](2026-10-06-mobile-hud-help.md), preserving this verified
+  README publication and refreshing its affected screenshots after the fix.

@@ -30,13 +30,14 @@ node tests/assets.js
 node tests/smoke.js
 node tests/alex.js
 node tests/cellar.js
+node tests/hud.js
 git diff --check
 ```
 
 Inspect each process exit/output. This PowerShell form stops on the first failure:
 
 ```powershell
-foreach ($artCheck in @('tests/character-art.js', 'tests/assets.js', 'tests/smoke.js', 'tests/alex.js', 'tests/cellar.js')) {
+foreach ($artCheck in @('tests/character-art.js', 'tests/assets.js', 'tests/smoke.js', 'tests/alex.js', 'tests/cellar.js', 'tests/hud.js')) {
   node $artCheck
   if ($LASTEXITCODE -ne 0) { throw ('Failed: ' + $artCheck) }
 }
@@ -51,6 +52,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Whitespace/diff check failed' }
 | Smoke | Runtime loading, customer routes, broad gameplay/rendering integration with a mocked DOM/canvas | Real browser display, texture/camera approval |
 | Alex | Workout scheduling/lifecycle/collision/reset regressions | Nick-specific apology correctness |
 | Cellar | Stock/hatch/mini-game/ghost/exit/reset regressions | Character style |
+| HUD | Portrait booth clearance, status layout, camera and rotation regressions | Actual browser pixels or physical-device approval |
 | Diff/syntax checks | Whitespace and parsable edited JavaScript | End-to-end function or visual acceptance |
 
 Suite counts may grow. For the accepted Nick tree they were 11 gameplay
