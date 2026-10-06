@@ -6,6 +6,21 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-06 12:46 America/Toronto — verified main publication receipt
+
+- Published implementation commit
+  [`6e1901897315a8a05321f3e2a0a2a52b5dd97657`](https://github.com/S-Belanger/LePub/commit/6e1901897315a8a05321f3e2a0a2a52b5dd97657),
+  "feat: ship Nick illustrated art and Claude collaborator handbook" (60 files).
+- `git push origin main` PASS; independent `git ls-remote origin refs/heads/main`
+  matched that exact SHA at12:45:42. Local main/tracking main synchronized and
+  working tree clean after the implementation push.
+- Fresh release checks PASS: all five Node suites, inspector/validator syntax,
+  staged diff,16 Markdown documents/88 local links/balanced fences. Previous
+  approved desktop/mobile Edge evidence preserved unchanged.
+- This follow-up documentation receipt preserves the verified result. Its own
+  commit identifier is available in Git history; final remote-tip verification
+  follows its push. No remote CI or live-deployment claim.
+
 ## 2026-10-06 — Nick illustrated art, Claude handbook and collaborator logging
 
 - **Contributors:** user directed and approved the work; Codex coordinated
