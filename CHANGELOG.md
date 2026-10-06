@@ -6,6 +6,20 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-06 — professional README and updated live demo URL
+
+- **Contributors/request:** user requests a professional current GitHub README
+  with links/photos/icons/description and supplies `https://lepub-five.vercel.app/`;
+  Codex handles documentation/reference review and validation.
+- **Method:** verify current gameplay/source and published screenshots; replace
+  obsolete link/content with a clear overview, current cast/desktop/mobile
+  imagery, accurate controls/architecture, portable local start and useful docs.
+- **Starting state:** main/origin synchronized at `e4fa823`; clean tree. Actual
+  Edge live URL check HTTP200/expected title/canvas/start panel/no page errors.
+- **Current outcome:** documentation refresh in progress, not committed yet.
+  Exact request/progress/checks and later publication receipt live in
+  [the README session record](docs/collaboration/2026-10-06-readme-refresh.md).
+
 ## 2026-10-06 12:46 America/Toronto — verified main publication receipt
 
 - Published implementation commit

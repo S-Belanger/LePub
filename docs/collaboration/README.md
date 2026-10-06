@@ -65,4 +65,5 @@ discarding another collaborator's work.
 
 ## Current record
 
+- [2026-10-06 — professional README and current live demo](2026-10-06-readme-refresh.md).
 - [2026-10-06 — Nick, Claude sprite handbook and main publication](2026-10-06-nick-claude-guide.md).
