@@ -12,6 +12,7 @@ the template with one character's values. Reference the current visual system.
 - Exact user request:
 - Behavior changes authorized, if any:
 - Publication scope:
+- Approval dependency, if explicitly requested, and actual satisfied approval:
 - Branch / HEAD / upstream state:
 - Pre-existing uncommitted files to preserve:
 
@@ -19,6 +20,7 @@ the template with one character's values. Reference the current visual system.
 
 - Identity photo/source supplied by user:
 - Identity photo kept at a private working location, if applicable:
+- If locally ignored, explicit served/deployment exclusion and staging check:
 - Photo controls identity only, or exactly which costume details:
 - Face shape / skin tone:
 - Hair / forehead / hairline:
@@ -42,19 +44,24 @@ the template with one character's values. Reference the current visual system.
 | --- | --- | --- | --- |
 | 1 | | Identity / specified costume | Not confirmed |
 | 2 | | Jay: finish / camera / anatomy | Not confirmed |
-| 3 | | Alex: secondary finish | Not confirmed |
-| Optional | | Precise limited purpose | Not confirmed |
+| 3 | | Approved Nick B: head pitch / gaze along floor | Not confirmed |
+| 4, if supplied | | Existing atlas: costume / rows / poses / hands | Not confirmed |
+| Optional | | Doe/Hunter: camera / finish; precise limited purpose | Not confirmed |
 
 Renumber prompts if the photo is absent or other inputs are used.
 
 ## Pose and scale contract
 
 - Required directions: down / right / up / left.
+- Fixed overhead elevation, substantial crown/shoulders and foreshortened faces:
+- Relaxed head/eyes along the floor in each cardinal heading, including specials:
+- Likeness preserved illustratively; no exact facial-pixel reprojection guarantee:
 - Source row order:
 - Idle:
 - Walk A limb phase:
 - Walk B opposite limb phase:
 - Every special action and exact body/hand pose:
+- Family-specific rows (Nazim idle/walkA/lean/slump; no second stride/talk row):
 - Actual gameplay event/state that selects each special pose:
 - Return/exit/reset behavior:
 - Contract target idle crop height (normally 21 supporting / 24 lead):
@@ -81,6 +88,8 @@ Renumber prompts if the photo is absent or other inputs are used.
 - Broad browser check/output folder:
 - Focused lifecycle validator or planned adaptation:
 - Desktop/phone/native/action comparison captures:
+- Nick B/Jay/Doe/Hunter comparison at one family scale, all directions/rows:
+- Head/cap checks: no portrait look-up, eyelid-only fix, over-bow, wrong brim/strap:
 - Exact prompt/provenance document path:
 - Next concrete step:
 - Current status: brief / draft / source accepted / integrated / validated.

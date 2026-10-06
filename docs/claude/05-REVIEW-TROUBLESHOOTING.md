@@ -113,11 +113,18 @@ pause/tally/reduced-motion behavior when relevant to a new action.
 Review at least:
 
 1. Complete source sheet, all cells and gutters.
-2. A comparison with Jay/Alex at the same world/display scale.
+2. A comparison with approved Nick B/Jay/Doe/Hunter at the same world/display scale.
 3. Every direction with idle, both authored strides, and each required action.
 4. Native desktop gameplay (1280x720 in the existing review convention).
 5. Native phone/touch emulation (390x844), including the actual room.
 6. The real special-action capture, its return and any floor-contact concerns.
+
+At every direction and pose, judge actual head pitch as well as eyes: substantial
+crown, foreshortened face below it, relaxed expression and attention along the
+floor in the cardinal heading. Down is a room direction, not camera eye contact.
+Do not accept a lifted portrait face with lowered eyelids, or an over-bowed
+unreadable/dejected head. Both side profiles must retain the same high camera.
+Existing outfit and anatomical hand ownership survive a head/likeness edit.
 
 At native phone size, small tattoos, fingers or individual beard hairs may
 be secondary. The person's silhouette, face/hair/cap mass, clothing and action
@@ -158,6 +165,8 @@ the actual preview URL. Browser validators start their own temporary servers.
 | Looks like a coarse geometric person | Source artwork/selection | Inspect PNG and ready family; check whether only `OH_*`/old exported JSON is selected | Generate/import the required illustrated raster; select the correct atlas |
 | Big PNG but still blocky/coarse | Source authorship | Inspect original pixel detail, not file dimensions | Author new detail; upscaling procedural pixels is insufficient |
 | Attractive front, eye-level sides | Raster camera | Compare side crowns/shoulders/body ratio with Jay | Targeted camera edit with reference image |
+| Portrait face looks up at the camera | Raster head pitch/gaze | Compare crown/forehead/face projection and both profiles against approved Nick B | Correct actual head angle toward the floor heading across every row; eyelids alone are insufficient |
+| Face disappears under a defeated bow | Raster head pitch | Inspect native room expression and crown/face balance | Restore relaxed readable head pitch while retaining overhead elevation |
 | Face/outfit copied from Jay/Alex | Reference-role confusion | Check attachment labels and identity prompt | Identity/costume edit, keeping finish/camera |
 | Cap flips forward/backward between poses | Raster consistency | Inspect strap/brim in all sixteen cells | Correct the affected head views |
 | Backward walking or sliding feet | Stride phases/order | Compare both rows in every direction and animation sequence | Correct limb phases or mapping, preserving facing |
@@ -200,7 +209,9 @@ the live event selects the wrong pose. Identify the layer before changing it.
 - [ ] Actual shipped image references inspected and supplied to the generator.
 - [ ] Real generation tool/provider or manual supplied-art route recorded.
 - [ ] Full source and every required direction/pose inspected.
-- [ ] Two distinct strides; correct camera/identity/hand ownership.
+- [ ] Correct family stride contract (two opposite strides where required).
+- [ ] Heads/eyes along the floor in each facing; no lifted portrait/eyelid-only fix.
+- [ ] Relaxed readable head, same elevated profiles and anatomical hand ownership.
 - [ ] Original RGBA PNG preserved; no painted background/floor/shadow.
 - [ ] Contract declared; no new debt exception or competing atlas.
 - [ ] Import PASS with actual dimensions, seams, density and pivots.
@@ -217,3 +228,9 @@ the live event selects the wrong pose. Identify the layer before changing it.
 Use [the review record](templates/REVIEW-RECORD.md). Leave unrun checks marked
 **not run**, blocked data **unavailable**, and unknown measurements **not measured**.
 Do not replace those states with zero errors or “PASS.”
+
+When approval is an explicit dependency, record the actual approved image and
+wait for the user before that dependent work. Existing session authorization
+continues after approval; do not create extra approval gates for an already
+authorized integration/push. Record art review, local/browser results, commit,
+remote SHA and live verification as separate evidence states.

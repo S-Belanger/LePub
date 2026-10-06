@@ -61,3 +61,20 @@ These are reviewed AI illustrations, not hand-cleaned artwork. Fine likeness
 and finger detail reduce at phone size. Browser emulation is not a physical
 phone or production performance test. See the review README/report and newest
 `HANDOFF.md` checkpoint for actual validation results and publication state.
+
+
+## Approved October 6 perspective revision
+
+October 6, 2026. Accepted output `exec-efb1656f-1624-4b36-9784-7a768bf62fce.png` copied unchanged
+to `assets/sprites/nick-illustrated.png`; SHA-256 `62fd418de8501638a4399098f0a8d449a55362d6f1bc8dfec7f6f225fede261e`.
+The user explicitly approved the [exact B candidate](../../docs/art-review/face-perspective/nick-b-candidate.png). [Exact B edit prompt](../../docs/art-review/face-perspective/nick-b-prompt.md) supersedes the earlier head-angle/layout metrics above; those remain historical.
+
+Measured row cuts `[0, 328, 629, 917, 1254]`,
+one density `13.523809523809524`, maximum idle21world units including padding.
+Importer PASS16alpha/edge-checked frames; all six Node suites and real Edge
+desktop/mobile full-cast/Nick/Alex/HUD checks PASS. Pose contracts/outfits and
+mechanics retained; Alex split floor offset1.5 and22×7blocker unchanged.
+See [current comparison, source receipt and actual checks](../../docs/art-review/cast-perspective/README.md)
+and [release journal](../../docs/collaboration/2026-10-06-cast-perspective-release.md)
+for publication receipts. Local emulation is not a physical-phone test; changed
+projection preserves illustrated likeness, not identical original face pixels.

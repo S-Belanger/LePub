@@ -49,6 +49,11 @@ actions, method and outcomes. This applies to Codex, Claude and human contributo
 - Follow `docs/VISUAL-SYSTEM.md` for materials, camera, density, pivots and
   review. Procedural fallback is resilience, not completed production artwork.
   Existing busboy/ghost exceptions are explicit; do not copy them for new people.
+- Inspect approved Nick B plus shipped Jay/Doe/Hunter pixels. Heads/eyes look
+  along the floor toward the cardinal facing direction under one fixed elevated
+  camera, with natural relaxed pitch. Portraits control identity only; preserve
+  established game outfits/pose contracts. Historical prompts do not override
+  the current gaze standard. Keep raw personal photos out of served/public art.
 - Run `node tests/character-art.js`, `node tests/assets.js`, and
   `node tests/smoke.js` before publishing character changes. Run real-browser
   art checks and inspect desktop/mobile captures for visual changes; record

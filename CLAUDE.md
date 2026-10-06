@@ -23,6 +23,17 @@ atlas integration, and browser acceptance checks used for the shipped cast.
 The handbook supplements the visual system; a prompt or procedural placeholder
 alone does not complete a character.
 
+Current head/gaze benchmark: the user-approved
+[Nick B sheet](docs/art-review/face-perspective/nick-b-candidate.png), beside
+shipped Jay/Doe/Hunter. People look along the floor toward their cardinal
+heading under one fixed high overhead camera. Correct actual head pitch, not
+only eyelids; keep crowns/shoulders visible, faces/bodies foreshortened and
+expressions relaxed. Portraits supply likeness only; preserve game costume,
+row/pose contracts and anatomical hands. Old Alex/Nick portrait-facing art is
+historical, not a gaze target. Keep raw photos outside public/served assets
+or explicitly ignored AND excluded from deployment. Reuse accepted art rather
+than regenerate it unless a revision is authorized.
+
 ## What this is
 
 "Le Pub: The Chase" — a small top-down 2D serving/chase game rendered in pixel art. You play a guy in a deer onesie waiting tables in a pub while a hunter stalks you: fetch orders from the bar, deliver them before customers give up, and don't get caught. Three named regulars — **Nazim, Sam and Gerald** — hold the corner booth for the whole run, order drinks like anybody else, and comment on what you're doing.
@@ -215,7 +226,7 @@ While it is up:
 
 Refresh, not stack: a second shot restarts the clock. `jamesonTimer` and `jamesonBounceTimer` are cleared in `resetGame()`.
 
-Three shots fill the bladder and start a 60s bathroom timer. Reaching `BATHROOM` clears it; expiry loses 20 tips through the shared shift ledger and leaves a puddle that scares walk-ins away. The busboy routes to reachable puddles and mops them. Every five non-hunter deliveries earns a held cigarette pack (up to three); C or the touch C button drops one. A hunter who finds it clears his order and tray item, walks out, smokes for 15s, returns and resumes scanning. Smoke routes use `HUNTER_FOOTPRINT`; busboy/Alex routes use their own footprints. Alex visits for a split. The illustrated contract includes split.down. A 1.2s preparation cue and occupancy recheck precede a 22x7 blocker for 5s without damage. First entry waits 60–90s, three deliveries and 30s of the shift; later visits wait 120–180s after departure, at most once per timed shift. Entry defers for chase, recent hit, round, bathroom urgency, busy doorway or final 40s. Full split bounds exclude furniture, staff pocket, door and bathroom; routes are validated. Last call, round, bathroom urgency and shift end release an active blocker. Reset clears visit memory. See node tests/alex.js and docs/VISUAL-SYSTEM.md. The busboy remains an explicit procedural art-debt exception until dedicated overhead idle/walk/mop artwork is authored.
+Three shots fill the bladder and start a 60s bathroom timer. Reaching `BATHROOM` clears it; expiry loses 20 tips through the shared shift ledger and leaves a puddle that scares walk-ins away. The busboy routes to reachable puddles and mops them. Every five non-hunter deliveries earns a held cigarette pack (up to three); C or the touch C button drops one. A hunter who finds it clears his order and tray item, walks out, smokes for 15s, returns and resumes scanning. Smoke routes use `HUNTER_FOOTPRINT`; busboy/Alex routes use their own footprints. Alex visits for a split. The illustrated contract includes split.down. A 1.2s preparation cue and occupancy recheck precede a 22x7 blocker for 5s without damage. Current first entry uses a 15–25s delay, at least one delivery, 12s game time and 8s of the shift; later visits use a 25–45s cooldown after departure, at most once per timed shift. Entry defers for chase, recent hit, round, bathroom urgency, busy doorway or final 40s. Full split bounds exclude furniture, staff pocket, door and bathroom; routes are validated. Last call, round, bathroom urgency and shift end release an active blocker. Reset clears visit memory. See node tests/alex.js and docs/VISUAL-SYSTEM.md. The busboy remains an explicit procedural art-debt exception until dedicated overhead idle/walk/mop artwork is authored.
 
 ### 7b. The cellar (berging bottles)
 

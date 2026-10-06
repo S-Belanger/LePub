@@ -3,14 +3,16 @@
 The production manifest selects twelve `*-illustrated.json` atlases: Doe,
 Hunter, Nazim, Sam, Gerald, Jay (`waiter`), Nick, Alex, and four walk-in looks,
 including Fred. These are new raster illustrations, not exports of `ohFigure`.
-Built-in imagegen produced the original PNGs on September 21–28, 2026 and Nick on October 6. No external
+Built-in imagegen produced the original PNGs on September 21–28, 2026; Nick and the latest Alex/Nazim/Sam/Gerald revisions are October 6. No external
 image API was used.
 Source PNGs remain unchanged after generation; the importer only writes JSON.
 These are AI-generated, visually reviewed assets, not hand-cleaned Aseprite art.
 
 Alex was added September 23 using Jay's sheet as reference, then his split
 appearance was edited September 25 to match the user's portrait without
-glasses; see [the current likeness prompts and limitations](alex-likeness.md)
+glasses; October 6 corrects his head/gaze using the approved Nick B perspective.
+See [the current perspective prompt and review](alex-perspective.md),
+[the earlier likeness prompts and limitations](alex-likeness.md)
 and [the original source prompt](alex-prompt.md). The current
 [visual system](../../docs/VISUAL-SYSTEM.md) and `src/character-art.js` govern
 new characters. Importer, runtime pose selection and gallery share that
@@ -24,8 +26,9 @@ to inspect every direction and pose at desktop, phone or enlarged size.
 Every selected source is 1254×1254 with four columns and four rows.
 Columns are **down, right, up, left**. Cell boundaries are rounded from actual
 image dimensions; do not assume the prompt's requested 384px cells were obeyed.
-Nick uses measured row seams inside the generated transparent gutters, stored
-as `rowCuts` in the character contract; equal quarter rows would cut his cap.
+Nick, Alex, Nazim, Sam and Gerald use measured row seams inside generated
+transparent gutters, stored as `rowCuts` in the character contract; equal
+quarter rows can cut into figures. Remeasure every replacement source.
 `tools/import-illustrated.js` measures alpha bounds in each cell, keeps its
 horizontal centre and anchors the bottom of the visible silhouette to the floor.
 One density per family preserves scale across poses/directions: maximum idle
@@ -73,10 +76,45 @@ procedural entry to the manifest for an illustrated family.
 
 ## Prompt set and provenance
 
+### Current authoring guidance versus historical prompts
+
+The exact recipes and character descriptions below preserve the original
+generation history. They are not an override of later identity/gaze decisions.
+For every new character or likeness/head-angle edit, use the current
+[visual system](../../docs/VISUAL-SYSTEM.md) and
+[reusable prompts](../../docs/claude/03-PROMPTS.md). The explicitly approved
+[Nick B sheet](../../docs/art-review/face-perspective/nick-b-candidate.png)
+is the head/gaze benchmark alongside shipped Jay/Doe/Hunter pixels: people
+look along the floor in their cardinal heading, with relaxed natural pitch,
+visible crowns/shoulders and foreshortened faces, never up at the camera.
+An older Alex/Nick lifted face or an eyelid-only change does not meet it.
+
+Identity photos supply likeness only; the current outfit/pose contract supplies
+clothes, special rows and anatomical hand ownership. Keep opposite strides
+where required, Nazim's distinct lean/slump layout, and headwear orientation.
+Pass actual reference pixels to the generator. A likeness-preserving edit is
+not a guarantee of identical facial pixels after a changed projection.
+Record revised prompts separately, preserve accepted source pixels, remeasure
+alpha-zero versus alpha>=128 gutters/seams/density/pivots for each replacement,
+then inspect actual desktop/mobile room and event-lifecycle evidence. Passing
+bounds checks alone does not approve camera/likeness. Raw personal photos must
+stay outside public/served assets or be explicitly ignored and excluded from
+deployment; untracked files under `assets/` can still be served.
+
+### Original generation recipe
+
+This section preserves historical source descriptions, including the replaced
+regular heads. The current October 6 sources and exact revision prompts are
+[Nick B](nick-prompt.md#approved-october-6-perspective-revision),
+[Alex](alex-perspective.md), [Nazim](nazim-likeness.md),
+[Sam](sam-likeness.md) and [Gerald](gerald-likeness.md).
+Their [current comparison and gameplay checks](../../docs/art-review/cast-perspective/README.md)
+show retained outfits/pose contracts and the approved floor-facing gaze.
+
 The named cast used
 [`character-camera-study.png`](../art-direction/overhead/character-camera-study.png)
 as camera/style reference. Walk-ins used `waiter-illustrated.png` as the
-transparent layout and camera template. The following is the production prompt
+transparent layout and camera template. The following is the original production prompt
 recipe, with per-character differences listed below:
 
 ```text

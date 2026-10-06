@@ -5,6 +5,13 @@
 This is a reconstruction from the actual October 6 local work, not an idealized
 claim that the first image was flawless. The user approved the visual result.
 
+**Historical source snapshot:** the numbers, exact prompts and captures below
+describe the first illustrated Nick pass. The user subsequently approved
+[Nick B](../art-review/face-perspective/nick-b-candidate.png) with heads/eyes
+looking along the floor, as shown [beside Jay/Doe/Hunter](../art-review/face-perspective/nick-b-desktop.png).
+That is the current gaze standard. Preserve this history; do not reuse its old
+seams/density for replacement pixels or use the older lifted face as a benchmark.
+
 ## Before the upgrade
 
 Commit `eb7d72e` added Nick as a recurring baseball-uniform visitor with fart
@@ -94,14 +101,16 @@ source pixels or disabling a guard. This was allowed by the current visual
 system's measured-row-seam provision. True overlapping or missing anatomy
 would instead have required correcting the raster.
 
-You can reproduce the diagnosis without modifying either asset:
+These read-only commands were used for the first-source diagnosis:
 
 ```powershell
 node docs/claude/scripts/inspect-atlas.js nick
 node docs/claude/scripts/inspect-atlas.js nick --equal-rows
 ```
 
-Verified against this accepted source on October 6:
+They now inspect whichever Nick PNG/contract is in the checkout. The following
+results were verified against the first accepted source on October 6, before
+the B replacement; rerunning them on revised pixels need not reproduce counts:
 
 | Diagnostic mode | Actual row cuts | Cells with opaque boundary hits |
 | --- | --- | --- |

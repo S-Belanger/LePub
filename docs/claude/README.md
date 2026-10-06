@@ -8,7 +8,14 @@ The target is the **actual illustrated cast in the production manifest**.
 It is not whichever historical document says “pixel art,” and it is not the
 small procedural figures still retained in `src/sprites.js` for resilience.
 
-![Approved Nick beside Jay and Alex, with all Nick directions and poses](../art-review/nick/preview.png)
+![User-approved Nick B head/gaze beside actual Jay, Doe and Hunter](../art-review/face-perspective/nick-b-desktop.png)
+
+The October 6 **Nick B** approval is the current head/gaze benchmark. Every
+person looks along the floor toward their cardinal heading under one fixed
+high overhead camera. Preserve relaxed expression, visible crown/shoulders
+and foreshortened face/body; do not borrow the identity photo's upward-facing
+portrait angle. Older Nick/Alex sources and exact historical prompts explain
+prior work but do not override this direction.
 
 ## First, understand what went wrong
 
@@ -83,7 +90,11 @@ Use [the review record](templates/REVIEW-RECORD.md) before calling an asset done
 ```text
 Work in the LePub repository. Read HANDOFF.md completely and preserve all
 existing uncommitted work. Read docs/VISUAL-SYSTEM.md, then docs/claude/README.md
-and the linked workflow. Visually inspect the actual shipped Jay and Alex PNGs.
+and the linked workflow. Visually inspect shipped Jay/Doe/Hunter PNGs and
+docs/art-review/face-perspective/nick-b-candidate.png, the approved head/gaze
+reference. Heads/eyes look along the floor in their cardinal heading, not up
+at the camera. The photo supplies likeness only; the existing atlas/brief
+supplies costume, anatomical props and gameplay rows. Keep raw photos private.
 
 I want [CHARACTER] in the approved illustrated cast style. Establish the
 required directions and gameplay poses, then check what real raster-generation
@@ -98,8 +109,9 @@ result beside the cast. Keep HANDOFF.md current. Leave publication to my
 instructions; do not claim unrun tests or unpublished art are complete.
 ```
 
-Replace `[CHARACTER]` and provide the identity/costume details. Nick is already
-finished in this checkout: use him as a reference, not as a task to recreate.
+Replace `[CHARACTER]` and provide the identity/costume details. Reuse approved
+Nick artwork as a reference, rather than recreate it. Read the newest handoff
+for the current source-integration, test and publication state.
 
 ## Precedence and scope
 

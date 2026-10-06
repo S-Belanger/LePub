@@ -16,22 +16,71 @@ enough that people, drinks and hazards are easy to follow.
 
 ## References and precedence
 
-1. **Shipped character finish:** [Jay's sheet](../assets/sprites/waiter-illustrated.png)
-   and [Alex's sheet](../assets/sprites/alex-illustrated.png).
-   Inspect the PNG itself before authoring a new cast member.
-2. **Camera:** [character study](../assets/art-direction/overhead/character-camera-study.png).
+1. **Approved head/gaze benchmark:** the October 6
+   [Nick B sheet](art-review/face-perspective/nick-b-candidate.png) and
+   [comparison beside actual shipped cast](art-review/face-perspective/nick-b-desktop.png).
+   The user explicitly approved this result. People look **along the floor
+   toward their cardinal facing direction**, with relaxed head pitch; they do
+   not lift their face/eyes to the overhead camera. This overrides earlier
+   portrait-facing Nick/Alex artwork and old prompts that omitted gaze.
+2. **Shipped camera/finish:** [Jay](../assets/sprites/waiter-illustrated.png),
+   [Doe](../assets/sprites/doe-illustrated.png), and
+   [Hunter](../assets/sprites/hunter-illustrated.png). Inspect the actual PNGs
+   before authoring. Keep their elevated view, crown/shoulder visibility,
+   compact anatomy, cloth detail and warm contours. Alex's older sheet is a
+   costume/pose/finish reference; its old lifted face is not a gaze standard.
+   A revised source must pass this same review before becoming a gaze reference.
+3. **Camera study:** [character study](../assets/art-direction/overhead/character-camera-study.png).
    High overhead, visible crowns/shoulders, foreshortened torso/legs;
    cardinal directions retain that elevation. No eye-level side portraits.
-3. **Room mood/materials:** [pub painting](../assets/art-direction/warm-overhead-pub-reference.png).
+4. **Room mood/materials:** [pub painting](../assets/art-direction/warm-overhead-pub-reference.png).
    Translate its texture/light into the existing overhead room.
-4. **Geometry:** [approved plan](../assets/art-direction/floor-plan.png).
+5. **Geometry:** [approved plan](../assets/art-direction/floor-plan.png).
    Decorative changes must preserve routes, seats and colliders.
-5. **Review:** [live cast gallery](../tools/art-review.html), served locally.
+6. **Review:** [live cast gallery](../tools/art-review.html), served locally.
    Judge native desktop/phone size and enlarged detail, then the real room.
 
 The room is still procedural. The painting is a material reference, not a
 claim that the room already matches it. Busboy remains explicit art debt;
 ghost's translucent procedural look is intentional.
+
+Separate reference roles: the user's portrait supplies likeness (face shape,
+hair, beard, glasses/headwear and expression); the existing character supplies
+its approved outfit, anatomical prop ownership and pose contract; Nick B and
+Jay/Doe/Hunter supply camera and gaze. Supply those actual image pixels through
+the generator's image-input mechanism. A filename in a prompt is insufficient.
+Do not transfer a portrait's eye-level camera, background or unrequested clothes.
+Changing head projection can preserve likeness illustratively; it does not
+guarantee pixel-identical facial reprojection. Preserve accepted sources.
+
+Raw personal photos belong outside the public repository or in an explicitly
+ignored location excluded from the served/deployed tree. An untracked photo
+under `assets/` is still exposed by a static server; `.gitignore` alone is not
+a deployment exclusion. Check staged files and deployment contents before
+publication. Record reference roles without copying private originals into docs.
+
+## Head and gaze in every direction
+
+Keep one fixed high overhead camera (approximately 65 degrees above horizontal;
+the approved pixels matter more than a numeric angle). Rotate the person in
+the room, not the camera around their face. Their attention stays along the
+floor ahead of their facing direction, including walking and special rows.
+
+- **Down:** substantial crown/hair/cap and shoulder tops; a shorter visible face
+  below the crown. Down means toward the bottom of the room, not looking up at us.
+- **Right/left:** visible crown and near shoulder top at the same elevation;
+  foreshortened cheek, neck, torso and legs. Head/eyes follow that room heading.
+- **Up:** top/back of head, rear shoulders and costume. No front face painted on
+  the back of the head or head turned toward the camera to show the portrait.
+- **Specials:** retain natural head pitch and camera while changing the required
+  limbs/body. Nazim's lean/slump are deliberate body states; Alex's split is a
+  floor pose. They must remain readable without borrowing an eye-level portrait.
+
+Reject a lifted portrait face, a pupil/eyelid-only correction that leaves the
+head looking up, a low eye-level profile, or an over-bowed unreadable/dejected
+head. Relaxed downward pitch is compatible with a warm smile. Preserve cap
+orientation: a backward cap has its opening/strap at the forehead and brim at
+the back; a forward cap retains the opposite arrangement in every pose.
 
 ## Materials and color
 
@@ -103,7 +152,7 @@ never squeeze unrelated states into idle to satisfy validation.
 
 ### Add a character
 
-1. Read this guide and view the camera study and a shipped illustrated PNG.
+1. Read this guide and view Nick B plus shipped Jay/Doe/Hunter PNGs.
    Define identity, clothes/props, directions and every gameplay special pose.
 2. Declare the family in `src/character-art.js`. New `SPRITES` kinds without
    a contract fail validation. Customer variants share kind `customer`.
@@ -120,6 +169,12 @@ never squeeze unrelated states into idle to satisfy validation.
    the real state transition, not only a manually selected atlas frame.
 7. Update `HANDOFF.md` with files, tests, visual evidence and remaining debt.
 
+Use the [character brief](claude/templates/CHARACTER-BRIEF.md) and
+[copyable generation/head-correction prompts](claude/03-PROMPTS.md) to make
+these requirements explicit for the next contributor. Keep historical exact
+prompts unchanged; append new revisions/provenance rather than rewriting what
+an earlier generator was actually asked to do.
+
 ### Acceptance and enforcement
 
 ```sh
@@ -127,11 +182,13 @@ node tests/character-art.js
 node tests/assets.js
 node tests/smoke.js
 node tests/alex.js
+node tests/cellar.js
+node tests/hud.js
 node tools/validate-art.js
 node tools/validate-alex.js
 ```
 
-The first four run in `.github/workflows/validate.yml` on pushes and PRs.
+The six Node suites run in `.github/workflows/validate.yml` on pushes and PRs.
 The art contract rejects undeclared people, missing/duplicate manifest families,
 legacy selections, insufficient density, scale drift and missing/wrong pose
 mappings. Loader tests cover invalid/missing assets; smoke covers gameplay.
@@ -143,6 +200,41 @@ The game retains per-family procedural fallback when assets fail to load.
 That resilience must not be used to call missing production art done.
 Exceptions are explicit debt, never the default for new people. Tests cannot
 judge the pub's vibe: visual inspection and truthful review notes are required.
+
+Review gates: inspect every source cell against the approved gaze/identity,
+then measure real alpha and seams, then import/register, then exercise actual
+pose events/return/reset/fallback and inspect desktop/mobile room captures at
+one family scale. Distinguish alpha-zero gutters from alpha>=128 silhouette
+gaps; measured seams never repair true overlap or clipped anatomy. A passing
+importer proves technical bounds, not camera/likeness approval. When the user
+conditions later work on a preview approval, wait for that actual approval.
+Once approval and publication are already authorized, continue through these
+gates without inventing another permission step. State unrun checks and live
+verification separately; a candidate review is not a shipped-art receipt.
+
+## Regular likeness revisions
+
+The October 6 user-supplied new faces replace the default Nazim, Gerald and
+Sam likenesses. Preserve each established game outfit, behavior and row
+contract; the photos do not set camera, body pose or portrait clothing.
+
+- Nazim: dark textured crop/fade, thin round wire glasses and a neat full dark
+  beard, no cap. Keep his olive hoodie/charcoal trousers and the actual source
+  rows `idle` / `walkA` / `lean` / `slump`.
+- Gerald: black forward cap, clear round glasses, clean-shaven broad smiling
+  face. Keep his burgundy cardigan and idle/two-stride/talking rows. The old
+  bald/moustached description is historical provenance, not the current likeness.
+- Sam: receding short dark hair, black rounded rectangular glasses, full dark
+  beard and warm smile, **no hat**. Keep his burgundy/cream striped outfit and
+  idle/two-stride/talking rows. Do not carry forward the old flat cap or
+  clean-chin rule.
+
+All use Nick B's natural floor-directed head/gaze and the same elevated camera.
+Actual source acceptance, import and browser results belong in each revision's
+provenance/review record; these instructions alone do not claim completed art.
+Exact revision prompts: [Nazim](../assets/sprites/nazim-likeness.md),
+[Gerald](../assets/sprites/gerald-likeness.md), and
+[Sam](../assets/sprites/sam-likeness.md).
 
 ## Hunter
 
@@ -168,12 +260,15 @@ is 1.5 world units above the cropped silhouette bottom. No pose-dependent
 art scaling or collider change. Other split directions are source variations
 for inspection; right/left source poses have imperfect rotated leg anatomy
 and are not used by the gameplay split. The personal portrait stays outside
-the public asset tree. [Current likeness prompts](../assets/sprites/alex-likeness.md)
-and [original source prompt](../assets/sprites/alex-prompt.md).
+the public asset tree. [Current head/gaze edit prompt](../assets/sprites/alex-perspective.md),
+[historical likeness prompts](../assets/sprites/alex-likeness.md) and
+[original source prompt](../assets/sprites/alex-prompt.md).
 
-Visits start only after a 60–90 second opening delay, at least three deliveries
-and 30 seconds of the current shift. There is at most one visit per timed
-shift; endless shifts use a 120–180 second cooldown starting after departure.
+Current `game.js` uses a 15–25 second opening delay, at least one delivery,
+12 seconds of game time and 8 seconds of the current shift. There is at most
+one visit per timed shift; endless shifts use a 25–45 second cooldown starting
+after departure. These are source-verified current values, not the older
+60–90/120–180-second scheduling described in historical art records.
 Entry defers during a chase,
 recent hit, active round, bathroom urgency, busy doorway, or final 40 seconds.
 He uses a reachable empty split space outside the staff pocket and away
@@ -203,7 +298,7 @@ Nick uses the October 5 commit's photo as identity reference: a broad friendly
 face and toothy grin, thick ginger-brown beard and moustache, and a backward
 baseball cap. Keep his established outfit: muted teal cap, burgundy baseball
 jersey with cream piping, cream baseball trousers, dark belt and dark cleats.
-Match Jay/Alex's illustrated finish and elevated overhead camera. All four
+Match the approved Nick B/Jay/Doe/Hunter head pitch and elevated camera. All four
 directions have idle, two strides and an apology with his anatomical right
 palm raised and left hand on his stomach. One measured density gives him the
 same 21-world-unit maximum idle height as other supporting people.

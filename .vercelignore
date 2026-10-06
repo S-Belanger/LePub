@@ -1,0 +1,9 @@
+# Local/private inputs and development metadata are not deployment assets.
+.git/
+.vercel/
+node_modules/
+.env
+.env.*
+assets/sprites/Nazim-New-Face.jpg
+assets/sprites/Gerald-New-Face.jpg
+assets/sprites/Sam-New-Face.jpg

@@ -15,21 +15,23 @@ const CharacterArt = (() => {
     hunter: person('The Hunter', 'hunter', 'drink', { height: 24,
       animations: { idle: ['idle'], walk, gun: ['idle'], gunWalk: walk, drink: ['special'] } }),
     nazim: person('Nazim', 'nazim', 'lean', {
+      rowCuts: [0, 321, 638, 934, 1254],
       rows: ['idle', 'walkA', 'lean', 'slump'],
       animations: { idle: ['idle'], walk: ['walkA', 'idle'], lean: ['lean'], slump: ['slump'] } }),
-    sam: person('Sam', 'sam', 'talk'),
-    gerald: person('Gerald', 'gerald', 'talk'),
+    sam: person('Sam', 'sam', 'talk', { rowCuts: [0, 312, 621, 927, 1254] }),
+    gerald: person('Gerald', 'gerald', 'talk', { rowCuts: [0, 314, 617, 907, 1254] }),
     waiter: person('Jay', 'waiter', 'spray'),
     nick: person('Nick', 'nick', 'sorry', {
-      // Generated row gutters measured at y311-340, 619-639 and 911-934.
-      // Equal quarters cut into the apology cap; preserve the source pixels.
-      rowCuts: [0, 326, 630, 923, 1254],
+      // Approved B source: clear silhouette gutter centers measured in Edge.
+      // One source density/pivot convention across all directions and poses.
+      rowCuts: [0, 328, 629, 917, 1254],
     }),
     'customer-teal': person('Teal sweater', 'customer', 'talk'),
     'customer-ochre': person('Ochre jacket', 'customer', 'talk'),
     'customer-blue': person('Blue shirt', 'customer', 'talk'),
     fred: person('Fred', 'customer', 'talk'),
     alex: person('Alex', 'alex', 'split', {
+      rowCuts: [0, 344, 663, 968, 1254],
       // Shoe/hip floor contact, measured from this source's horizontal split.
       // Move the floor anchor 1.5 world units above the silhouette bottom.
       // Gameplay uses split.down to align the legs with the horizontal blocker.

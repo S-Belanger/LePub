@@ -37,13 +37,13 @@
   </tr>
   <tr>
     <td align="center">
-      <a href="docs/art-review/mobile-hud/full-cast/desktop-gameplay.png">
-        <img src="docs/art-review/mobile-hud/full-cast/desktop-gameplay.png" width="650" alt="Desktop gameplay: the deer waiter, hunter, orders and amber-lit pub">
+      <a href="docs/art-review/cast-perspective/full-cast/desktop-gameplay.png">
+        <img src="docs/art-review/cast-perspective/full-cast/desktop-gameplay.png" width="650" alt="Desktop gameplay: the deer waiter, hunter, orders and amber-lit pub">
       </a>
     </td>
     <td align="center">
-      <a href="docs/art-review/mobile-hud/full-cast/mobile-gameplay.png">
-        <img src="docs/art-review/mobile-hud/full-cast/mobile-gameplay.png" width="170" alt="Portrait gameplay: separate score strip, visible booth patrons, virtual stick and action buttons">
+      <a href="docs/art-review/cast-perspective/full-cast/mobile-gameplay.png">
+        <img src="docs/art-review/cast-perspective/full-cast/mobile-gameplay.png" width="170" alt="Portrait gameplay: separate score strip, visible booth patrons, virtual stick and action buttons">
       </a>
     </td>
   </tr>
@@ -132,14 +132,14 @@ from across the room; place it in his path. Untouched packs disappear after
 | **Fred & the walk-ins** | Illustrated customer appearances sharing the pub's seating and order systems |
 
 <details>
-  <summary><strong>View Nick, Jay and Alex — illustrated cast and pose showcase</strong></summary>
+  <summary><strong>View the updated cast — Jay, Nick, Alex, Nazim, Sam and Gerald</strong></summary>
 
   <p>
-    <img src="docs/art-review/nick/preview.png" width="900" alt="Nick beside Jay and Alex, followed by all sixteen Nick direction and action poses">
+    <img src="docs/art-review/cast-perspective/cast-perspective.png" width="900" alt="Jay reference beside updated Nick, Alex, Nazim, Sam and Gerald in all four directions">
   </p>
 
   <p>Reviewed source art and imported production frames, shown at inspection scale.
-  See <a href="docs/art-review/nick/README.md">Nick's in-game review</a> and
+  See <a href="docs/art-review/cast-perspective/README.md">the current cast and in-game review</a> and
   <a href="assets/sprites/nick-prompt.md">exact generation and refinement prompts</a>.</p>
 </details>
 

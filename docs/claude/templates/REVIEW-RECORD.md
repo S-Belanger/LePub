@@ -18,6 +18,9 @@ decision, not proof by itself; link the actual files/commands/results.
 - Exact correction prompts path:
 - Rejected draft(s) and concrete reason(s):
 - Source edits or transformations, if any:
+- Raw portrait staging/deployment exclusion verified; no public original copied:
+- Approved gaze benchmark and explicit approval dependency/status, if any:
+- Existing likeness edited or user requested new likeness; reprojection limits:
 
 ## Atlas and runtime
 
@@ -26,6 +29,7 @@ decision, not proof by itself; link the actual files/commands/results.
 - Import command and process exit result: not run.
 - Metadata path:
 - Measured row seams and evidence, if used:
+- Alpha-zero row bands vs alpha>=128 silhouette gaps, explicitly distinguished:
 - Maximum idle crop / target world height / derived density: not measured.
 - Contact pivot/floor offsets and reasoning:
 - Manifest entry:
@@ -55,10 +59,13 @@ relevant, correction and fresh rerun result. Do not silently erase failures.
 
 ## Visual inspection
 
-- [ ] Full source inspected against Jay/Alex PNGs.
+- [ ] Full source inspected against approved Nick B and Jay/Doe/Hunter PNGs.
 - [ ] Same overhead elevation in all four directions.
+- [ ] Actual head pitch/gaze along the floor in each heading, including specials.
+- [ ] No portrait look-up, eyelid-only fix, over-bow or defeated/unreadable head.
 - [ ] Identity/costume consistent in every cell.
-- [ ] Both strides visibly alternate; no extra/missing limbs.
+- [ ] Family-specific rows correct; both strides alternate where contracted.
+- [ ] No extra/missing limbs; headwear brim/strap orientation consistent.
 - [ ] Anatomical hands/props/tattoos/emblems stay on the correct side.
 - [ ] Alpha/gutters/complete silhouettes confirmed, including special row.
 - [ ] One physical family scale and stable feet contact.

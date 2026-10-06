@@ -7,3 +7,8 @@ out/
 !.env.example
 Thumbs.db
 .DS_Store
+
+# User-supplied identity portraits: retain local originals, publish sprite art only.
+/assets/sprites/Nazim-New-Face.jpg
+/assets/sprites/Gerald-New-Face.jpg
+/assets/sprites/Sam-New-Face.jpg

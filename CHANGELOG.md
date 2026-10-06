@@ -6,6 +6,21 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-06 — approved cast perspective and new regular likenesses
+
+- User approves Nick B and production release; requests Alex camera/gaze correction, new Nazim/Gerald/Sam portrait identities and durable new-character art guidance. Codex handles illustration/integration/release; art_guidance subagent handles independent documentation.
+- Artwork/integration complete locally: exact approved Nick B, corrected Alex head angle, new Nazim/Sam/Gerald likenesses. Original outfits/poses/mechanics preserved. Six Node suites, actual Edge full-cast/Nick/Alex/HUD desktop/mobile checks, exact-source hashes and25-file docs audit PASS. Durable Codex/Claude guides/templates and current README captures updated. Raw new portraits retained locally/excluded from public Git/deploy. Authorized main/current-production publication next. [Requests, exact prompts, methods and receipts](docs/collaboration/2026-10-06-cast-perspective-release.md).
+
+## 2026-10-06 — same-face overhead perspective examples
+
+- **Follow-up:** user requests Nick-only B examples matching Doe/Hunter/Jay's direction of looking, and explicitly conditions Alex edits on Nick approval. [Nick study beside actual references](docs/art-review/face-perspective/nick-b-desktop.png) complete; transparent16-pose study/desktop/mobile comparisons checked in Edge. Nick approval pending; no Alex change yet. Capture/gutter-selection failures and corrections retained in journal.
+
+- **User selection:** B (Jay's angle) approved as the Nick/Alex head-perspective benchmark. Recorded in the preview README/journal/handoff; replacement sheets have not been authored.
+
+- User requests 2–3 previews with existing Nick/Alex likenesses and a more natural downward head angle like Jay. Codex uses built-in identity-preserving edits to compare subtle, Jay-matched and strong overhead options.
+- Produced a labeled Nick/Alex [three-option board](docs/art-review/face-perspective/preview.png); corrected C's backward-cap detail. B is the recommended camera starting point. Edits retain likeness but are not pixel-identical face copies; C's Nick angle became less distinct after correction.
+- Preview work only; shipped sprite sheets/runtime remain intact. Local, uncommitted, no publication. [Exact request, prompt and outcomes](docs/collaboration/2026-10-06-face-perspective-previews.md).
+
 ## 2026-10-06 13:27 — mobile HUD/help release verified live
 
 - Published [`b0e8716`](https://github.com/S-Belanger/LePub/commit/b0e8716b3206f289f4230e0ea48fe2204095aa55), independent remote SHA matches; [all six CI suites pass](https://github.com/S-Belanger/LePub/actions/runs/37503519815).

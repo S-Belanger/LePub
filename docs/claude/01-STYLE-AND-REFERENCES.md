@@ -8,9 +8,11 @@ Open these as images. Reading their paths or filenames is not visual inspection.
 
 | Reference | What it controls | What it does not control |
 | --- | --- | --- |
+| [User-approved Nick B sheet](../art-review/face-perspective/nick-b-candidate.png) and [actual cast comparison](../art-review/face-perspective/nick-b-desktop.png) | Definitive relaxed head pitch and gaze along the floor; crown/face balance and elevated side views | A new person's likeness, baseball costume, apology, or source-specific seams |
 | [Jay's illustrated sheet](../../assets/sprites/waiter-illustrated.png) | Primary finish, compact anatomy, contour, elevated camera, fabric shading, all-direction layout | A new character's identity, glasses, apron or spray bottle |
-| [Alex's illustrated sheet](../../assets/sprites/alex-illustrated.png) | Second finish reference, face/beard detail, clothing, pose consistency | A new person's hairstyle, outfit or split activity |
-| [Nick's accepted sheet](../../assets/sprites/nick-illustrated.png) | Current example for backward cap, baseball costume, two strides and apology | Universal clothing, beard, hand gesture, or row-boundary numbers |
+| [Doe](../../assets/sprites/doe-illustrated.png) / [Hunter](../../assets/sprites/hunter-illustrated.png) | Additional shipped overhead finish and where heads/eyes point in the room | A new person's hood, antlers, glasses, rifle or identity |
+| [Alex's illustrated sheet](../../assets/sprites/alex-illustrated.png) | Approved costume, beard/cloth finish and split pose contract | Older lifted-face gaze; a revision only becomes a gaze reference after review against Nick B |
+| [Nick's production sheet](../../assets/sprites/nick-illustrated.png) | Backward cap, baseball costume, two strides and apology | Permission to revive earlier portrait-facing gaze or reuse old seam numbers for changed pixels |
 | [Camera study](../../assets/art-direction/overhead/character-camera-study.png) | Visible crowns/shoulders and foreshortening in each cardinal direction | Current final likenesses or its painted backdrop |
 | [Room painting](../../assets/art-direction/warm-overhead-pub-reference.png) | Warm materials, light and color harmony | Literal room geometry, isometric conversion, floor under a sprite |
 | [Approved floor plan](../../assets/art-direction/floor-plan.png) | Routes, layout and placement constraints | Permission to change colliders to accommodate a new image |
@@ -18,7 +20,7 @@ Open these as images. Reading their paths or filenames is not visual inspection.
 
 ![Jay: the primary production finish reference](../../assets/sprites/waiter-illustrated.png)
 
-![Alex: the secondary production finish reference](../../assets/sprites/alex-illustrated.png)
+![User-approved Nick B: head and gaze benchmark](../art-review/face-perspective/nick-b-candidate.png)
 
 The atlas images are transparent. A viewer may display black or a checkerboard
 under that transparency. The viewer's backdrop must not become part of a new asset.
@@ -30,10 +32,13 @@ For a typical new person, attach in this order:
 1. Identity photo, if there is one. Label it “identity only,” or specify exactly
    which parts of its clothes are also required.
 2. Jay's **illustrated** PNG. Label it “finish, anatomy and overhead camera.”
-3. Alex's **illustrated** PNG. Label it “secondary finish/face detail.”
-4. Optional pose/costume study, only if needed. Label its limited role explicitly.
+3. User-approved Nick B PNG. Label it “head pitch/gaze along floor; overhead
+   elevation only, not this person's identity or costume.”
+4. Existing character atlas for a revision, or a precise costume/pose study.
+   Label it “outfit, row order, actions and anatomical ownership.”
+5. Doe/Hunter if extra camera/finish comparison is useful. Keep roles explicit.
 
-If no identity photo exists, attach Jay/Alex and describe the requested identity;
+If no identity photo exists, attach Jay/Nick B and describe the requested identity;
 renumber the prompt's image references to match the actual attachments.
 
 An external generator cannot read `assets/sprites/waiter-illustrated.png`
@@ -44,6 +49,11 @@ able to open the local file is separate from the generator receiving it.
 A portrait shows a person at eye level. Without explicit role separation,
 the generator may borrow that camera or costume. A room painting may tempt
 it to add a floor or shadow. Give each attachment one clear purpose.
+
+Keep raw personal photos outside public/served assets, or explicitly ignored
+and excluded from deployment. A photo can be untracked and still served under
+`assets/`; `.gitignore` is not itself a static-host exclusion. Do not duplicate
+private originals in the guide, screenshots, prompt history or review folder.
 
 ## Anatomy and camera: the non-negotiable silhouette
 
@@ -56,6 +66,10 @@ photoreal cutout, or a tall eye-level RPG portrait.
 The camera is high overhead, approximately 65 degrees above horizontal.
 The visible result matters more than the number:
 
+People look **along the floor toward their cardinal facing direction**.
+They do not raise their head or eyes toward the overhead viewer. Preserve a
+relaxed, cheerful expression and natural pitch, rather than a defeated bow.
+
 - Facing down: crown/hair or cap occupies substantial area; the face remains
   readable below it; shoulders are visible from above.
 - Facing up: the top/back of the head dominates; the rear shoulders and outfit
@@ -63,6 +77,12 @@ The visible result matters more than the number:
 - Facing right/left: retain the same elevation. The cap crown and shoulder
   tops remain visible; the torso/legs stay foreshortened.
 - A side cell must not become an eye-level profile with a long neck and long legs.
+
+Use Nick B for the head-angle decision. Lowering only pupils or eyelids while
+keeping a lifted portrait face is insufficient: correct head pitch and the
+projected crown/forehead/face balance. Avoid the opposite error of hiding all
+likeness under an excessively bowed head. Inspect idle, both strides and every
+special; a good down-facing idle alone does not establish all-direction parity.
 
 Compare head-to-body ratio, shoulder width and feet placement directly with Jay.
 The entire character should feel as if photographed by the same fixed camera
@@ -98,6 +118,11 @@ The runtime provides grounding and room light.
 Write the identity as concrete observations: face shape, skin tone, forehead,
 hairline, beard shape/color, glasses shape, cap direction and characteristic
 smile. “Looks like Nick” alone is less useful than that description plus his photo.
+
+For an existing character, edit the existing illustrated likeness; do not
+invent a different person to solve camera. A changed projection can preserve
+likeness but does not guarantee identical facial pixels. Record that limit
+and inspect the entire edit, including regions asked to remain unchanged.
 
 Keep the same identity in every direction and pose. A backward cap has its
 adjustment opening/strap at the forehead and brim at the back. The up-facing

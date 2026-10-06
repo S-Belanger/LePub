@@ -48,7 +48,8 @@ This route works when Claude has no callable raster generator.
 1. Ask Claude to produce the exact prompt and ordered attachment list.
 2. Open the image-generation environment used for the project's artwork, if
    available, or another generator supporting reference images and transparency.
-3. Upload the actual portrait/Jay/Alex files. Confirm all expected images are
+3. Upload the actual portrait, Jay, approved Nick B and existing pose/costume
+   source as appropriate. Confirm all expected images are
    attached and their order matches the prompt.
 4. Submit the generation prompt. Request actual transparent output using the
    tool's transparency control as well as the prompt when such a control exists.
@@ -110,12 +111,16 @@ a different coding assistant is now working on the same character.
 
 Keep initial downloads in a task working folder outside the served production
 tree. Keep a private portrait outside the public repository unless the user
-has specifically directed otherwise. Nick's original portrait was already
+has specifically directed otherwise, or explicitly ignore AND exclude it from
+the served/deployed tree. Check staging and deployment inputs: untracked under
+`assets/` still means publicly served by a static host. Nick's original portrait was already
 tracked before this upgrade; do not duplicate it into the guide or reference pack.
 
 Inspect the entire output as an image, then inspect each cell. Check:
 
-- actual reference finish, overhead camera and identity;
+- actual Nick B/Jay/Doe/Hunter finish, fixed overhead elevation and identity;
+- relaxed heads/eyes looking along the floor in each cardinal heading, with
+  visible crowns and foreshortened faces; no portrait look-up or eyelid-only fix;
 - exactly four correctly ordered directions;
 - both distinct strides in every direction;
 - required special action and anatomical hand/prop ownership;
@@ -146,7 +151,8 @@ Run the required checks from [review and troubleshooting](05-REVIEW-TROUBLESHOOT
 Use a supporting-character validator as a starting pattern, but adapt its
 fixture and assertions to this character's real event.
 
-Inspect both strides and special poses beside Jay at 1280x720 and 390x844
+Inspect all directions, both strides and special poses beside Nick B/Jay/Doe/Hunter
+at one world scale, at 1280x720 and 390x844
 touch/phone emulation. Also inspect the person in the real pub, including
 warm lamp pools and dark lanes. Exercise the actual transition that sets
 the pose, its return to walking/idle, reset cleanup, and missing-image fallback.
@@ -179,3 +185,9 @@ production artwork; local captures do not establish live deployment.
 Finish the handoff so the next Claude/Codex session can continue without
 recreating accepted art or losing uncommitted work. Publish only within the
 user's instruction; no extra approval is needed for already authorized work.
+
+If the request says “show a preview; apply to others if I approve,” deliver
+the actual preview and wait for explicit approval of that dependency. Approval
+of Nick B on October 6 satisfied that condition for the requested Alex pass.
+Do not treat elapsed time or a passing import as approval. Record the approved
+benchmark, then continue the authorized task through review and publication.

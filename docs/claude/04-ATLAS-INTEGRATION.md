@@ -49,7 +49,7 @@ Inside the existing `families` object in `src/character-art.js`, an ordinary
 person is declared through the local `person` helper:
 
 ```javascript
-// Worked Nick example: already present; do not insert a duplicate.
+// Historical first Nick source example; do not copy seams for a changed PNG.
 nick: person('Nick', 'nick', 'sorry', {
   rowCuts: [0, 326, 630, 923, 1254],
 }),
@@ -71,7 +71,12 @@ The standard walk steps are 160 milliseconds each; a stationary sequence
 uses 1000 milliseconds. The importer and tests consume this same contract.
 Do not hide a new special state inside `idle` to make validation pass.
 
-If Nick had truly equal rows, omit `rowCuts`; the importer rounds boundaries
+This numeric example records the first October 6 source, before the approved
+Nick B correction. Read the current contract and measure the current PNG;
+replacing an image invalidates old seam/crop/density assumptions. A head edit
+can change spacing even when requested to preserve it.
+
+For truly equal rows, omit `rowCuts`; the importer rounds boundaries
 from actual width/height. If another character needs more/different rows,
 declare them explicitly with its animation sequences. Existing Nazim/Alex
 entries provide examples. Do not reuse Nick's numeric seams for new artwork.
@@ -152,7 +157,7 @@ transparent pixels, and no alpha>=128 pixel on its boundary. If it fails:
 image height and increase strictly. Each cut is a seam BETWEEN rows; it is
 not a crop of one pose. Use boundaries that work across all four directions.
 
-Nick's actual opaque-silhouette gaps were 311–340, 619–639 and 911–934.
+The first Nick source's opaque-silhouette gaps were 311–340, 619–639 and 911–934.
 Cuts 326, 630 and 923 sit inside them. A quarter seam at 941 would include
 the top of the fourth-row cap in the third row. Moving the declared seam
 preserved all source pixels and gave the correct cells. No edge guard was removed.
@@ -194,7 +199,7 @@ rendered pivot X    = pivot.x / density
 rendered pivot Y    = pivot.y / density
 ```
 
-For Nick, `H = 275` and `targetHeight = 21`, so
+For the first Nick source, `H = 275` and `targetHeight = 21`, so
 `density = 275 / 21 = 13.095238...`. The same density applies to every cell.
 A stride may extend a foot farther, and a gesture may widen the silhouette;
 that does not justify independently rescaling those frames.

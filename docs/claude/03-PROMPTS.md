@@ -6,17 +6,23 @@ Prompts to **Claude** direct project work. Prompts to the **image generator**
 direct raster artwork. Keep those roles separate. Replace every bracketed
 placeholder and adapt attachment numbering to the images actually supplied.
 
+These are **current reusable instructions**, including the October 6 approved
+Nick B head/gaze correction. Historical exact prompts in individual sprite
+records document what was run then; preserve them and append revisions. An
+older prompt without explicit gaze is not the current visual standard.
+
 ## A. Start a Claude Code character task
 
 ```text
 We are working in LePub. Add/upgrade [CHARACTER] to the SAME approved
-illustrated overhead cast style as Jay, Alex and the accepted Nick.
+illustrated overhead cast style as approved Nick B, Jay, Doe and Hunter.
 
 First read HANDOFF.md completely and inspect git status --short --branch.
 Preserve all existing uncommitted files. Read AGENTS.md, docs/VISUAL-SYSTEM.md,
 and docs/claude/README.md plus its linked chapters. The current visual system
 supersedes old camera/procedural art plans. Open and visually inspect the actual
-waiter-illustrated.png and alex-illustrated.png, not merely their filenames.
+waiter-illustrated.png, doe-illustrated.png, hunter-illustrated.png and
+docs/art-review/face-perspective/nick-b-candidate.png, not merely filenames.
 
 Identity reference: [PHOTO OR DESCRIPTION]. Its role is [IDENTITY ONLY /
 IDENTITY PLUS SPECIFIED CLOTHING]. Costume: [EXACT APPROVED CLOTHES/PROPS].
@@ -31,7 +37,9 @@ handoff. Do not replace this requirement with SVG, ohFigure, exported procedural
 rows, or an enlarged placeholder; do not call missing art completed.
 
 Keep physical scale, ART_SCALE=4, colliders, routes and UI consistent. Author
-the four cardinal directions with the same elevated camera; include every
+the four cardinal directions with the same elevated camera. Heads and eyes
+look along the floor in their cardinal facing direction, never up at the
+overhead viewer; correct actual head pitch, not only eyelids. Include every
 required action. Inspect all source cells, correct only identified defects,
 import measured alpha/crop/pivot metadata, and wire the production manifest.
 
@@ -53,7 +61,7 @@ another generation cycle.
 Tell me which actual tools this session can call to generate raster images,
 edit a supplied raster with reference images, and return the original file.
 Inspect their available schemas rather than guessing names from Codex.
-Identify how our local portrait/Jay/Alex bytes reach the generator, how alpha
+Identify how our portrait/Jay/Nick B/pose-source bytes reach the generator, how alpha
 is requested, and where the downloadable output is saved. State the provider
 and model only if the tool actually exposes them.
 
@@ -69,9 +77,11 @@ permission to choose an arbitrary provider.
 
 ## C. Master raster-generation prompt
 
-This template assumes a portrait, Jay and Alex are attached as images 1/2/3,
+This template assumes a portrait, Jay and approved Nick B are attached as images 1/2/3,
 and the standard four-row supporting-person layout is appropriate. For a
 different layout, rewrite the row list and corresponding character contract.
+For a revision, attach the current atlas as image 4 and label it outfit/poses;
+for a new person, omit image 4 or replace it with a named costume/pose reference.
 
 ```text
 Use case: stylized-concept.
@@ -83,8 +93,12 @@ HAIR/BEARD/GLASSES/CAP, DISTINCTIVE EXPRESSION]. Do not borrow its background,
 eye-level camera, pose, or unrequested clothes.
 Image 2: shipped Jay atlas, primary reference for painted HD finish, compact
 stout anatomy, warm dark contours, cloth detail, overhead camera and layout.
-Image 3: shipped Alex atlas, secondary reference for finish and readable faces.
-Do not copy those characters' identities or clothes.
+Image 3: user-approved Nick B atlas for natural head pitch, crown/face balance
+and heads/eyes looking along the floor in each cardinal direction only.
+Image 4, if supplied: [EXISTING CHARACTER ATLAS / COSTUME-POSE STUDY], controls
+[EXACT CLOTHES, ROWS, ANATOMICAL PROP OWNERSHIP AND SPECIAL ACTIONS].
+Do not copy Jay's or Nick's identities/clothes from images 2/3. Preserve the
+specified identity and approved costume from images 1/4 as directed above.
 
 Create one square sheet containing exactly sixteen separate complete full-body
 figures in a strict four-column by four-row grid. Use one consistent character
@@ -104,13 +118,23 @@ to WALK A in EVERY direction;
 Camera: high overhead, about 65 degrees above horizontal in EVERY cell,
 including side views. Large visible crown/cap and shoulder tops, foreshortened
 torso and legs. Match Jay's perspective. No eye-level side portraits.
+Keep the camera fixed while the person turns. Head and eyes look along the
+floor toward each cardinal facing direction, matching approved Nick B.
+Down means toward the bottom of the room, not looking up at us. Show a natural
+relaxed downward head pitch, substantial crown and a foreshortened face below.
+Right/left retain the same elevation and forward floor-directed attention;
+up shows top/back of head and rear shoulders. Apply to EVERY row, including
+special actions. Keep a warm readable expression; do not over-bow the head.
+No lifted portrait face, upward camera eye contact, eyelid-only correction,
+unreadable defeated posture, or front face painted on the rear head.
 
 Identity: [CONCRETE PERSON DESCRIPTION].
 Costume: [CLOTHING, MUTED COLORS, MATERIALS, SHOES, SEAMS, DISTINCTIVE DETAILS].
 Props: [NONE / EXACT PROP AND ANATOMICAL HAND/SIDE].
 Special identity constraints: [CAP ORIENTATION / TATTOO / EMBLEM / ASYMMETRY].
 
-Finish: richly painted, detailed HD game illustration matching images 2 and 3.
+Finish: richly painted, detailed HD game illustration matching Jay's finish
+and Nick B's overhead head/gaze.
 Warm upper-left light, crisp dark warm contours, soft textured shading,
 hair/beard clumps, cloth seams/folds and strong readable silhouettes.
 
@@ -161,7 +185,10 @@ Correct the camera of the [RIGHT / LEFT] cells of this atlas. Match the elevated
 overhead view in the supplied Jay reference and in this atlas's accepted
 down/up cells: clearly visible cap/hair crown and shoulder tops, shorter
 foreshortened torso/legs. Keep each cell facing its original cardinal direction.
-Do not make an eye-level profile, tall body, long neck or a different identity.
+Head/eyes must look along the floor in that original cardinal heading, like
+approved Nick B, rather than tilt up toward us. Correct the head's projection,
+not only the eyelids. Do not make an eye-level profile, tall body, long neck,
+over-bowed unreadable head or a different identity.
 
 Preserve costume, anatomical prop ownership, pose sequence, one physical scale,
 cell placement and transparent alpha. Keep every figure complete with margins.
@@ -225,8 +252,9 @@ fallback, document provenance/results/limits, and update HANDOFF.md.
 ## I. Ask Claude to review a draft without rubber-stamping it
 
 ```text
-Review this candidate cell by cell against the attached Jay/Alex references.
+Review this candidate cell by cell against approved Nick B and Jay/Doe/Hunter.
 Report concrete defects with row, column, direction and pose. Judge camera,
+head pitch/gaze along the floor (not lifted portrait or eyelid-only correction),
 identity, finish, opposite strides, anatomy/hand ownership, source margins,
 transparency and native-size readability separately. Do not approve based
 only on a passing atlas validator or a nice front-facing close-up.
@@ -247,3 +275,57 @@ you used generated raster art, imported supplied art, or merely prepared a
 handoff. Keep HANDOFF.md aligned with actual git status, including untracked
 assets. Never label fallback, an unrun prompt or unverified source as finished.
 ```
+
+## K. Correct existing head pitch/gaze while preserving likeness
+
+Attach the existing full atlas as image 1 (edit target), approved Nick B as
+image 2 (head/gaze only), and Jay plus Doe/Hunter as additional camera/finish
+references. The identity portrait is optional; if included, label it identity
+only and preserve its privacy. Do not call a stochastic edit exact unchanged
+facial pixels or mechanically correct reprojection.
+
+```text
+Edit image 1, the existing [CHARACTER] transparent LePub atlas. Retain the SAME
+recognizable person: [FACE SHAPE, HAIRLINE, HAIR/BEARD, GLASSES, EXPRESSION].
+This is a head-perspective correction, not a new face design. Image 2 is the
+explicitly approved Nick B benchmark for head pitch/gaze only. Images [NUMBERS]
+are Jay/Doe/Hunter for fixed overhead camera and illustrated finish only.
+
+Correct the head's 3D pitch/projection in ALL [ROW COUNT] rows and all four
+down/right/up/left columns. The person looks along the floor in the direction
+they face, never up at the overhead viewer. Keep one high overhead camera,
+visible crown/hair/cap and shoulder tops, and foreshortened face/torso/legs.
+Down: a smaller projected face below the substantial crown, eyes forward along
+the floor toward the bottom of the room. Right/left: same elevated profile,
+face and attention along that heading. Up: top/back of head, rear shoulders,
+no front face or head turn to camera. Match the Nick B natural relaxed pitch.
+
+Preserve a warm readable expression and established likeness. Do not merely
+close eyelids or move pupils while leaving the head lifted. Do not bow the
+head so far the person becomes dejected or loses their face. No eye-level
+profile, camera eye contact, identity substitution or portrait costume.
+
+Keep the ORIGINAL outfit [DETAILS], headwear orientation [DETAILS], body scale,
+cell axes, down/right/up/left order, and rows [EXACT CONTRACT]. Preserve WALK A
+and WALK B as opposite anatomical limb phases in every direction. Special row
+remains [ACTION, EXACT LIMBS/PROP, ANATOMICAL OWNERSHIP]. Keep every hand/foot
+complete and isolated, including extended special poses; do not mirror away
+asymmetric hands, emblems, tattoos or cap opening/brim orientation.
+
+Same painted warm-contour HD finish and one family physical size. Generous
+transparent gutters on every cell edge. Deliver original RGBA transparency;
+no backdrop, floor, cast shadow, labels, grid, extra anatomy or clipped figures.
+Inspect the entire edit afterward; do not promise untouched pixels identical.
+```
+
+## L. Replace a regular's likeness without redesigning their role
+
+Use the master prompt or K with the current regular atlas as edit target and
+the supplied new photo for identity only. State the new identity observations
+explicitly, including whether glasses, beard or headwear replace old features.
+Keep the established game clothes and source rows: Nazim idle/walkA/lean/slump;
+Sam/Gerald idle/walkA/walkB/special, with special mapped to the talk action.
+Keep poses, same elevated gaze standard,
+family scale and gameplay unchanged. Do not force a new two-stride/talk layout
+onto Nazim or transfer the photo's jacket, background or camera. Review every
+state, including drunk/slumped, before replacing source and measured metadata.
