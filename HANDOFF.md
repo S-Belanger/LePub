@@ -1,5 +1,28 @@
 # LePub durable handoff
 
+## 2026-10-06 14:44 America/Toronto — approved cast release complete and verified live
+
+- Branch main; verified implementation HEAD/independent remoteSHA c479a1418856d9c62205b2bea4fb556b0ccd3362, upstream0/0. User's full request achieved: exact approved Nick B; Alex original face/outfit with natural floor-facing overhead gaze; new Nazim/Gerald/Sam portrait heads with existing outfits/special rows; durable visual/Codex/Claude standards/templates/prompts/import/review guidance. No outstanding product/art work. No raw portrait copy published; originals physically preserved/ignored/excluded.
+- Actual implementation CI37513126046 all6Node suitesSUCCESS; current le-pub/lepub Vercel deployment6892323513SUCCESS. Current https://lepub-five.vercel.app/ HTTP200 serves26exact Git source blobs:12PNGs+12JSONs+manifest+contract.3rawportraitURLs404. Real live Edge desktop1280x720/mobile390x844 each12ready atlases/64updated-family pose mappings/actual Nick+Alex/no unexpected errors. Live captures inspected, Alex fully visible after read-only review placement correction; no runtime/art change. production-receipt.json includes exact hashes/UTCtime/sourceSHA.
+- Local6Node suites/4actual browser validators and24frame shared-scale comparison PASS; native desktop/mobile room/apology/split/HUD inspected. Independent latest25doc audit PASS206links/42fences/2JS/78command paths; syntax/diff PASS. Five installed sources exactly equal approved/generated outputs. Preserve all earlier failed attempts/history; CRLF checkout vs live text mismatch resolved against actual Git blobs. Browser emulation only, no physicalphone/GPU performance claim.
+- Final bookkeeping: CHANGELOG/HANDOFF/release journal/current reviewREADME/production verifier and receipts/live captures are follow-up documentation-only changes, being committed/pushed as 'docs: record cast production verification'. Implementation/art is already committed/pushed/verified live. Resolve final receipt commit via git log; its own SHA cannot be embedded in itself. Independently verify final remote main/clean0/0 after that push; no additional product task or art approval pending.
+- Next session: read this checkpoint and VISUAL-SYSTEM/current shipped PNGs. Follow Nick B natural head pitch, reference-role separation and measured seams/density/pivots. Active journal docs/collaboration/2026-10-06-cast-perspective-release.md; current evidence docs/art-review/cast-perspective/README.md. Preserve local new face JPGs.
+
+
+## 2026-10-06 14:42 America/Toronto — implementation CI/Vercel success; live final audit underway
+
+- main implementation c479a1418856d9c62205b2bea4fb556b0ccd3362 independently remote-matched, committed/pushed0/0. Receipt/docs helper edits local/uncommitted. CI37513126046 completedSUCCESS all6suite steps; VercelSUCCESS current le-pub/lepub deployment6892323513 implementationSHA,18:40:48Z. Current alias lepub-five5newPNGs HTTP200/exact accepted hashes.
+- Apparent contract mismatch vs CRLF local checkout resolved: live bytes exactly match Git source blob2599bytes; checkout2634bytes differs onlyCRLF. Full26file Git-blob/live verification and3privateinput404 plus desktop/mobile live12atlas/native capture next long tool step. No runtime/art mutation since successful checks.
+- Next: inspect live captures/full production receipt, append verified publication receipt, docs-only commit/push with remote verification and final actual clean status. No physicaldevice claim.
+
+
+## 2026-10-06 14:41 America/Toronto — implementation published to main; live verification pending
+
+- Implementation commit c479a1418856d9c62205b2bea4fb556b0ccd3362,104related files (18.7MB including immutable previews/new evidence), committed and git push origin main succeeded. Independent git ls-remote origin refs/heads/main matches exactSHA. Post-push status clean main...origin/main0/0 before this receipt update; raw3portraitJPGs retained/ignored, none staged/published.
+- Six Node suites,4actual Edge validators/cast comparison, source equality/doc checks PASS as above. No asset/runtime edits since validation. Original browser timeout/failures/history preserved.
+- This checkpoint/journal are now local receipt edits awaiting later documentation commit. Next: new implementation CI/Vercel status and current lepub-five production PNG/JSON/contract hashes,12loaded browser atlases/mobile/Desktop live captures/portrait404. Do not infer production-ready from Git push; no new live/CI result yet.
+
+
 ## 2026-10-06 14:40 America/Toronto — final audit and authorized publication checkpoint
 
 - main HEAD1060c2f64ebfaf5b915cc301d884e0685282e46f; fresh fetch origin/prune PASS0/0. Current changes are all local/uncommitted/unpushed; known related preview work preserved. Five PNG/JSON + measured shared seams, exact prompt/source receipts,13authoring guides/current README/review captures/journals complete. Raw3 user face JPGs physically preserved, gitignore+Vercel exclusions verified.

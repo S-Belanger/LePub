@@ -87,7 +87,25 @@ New templates/prompts distinguish likeness from camera/outfit references and
 require measured source boundaries, floor pivots, pose anatomy and native-size
 game review. Original recipes and historical reviews remain preserved.
 
-Publication is authorized; the
+Published implementation
+[`c479a14`](https://github.com/S-Belanger/LePub/commit/c479a1418856d9c62205b2bea4fb556b0ccd3362)
+was independently remote-matched. [All six CI suites passed](https://github.com/S-Belanger/LePub/actions/runs/37513126046)
+and Vercel's current production deployment passed. The
+[live game](https://lepub-five.vercel.app/) serves all26PNG/JSON/manifest/contract
+files exactly matching implementation Git blobs. All three raw portrait URLs
+return404. [Machine-readable live receipt](production-receipt.json),
+[live desktop](live-desktop.png) and [live phone emulation](live-mobile.png)
+record12ready atlases/64current revised-family animation mappings per viewport,
+actual Nick/Alex visitors and no unexpected browser errors. Reproduce byte and
+browser checks with:
+
+```sh
+node docs/art-review/cast-perspective/verify-production.js c479a1418856d9c62205b2bea4fb556b0ccd3362
+node docs/art-review/cast-perspective/audit-guidance.js 1060c2f64ebfaf5b915cc301d884e0685282e46f
+```
+
+The
 [release journal](../../collaboration/2026-10-06-cast-perspective-release.md)
 and newest [handoff](../../../HANDOFF.md) record actual commit, independently
-verified remote SHA, CI and current production receipts when obtained.
+verified remote SHA, CI and current production receipts. Follow-up documentation
+publication does not change the verified production artwork or mechanics.

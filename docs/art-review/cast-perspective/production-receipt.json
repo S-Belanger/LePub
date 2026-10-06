@@ -1,0 +1,207 @@
+{
+  "checkedAt": "2026-10-06T18:43:51.665Z",
+  "commit": "c479a1418856d9c62205b2bea4fb556b0ccd3362",
+  "url": "https://lepub-five.vercel.app",
+  "files": [
+    {
+      "file": "src/character-art.js",
+      "status": 200,
+      "sha256": "9f4ef5c333d5bf46983fe9681fc54dd50a054f8c449320feab0df823cea0e641",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/manifest.json",
+      "status": 200,
+      "sha256": "5144a34102d8d3ac0c24e67d6834faa2ddc3d2a94ba866e525cf68802d4e20a9",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/doe-illustrated.png",
+      "status": 200,
+      "sha256": "c47b4935f1b296e9bec169a7718e898bb39ed9d747058a487626d9e02774c870",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/doe-illustrated.json",
+      "status": 200,
+      "sha256": "0ef80b44a996c2f1c593eebd0de1517d572067924ea6d1e7cfc55151b5cdcd60",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/hunter-illustrated.png",
+      "status": 200,
+      "sha256": "93c0f9f3b5db15b8903f7d2afa7057c47c2ab0a23508d2e6d619a2fdee48c237",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/hunter-illustrated.json",
+      "status": 200,
+      "sha256": "f2b62d8afb9e409dd81f06d070fd1861cec0fbe3f8447e70a187897ad03a18f1",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/nazim-illustrated.png",
+      "status": 200,
+      "sha256": "e3cdf5655f8be1ae8e6b4f81918d984d3adaad9032d001cce373ecd9d6d0c3a8",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/nazim-illustrated.json",
+      "status": 200,
+      "sha256": "bf492e956b3319cb15ee95ffe5f72debf2ac39485fe657442e5ec38d664d0fbe",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/sam-illustrated.png",
+      "status": 200,
+      "sha256": "d5e41ebf573ad4c566ef48c84a00a26362043591dddd39bd2bfb085edddca9ea",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/sam-illustrated.json",
+      "status": 200,
+      "sha256": "175794d70742f21da6e7974415c239a9abd92e628cb25fe1aa1c6f671aab5948",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/gerald-illustrated.png",
+      "status": 200,
+      "sha256": "447fcab67bccdc86f2ec229400952cf8baa3b22ef38bfe0f04ea730abd39dc31",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/gerald-illustrated.json",
+      "status": 200,
+      "sha256": "1a914e5acd9a464e0573d7d99943db94e3823201bb745a777b8e3dbec1227e2b",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/waiter-illustrated.png",
+      "status": 200,
+      "sha256": "b2a7943340fa41d4ef06c4b78cd234c915e29a43daeab870642e6e30928f7e40",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/waiter-illustrated.json",
+      "status": 200,
+      "sha256": "840b8a0786f50a35e5622e6a298e7a34f41a2437e1cc77700bf0c925daf974a6",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/nick-illustrated.png",
+      "status": 200,
+      "sha256": "62fd418de8501638a4399098f0a8d449a55362d6f1bc8dfec7f6f225fede261e",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/nick-illustrated.json",
+      "status": 200,
+      "sha256": "34590b45682d7df53c6838f6d2ee867da840621be2b579884982f7293fbeefa7",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-teal-illustrated.png",
+      "status": 200,
+      "sha256": "75f6580351b86e34c9f17d262997ce15f1e72cc8dd38b4b9d835b41ea8158cf6",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-teal-illustrated.json",
+      "status": 200,
+      "sha256": "3f8edb5b84d1fa32feca1b4e926c2aafc5eb7c84ca3d463fee6acccb40faa6a0",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-ochre-illustrated.png",
+      "status": 200,
+      "sha256": "6900b5f7a70bfeeb9118c18e0b46d2ceb2df2c83b974997eed98988fcdf1181c",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-ochre-illustrated.json",
+      "status": 200,
+      "sha256": "f4bb6a9ee6630d8441540ef1a1a1b1d0ed931e8639568d242b21bca1c2e09d4e",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-blue-illustrated.png",
+      "status": 200,
+      "sha256": "ba527b8f6cfdcce9684a9da5ba484838db4017fcf0ebaf7243ecc5b634287334",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/customer-blue-illustrated.json",
+      "status": 200,
+      "sha256": "92a7bb96dde448f890df1ddf6943af0dd9f0c20025a781eece8a4f52cef8af6c",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/fred-illustrated.png",
+      "status": 200,
+      "sha256": "c1d247ad2a8ff3c5ec0220a22983c571120aafea789ac4bb58727cdbc4d5aae1",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/fred-illustrated.json",
+      "status": 200,
+      "sha256": "7009a015ece0c9f412fc5b0a26de802550f36ff5f392c5c0383b40f4609e6c9a",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/alex-illustrated.png",
+      "status": 200,
+      "sha256": "3281e70e768cc4dfe821845a6db43415d7d1d047a89596f2207260ee14eaabe6",
+      "matchesCommit": true
+    },
+    {
+      "file": "assets/sprites/alex-illustrated.json",
+      "status": 200,
+      "sha256": "c35894574fd928b18ccc4d218c1c3b566e9c5d481d40e83a532e736875c1f984",
+      "matchesCommit": true
+    }
+  ],
+  "privateInputs": [
+    {
+      "file": "Nazim-New-Face.jpg",
+      "status": 404
+    },
+    {
+      "file": "Gerald-New-Face.jpg",
+      "status": 404
+    },
+    {
+      "file": "Sam-New-Face.jpg",
+      "status": 404
+    }
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "readyAtlases": 12,
+      "verifiedPoseMappings": 64,
+      "viewport": {
+        "viewW": 320,
+        "viewH": 180,
+        "pixelScale": 4,
+        "portrait": false
+      },
+      "visitorNick": true,
+      "visitorAlex": true,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "readyAtlases": 12,
+      "verifiedPoseMappings": 64,
+      "viewport": {
+        "viewW": 195,
+        "viewH": 360,
+        "pixelScale": 2,
+        "portrait": true
+      },
+      "visitorNick": true,
+      "visitorAlex": true,
+      "errors": []
+    }
+  ]
+}

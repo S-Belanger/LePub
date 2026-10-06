@@ -1,9 +1,10 @@
 // Independent documentation check; run from repository root.
+// Optional argument: compare guide changes since a supplied base revision.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const { execFileSync } = require('child_process');
 const guides = ['AGENTS.md','CLAUDE.md','assets/sprites/ILLUSTRATED.md','docs/VISUAL-SYSTEM.md','docs/claude/README.md','docs/claude/01-STYLE-AND-REFERENCES.md','docs/claude/02-WORKFLOW.md','docs/claude/03-PROMPTS.md','docs/claude/04-ATLAS-INTEGRATION.md','docs/claude/05-REVIEW-TROUBLESHOOTING.md','docs/claude/06-NICK-CASE-STUDY.md','docs/claude/templates/CHARACTER-BRIEF.md','docs/claude/templates/REVIEW-RECORD.md'];
 const extra = ['README.md','CHANGELOG.md','assets/sprites/nick-prompt.md','assets/sprites/alex-perspective.md','assets/sprites/nazim-likeness.md','assets/sprites/sam-likeness.md','assets/sprites/gerald-likeness.md','docs/art-review/cast-perspective/README.md','docs/art-review/face-perspective/README.md','docs/collaboration/README.md','docs/collaboration/2026-10-06-cast-perspective-release.md','docs/collaboration/2026-10-06-face-perspective-previews.md'];
-const changed = execFileSync('git',['diff','--name-only','--','AGENTS.md','CLAUDE.md','docs/VISUAL-SYSTEM.md','docs/claude','assets/sprites/ILLUSTRATED.md'],{encoding:'utf8'}).trim().split(/\r?\n/);
+const changed = execFileSync('git',['diff','--name-only',process.argv[2] || 'HEAD','--','AGENTS.md','CLAUDE.md','docs/VISUAL-SYSTEM.md','docs/claude','assets/sprites/ILLUSTRATED.md'],{encoding:'utf8'}).trim().split(/\r?\n/);
 const failures = [];
 if (changed.length !== guides.length || changed.some(file => !guides.includes(file))) failures.push('Changed guidance file list mismatch');
 let links=0, fences=0, examples=0, commands=0;
