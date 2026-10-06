@@ -1,0 +1,130 @@
+{
+  "results": [
+    {
+      "name": "desktop",
+      "walking": {
+        "distance": 16.201900302098462,
+        "animation": "walk.right",
+        "frame": true,
+        "hitbox": {
+          "w": 14,
+          "h": 17
+        }
+      },
+      "poses": [
+        {
+          "facing": "down",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "right",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "up",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "left",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        }
+      ],
+      "apology": {
+        "pose": "sorry",
+        "animation": "sorry.down",
+        "cloudsAdded": 5,
+        "correctFrame": true
+      },
+      "returned": {
+        "pose": null,
+        "animation": "idle.down",
+        "frame": true
+      },
+      "reset": {
+        "visitorCleared": true,
+        "cloudsCleared": true
+      },
+      "browserErrors": 0
+    },
+    {
+      "name": "mobile",
+      "walking": {
+        "distance": 16.201900302098462,
+        "animation": "walk.right",
+        "frame": true,
+        "hitbox": {
+          "w": 14,
+          "h": 17
+        }
+      },
+      "poses": [
+        {
+          "facing": "down",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "right",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "up",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        },
+        {
+          "facing": "left",
+          "idle": true,
+          "walkA": true,
+          "walkB": true,
+          "sorry": true
+        }
+      ],
+      "apology": {
+        "pose": "sorry",
+        "animation": "sorry.down",
+        "cloudsAdded": 5,
+        "correctFrame": true
+      },
+      "returned": {
+        "pose": null,
+        "animation": "idle.down",
+        "frame": true
+      },
+      "reset": {
+        "visitorCleared": true,
+        "cloudsCleared": true
+      },
+      "browserErrors": 0
+    }
+  ],
+  "galleryCaptures": 12,
+  "fallback": {
+    "nickAtlas": false,
+    "jayAtlas": true,
+    "pose": "sorry",
+    "proceduralFrame": true,
+    "clouds": 5
+  },
+  "browserErrors": 0,
+  "limits": "Local Edge desktop and phone emulation; no physical-device or production verification."
+}

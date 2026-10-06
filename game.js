@@ -2019,8 +2019,8 @@ function updateNick(dt) {
   if (nick.state !== 'leaving' && isLastCall()) { nickLeave(); if (!nick) return; }
 
   // The special sheet row is an apologetic "oops" gesture, held briefly after
-  // each one while he is standing still. Until his illustrated atlas exists the
-  // procedural set has no 'sorry' frame and falls back to idle.
+  // each one while he is standing still. A missing illustrated sheet retains
+  // the procedural idle fallback.
   nick.sorryTimer = Math.max(0, (nick.sorryTimer || 0) - dt);
   nick.pose = !nick.moving && nick.sorryTimer > 0 ? 'sorry' : null;
 

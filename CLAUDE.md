@@ -2,11 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Follow `AGENTS.md` for mandatory startup and continuity. For every task, maintain
+[CHANGELOG.md](CHANGELOG.md) and a detailed [collaboration session record](docs/collaboration/README.md).
+Log user requests/prompts, assistant progress/decisions, methods, failures,
+corrections, checks and actual publication outcomes. Preserve exact prompts in
+versioned files; label summaries and unavailable historical details honestly.
+Use the [session template](docs/collaboration/SESSION-TEMPLATE.md). Updating
+`HANDOFF.md` alone does not fulfill the collaborator logging requirement.
+
 For visual/character work, first read [docs/VISUAL-SYSTEM.md](docs/VISUAL-SYSTEM.md)
 and inspect its shipped PNG references. It is the current texture, camera,
 sprite and UI standard. `src/character-art.js` is the shared family/scale/pose
 contract; `node tests/character-art.js` enforces production coverage in CI.
 Keep procedural fallback for failures; it is not finished production art.
+
+Claude users creating or integrating character art should also read the
+[Claude sprite handbook](docs/claude/README.md). It documents the actual raster
+generation or manual image-tool handoff, reference images, paste-ready prompts,
+atlas integration, and browser acceptance checks used for the shipped cast.
+The handbook supplements the visual system; a prompt or procedural placeholder
+alone does not complete a character.
 
 ## What this is
 
@@ -116,7 +131,7 @@ A collider is padded by `CHAIR_GAP + CHAIR_SIZE` **only on sides that actually h
 
 The procedural fallback uses rows-of-palette-characters: `R(char, count, ...)` builds a row string, `buildSprite(rows)` wraps rows into `{rows, w, h}`, and a palette object maps each character to a hex colour (or `null` for transparent). **The camera is high overhead** (`docs/overhaul/00-CAMERA-DIRECTION.md`): crowns of heads, hats and hoods, shoulder tops, foreshortened bodies, a sliver of face only when facing the camera or sideways. **The fallback cast is generated, not hand-typed.** `ohFigure(spec, dir, frame, opts)` paints a 40×44 backing-pixel figure (`pixelSize 0.5`, feet at the bottom) from a spec — head kind (`hood`/`cap`/`hair`/`bald`/`flatcap`), ears/antlers/flaps, coat/hands/feet/chest/vest, glasses/beard/moustache/brows — then `ohOutline` and `lightSprite` (one top-left light, three tones per material). `ohSheetSet` builds a **directional set** (`dirs: true`): keys are `pose.facing` — `idle`, `walk`/`walkB` (two-step), and prop variants `carry*` (Doe), `gun*` (hunter), `spray*` (waiter), `lean`/`slump` (Nazim: head pushed toward what he faces). `down`, `up` and `right` are painted; `left` mirrors the body and **re-paints the prop on the anatomical side** — never mirror a carry or gun frame. `OH_CUSTOMER.variants` gives walk-ins three head shapes over the six palette looks. Nazim keeps the `r`/`w` keys for `NAZIM_STAGE_PALETTES`, though from above his face is hidden when he faces the table (by design). The ghost is `OH_GHOST` (alpha, outside the palette policy). The frontal HD sheets (`lightSprite` on literal rows: `DOE_HD`, `HUNTER_HD`, `NAZIM_HD`…) and the coarse `DOE_IDLE`-style rows remain as costume references; `detailSprite()` still refines the order icons.
 
-**Raster atlases can replace any family.** `src/assets.js` (`Assets`) loads optional PNG+JSON atlases listed in `assets/sprites/manifest.json` (schema v1: image-pixel rects and pivots, `authoredPixelsPerWorldUnit`, timed animations keyed `pose.facing`), validates them before registering, waits for decode, drops stale loads after a restart and falls back per family to the generated sets. `drawEntity` asks `rasterFrameFor(e)` first and draws through `drawRasterFrame` (pixels ÷ density = world units, pivot at the feet). Production selects eleven illustrated atlases: seven named people plus four walk-in looks selected by existing `look`, including Fred. Their old per-entity palettes remain for fallback. `tools/import-illustrated.js` measures source alpha bounds and writes metadata without modifying PNGs. `tools/export-sheets.js` retains procedural exports without switching the selected manifest families. See `assets/sprites/ILLUSTRATED.md` for source provenance, frame layouts and limitations. Table chairs face the tabletop; wall benches and bar stools have explicit facing directions in `game.js` because their layout rectangles are not the thing patrons face.
+**Raster atlases can replace any family.** `src/assets.js` (`Assets`) loads optional PNG+JSON atlases listed in `assets/sprites/manifest.json` (schema v1: image-pixel rects and pivots, `authoredPixelsPerWorldUnit`, timed animations keyed `pose.facing`), validates them before registering, waits for decode, drops stale loads after a restart and falls back per family to the generated sets. `drawEntity` asks `rasterFrameFor(e)` first and draws through `drawRasterFrame` (pixels ÷ density = world units, pivot at the feet). Production selects twelve illustrated atlases: eight named people, including Nick with idle/two strides/sorry, plus four walk-in looks selected by existing `look`, including Fred. Their old per-entity palettes remain for fallback. `tools/import-illustrated.js` measures source alpha bounds and writes metadata without modifying PNGs. `tools/export-sheets.js` retains procedural exports without switching the selected manifest families. See `assets/sprites/ILLUSTRATED.md` for source provenance, frame layouts and limitations. Table chairs face the tabletop; wall benches and bar stools have explicit facing directions in `game.js` because their layout rectangles are not the thing patrons face.
 
 `drawSprite()` is still the single renderer for the format, but it no longer paints pixel by pixel every frame: it **bakes** each `(sprite, palette, facing)` combination into an offscreen canvas the first time it's needed and blits it afterwards. The cache is nested `WeakMap`s keyed by object identity, so a customer's one-off palette is collected along with the customer.
 

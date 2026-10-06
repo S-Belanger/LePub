@@ -4,6 +4,10 @@ A compact pixel-art serving game where a waiter in a deer onesie works a crowded
 
 **Live demo:** [lepub.vercel.app](https://lepub.vercel.app)
 
+[Collaborator changelog](CHANGELOG.md) records requests, contributors, methods,
+results and publication receipts. See [the logging workflow](docs/collaboration/README.md)
+before starting a task.
+
 ![Le Pub gameplay showing active orders, the regulars, dialogue, and the life bar](assets/gameplay.png)
 
 ## Art direction gallery
@@ -20,8 +24,8 @@ The renderer uses a 4x internal art grid over the unchanged logical world, so
 fine sprite contours, narrow floorboards, furniture bevels, glassware, candle
 light, and wood grain remain crisp without changing movement or collision.
 
-The cast now uses eleven illustrated sprite atlases with four directions,
-including Alex's split and four distinct walk-in customers, one of them Fred. The
+The cast now uses twelve illustrated sprite atlases with four directions,
+including Nick's apology gesture, Alex's split and four distinct walk-in customers, one of them Fred. The
 [visual system](docs/VISUAL-SYSTEM.md) defines texture, sprite detail, camera,
 materials and the required workflow for future additions. A shared character
 contract and CI check flag missing artwork and poses.
@@ -29,6 +33,11 @@ contract and CI check flag missing artwork and poses.
 lets you inspect poses and display sizes with the local server running;
 [asset notes](assets/sprites/ILLUSTRATED.md) describe the sources and remaining
 animation limits. Run `node tools/validate-art.js` for real Edge checks.
+
+For collaborators using Claude, the detailed
+[Claude sprite handbook](docs/claude/README.md) covers image-tool capability
+checks and handoff, exact references, reusable prompts, atlas import, troubleshooting,
+and Nick's reviewed case study.
 
 With the local server running, open <http://localhost:8917/concepts/>. Use `1` through `4` or the arrow keys to switch directions, and press `P` for an uncluttered preview.
 

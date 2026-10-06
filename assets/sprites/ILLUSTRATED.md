@@ -1,9 +1,9 @@
 # Illustrated overhead cast
 
-The production manifest selects eleven `*-illustrated.json` atlases: Doe,
-Hunter, Nazim, Sam, Gerald, Jay (`waiter`), Alex, and four walk-in looks,
+The production manifest selects twelve `*-illustrated.json` atlases: Doe,
+Hunter, Nazim, Sam, Gerald, Jay (`waiter`), Nick, Alex, and four walk-in looks,
 including Fred. These are new raster illustrations, not exports of `ohFigure`.
-Built-in imagegen produced the PNGs on September 21–28, 2026. No external
+Built-in imagegen produced the original PNGs on September 21–28, 2026 and Nick on October 6. No external
 image API was used.
 Source PNGs remain unchanged after generation; the importer only writes JSON.
 These are AI-generated, visually reviewed assets, not hand-cleaned Aseprite art.
@@ -24,6 +24,8 @@ to inspect every direction and pose at desktop, phone or enlarged size.
 Every selected source is 1254×1254 with four columns and four rows.
 Columns are **down, right, up, left**. Cell boundaries are rounded from actual
 image dimensions; do not assume the prompt's requested 384px cells were obeyed.
+Nick uses measured row seams inside the generated transparent gutters, stored
+as `rowCuts` in the character contract; equal quarter rows would cut his cap.
 `tools/import-illustrated.js` measures alpha bounds in each cell, keeps its
 horizontal centre and anchors the bottom of the visible silhouette to the floor.
 One density per family preserves scale across poses/directions: maximum idle
@@ -37,6 +39,7 @@ The original world coordinates, colliders, movement and seat positions remain.
 | Nazim | Idle | Walk | Lean | Slump |
 | Sam / Gerald | Idle | Walk A | Walk B | Talking gesture |
 | Jay | Idle | Walk A | Walk B | Cleaner spray bottle |
+| Nick | Idle | Walk A | Walk B | Apology, right palm raised / left hand on stomach |
 | Four walk-ins, including Fred | Idle | Walk A | Walk B | Talking gesture, reserved |
 | Alex | Idle | Walk A | Walk B | Full split (gameplay uses down) |
 
@@ -62,7 +65,7 @@ The room/furniture remain procedural; these sprites do not establish full
 visual parity with the painted environment reference.
 
 `rasterFamilyFor` selects a walk-in sheet using its existing `look`; `kind`
-stays `customer`, with its old palette retained for fallback. The eleven selected
+stays `customer`, with its old palette retained for fallback. The twelve selected
 sheets replace the former six procedural exports. On missing/invalid images,
 the existing per-family procedural renderer still runs. Original `doe.png`,
 `hunter.png`, etc. are preserved. The exporter must never append a competing
@@ -96,6 +99,7 @@ labels or grid. Match reference material detail rather than geometric blobs.
 | `sam-illustrated.png` | Navy flat cap, glasses, sandy side hair, burgundy/cream stripes, charcoal trousers; idle / two strides / talking. Follow-up edit: remove beard/moustache in all visible faces; retain glasses, positions and transparency. |
 | `gerald-illustrated.png` | Bald older man with grey side hair, moustache and eyebrows, ruddy skin, burgundy cardigan; idle / two strides / talking gesture. |
 | `waiter-illustrated.png` | Short dark hair, glasses, clean chin, black tee, pale waist apron; idle / two strides / teal cleaner bottle with red trigger in right hand. |
+| `nick-illustrated.png` | Photo-informed broad smile and ginger beard, backward teal cap, burgundy baseball jersey with cream piping, cream trousers and dark cleats; idle / two strides / apology. [Exact generation and refinement prompts](nick-prompt.md). |
 | `customer-teal-illustrated.png` | Auburn-haired adult woman, teal knit sweater, charcoal trousers, brown boots; idle / two strides / talking. |
 | `customer-ochre-illustrated.png` | Darker-brown-skinned adult man, grey tweed flat cap, ochre overshirt, dark stubble; same rows. |
 | `customer-blue-illustrated.png` | Fair-skinned man, wavy dark hair, slate-blue rolled-sleeve shirt, charcoal trousers, clean chin; same rows. |
@@ -113,12 +117,13 @@ node tests/alex.js
 node tests/assets.js
 node tools/validate-art.js
 node tools/validate-alex.js
+node tools/validate-nick.js
 node tools/import-illustrated.js doe hunter nazim sam gerald waiter customer-teal customer-ochre customer-blue fred
 ```
 
 The last command rebuilds metadata only; use `node tools/import-illustrated.js alex` for Alex. Browser tools require Edge and an
 existing `playwright-core` install (direct or in npm's npx cache); the game
-itself still has no runtime dependencies. Browser validation checks all eleven
+itself still has no runtime dependencies. Browser validation checks all twelve
 loaded sheets, animation coverage, reactions/poses, keyboard/touch movement,
 rotation without teleporting, and a simulated missing-image fallback. Its
 timings measure CPU render submission in desktop Edge/emulation, not physical

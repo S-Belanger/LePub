@@ -188,3 +188,22 @@ He has four authored directions with idle, two strides and talk; the talking
 row is currently reserved because walk-ins have no talk-state event. Keep the
 portrait outside the public asset tree and use the 21-world-unit scale shared
 by other customers. See [the accepted prompt and provenance](../assets/sprites/fred-prompt.md).
+
+## Nick
+
+Nick uses the October 5 commit's photo as identity reference: a broad friendly
+face and toothy grin, thick ginger-brown beard and moustache, and a backward
+baseball cap. Keep his established outfit: muted teal cap, burgundy baseball
+jersey with cream piping, cream baseball trousers, dark belt and dark cleats.
+Match Jay/Alex's illustrated finish and elevated overhead camera. All four
+directions have idle, two strides and an apology with his anatomical right
+palm raised and left hand on his stomach. One measured density gives him the
+same 21-world-unit maximum idle height as other supporting people.
+
+The existing rotation and fart-cloud gameplay select `sorry` briefly when he
+is standing after a fart, then return to idle. A missing sheet uses his old
+procedural idle fallback; it is no longer a production-art exception. See
+[the exact prompts](../assets/sprites/nick-prompt.md) and run
+`node tools/validate-nick.js` for real walking/apology/reset/fallback checks
+and desktop/phone-emulation previews. The identity photo was already tracked
+by the referenced collaborator commit; this art pass makes no additional copy.

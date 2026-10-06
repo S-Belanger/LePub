@@ -53,6 +53,7 @@
   Assets.loadManifest('../assets/sprites/manifest.json').then(() => {
     for (const [family, name] of Object.entries(names)) {
       const figure = document.createElement('figure'), caption = document.createElement('figcaption');
+      figure.id = family;
       const title = document.createElement('span'), state = document.createElement('small'), canvas = document.createElement('canvas');
       title.textContent = name; caption.append(title, state); canvas.width = 288; canvas.height = 220;
       canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', name + ' sprite preview');

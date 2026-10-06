@@ -95,7 +95,8 @@ ready(); arrive(); run('updateAlex(ALEX_PREPARE_TIME + 0.01)'); d.resetGame();
 assert.equal(d.getAlex(), null);
 assert(!run("FURNITURE.some(f => f.type === 'alex')"), 'Reset removes active workout blocker');
 assert.equal(d.alexSchedule().lastVisitShift, 0);
-assert(d.alexSchedule().dueIn >= 60 && d.alexSchedule().dueIn <= 90);
+assert(d.alexSchedule().dueIn >= 15 && d.alexSchedule().dueIn <= 25,
+  'Reset restores the current 15–25 second opening delay');
 ready();
 assert(!run('alexSpotClear(DOOR.x, DOOR.y)'), 'Door must stay clear');
 assert(!run('alexSpotClear(BATHROOM.x, BATHROOM.y)'), 'Bathroom must stay clear');

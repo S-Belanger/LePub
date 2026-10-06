@@ -20,6 +20,11 @@ const CharacterArt = (() => {
     sam: person('Sam', 'sam', 'talk'),
     gerald: person('Gerald', 'gerald', 'talk'),
     waiter: person('Jay', 'waiter', 'spray'),
+    nick: person('Nick', 'nick', 'sorry', {
+      // Generated row gutters measured at y311-340, 619-639 and 911-934.
+      // Equal quarters cut into the apology cap; preserve the source pixels.
+      rowCuts: [0, 326, 630, 923, 1254],
+    }),
     'customer-teal': person('Teal sweater', 'customer', 'talk'),
     'customer-ochre': person('Ochre jacket', 'customer', 'talk'),
     'customer-blue': person('Blue shirt', 'customer', 'talk'),
@@ -33,7 +38,6 @@ const CharacterArt = (() => {
   };
   const proceduralExceptions = {
     ghost: 'Intentional translucent apparition; keep its procedural material.',
-    nick: 'Procedural overhead set (ohFigure) only; needs a dedicated illustrated idle/walk sheet like the rest of the cast. Do not copy for new people.',
     busboy: 'Legacy art debt from the gameplay merge; needs a dedicated illustrated idle/walk/mop sheet. Do not copy for new people.',
   };
   return { directions, families, proceduralExceptions, minSourceDensity: 4 };
