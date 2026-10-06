@@ -1,5 +1,12 @@
 # LePub durable handoff
 
+## 2026-10-06 14:46 America/Toronto — final publication/continuity receipt
+
+- main HEAD at verified receipt0d5099637d9fb696b0f8bd6d0e84133ea88e7c8c; independently remote-matched/clean/upstream0/0 before this closing annotation. Implementationc479a1418856d9c62205b2bea4fb556b0ccd3362 and documentation/evidence0d50996 both committed/pushed. CI37513126046 and37513695213 completedSUCCESS; current Vercel deployments6892323513 and6892416863SUCCESS. All5character sources and durable authoring guides/receipts published, user request complete.
+- Actual production26PNG/JSON/manifest/contract Gitblobs exact;3rawportraitURLs404; desktop/mobile12atlases ready/64revised-family pose mappings/no errors, live images inspected. Latest docs/source receipt/comparison/visualsystem/Claude prompt URLs HTTP200exactGitblobs. Final documentation/evidence changes do not touch production art/mechanics. Raw local3photo originals preserved/ignored. Six Node/4local browser suites/source equality/doc audit PASS; phone emulation only.
+- This final closing annotation updates HANDOFF/release journal/CHANGELOG with the independently verified docs receipt and last assistant progress; publish as docs-only follow-up, then verify remote/clean0/0. No unfinished product/artwork/check/approval dependency. Its own GitSHA must be resolved from git log, not embedded in this file. Previous complete scope/results/current-authoring next-session instructions immediately below; preserve all historical entries.
+
+
 ## 2026-10-06 14:44 America/Toronto — approved cast release complete and verified live
 
 - Branch main; verified implementation HEAD/independent remoteSHA c479a1418856d9c62205b2bea4fb556b0ccd3362, upstream0/0. User's full request achieved: exact approved Nick B; Alex original face/outfit with natural floor-facing overhead gaze; new Nazim/Gerald/Sam portrait heads with existing outfits/special rows; durable visual/Codex/Claude standards/templates/prompts/import/review guidance. No outstanding product/art work. No raw portrait copy published; originals physically preserved/ignored/excluded.

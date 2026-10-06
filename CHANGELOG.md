@@ -8,6 +8,8 @@ in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md)
 
 ## 2026-10-06 — approved cast perspective and new regular likenesses
 
+- Documentation/evidence receipt [`0d50996`](https://github.com/S-Belanger/LePub/commit/0d5099637d9fb696b0f8bd6d0e84133ea88e7c8c) independently remote-matched, [CI PASS](https://github.com/S-Belanger/LePub/actions/runs/37513695213), Vercel SUCCESS; live current guides/comparison/source receipt match exact Git blobs.
+
 - **Published/verified:** implementation [`c479a14`](https://github.com/S-Belanger/LePub/commit/c479a1418856d9c62205b2bea4fb556b0ccd3362), independently matched remote main; [all six CI suites PASS](https://github.com/S-Belanger/LePub/actions/runs/37513126046), current Vercel production SUCCESS. [Live game](https://lepub-five.vercel.app/) serves all26contract/manifest/PNG/JSON Git blobs exactly,12atlases ready in desktop/mobile browser, raw3portrait URLs404. [Current comparison and evidence](docs/art-review/cast-perspective/README.md). No physical-device claim.
 
 - User approves Nick B and production release; requests Alex camera/gaze correction, new Nazim/Gerald/Sam portrait identities and durable new-character art guidance. Codex handles illustration/integration/release; art_guidance subagent handles independent documentation.
