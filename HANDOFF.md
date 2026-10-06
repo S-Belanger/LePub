@@ -1,5 +1,18 @@
 # LePub durable handoff
 
+## 2026-10-06 13:27 America/Toronto — live release and published README verified; final receipt
+
+- User's mobile booth obstruction/cigarette explanation, professional README/current live link, and collaborator logs are complete. Implementation main b0e8716b3206f289f4230e0ea48fe2204095aa55 pushed and independently remote-verified; CI https://github.com/S-Belanger/LePub/actions/runs/37503519815 completed success (six Node suites). Branch main/upstream0/0.
+- Actual new Vercel URL HTTP200/title correct, new27-unit mobile HUD/help15s/25s text present,12 atlases ready, no page errors. Live390x844 Sam/Gerald/Nazim body overlap false; viewed actual live capture. This establishes deployed mobile fix/help, not full live gameplay/physical-device QA. Prior full local Edge4-phone/broad desktop/mobile/cellar/status/orientation/reduced-motion checks and inspected captures passed.
+- Actual GitHub README HTTP200, all7 images/badges ready, new mobile-HUD gameplay image present, pack explanation visible,3 new Vercel links; API README blob8e9b3e225d290f2957c4602149cb1dab8c67e6d4 exactly matches local HEAD:README.md. Refreshed professional photos/links/description/instructions confirmed published. Original art and historical logs/evidence retained.
+- HANDOFF/CHANGELOG/HUD-help journal are the final documentation receipt; at checkpoint drafting they alone are pending, no implementation remains. The commit containing this checkpoint identifies the receipt's own SHA (cannot embed its own hash). Next/final operation: commit/push these3 files, independently verify remote equals local and clean0/0, then report completed work. No user action/blocker or remaining requested implementation; retain physical-device validation limit.
+
+## 2026-10-06 13:26 America/Toronto — mobile HUD/help release pushed and remote verified
+
+- Committed42 reviewed files as b0e8716b3206f289f4230e0ea48fe2204095aa55, `fix: keep mobile booth clear and explain cigarette packs`. Direct main push PASS; independent git ls-remote matched local HEAD13:26:08. Branch main/upstream same0/0; tree clean after implementation push.
+- Includes reserved portrait HUD/toolbar/scene camera and clipping, clear pack help/README, refreshed photos, six-suite CI/new HUD regression/browser validator, current visual/Claude review rules and all journals/README receipt evidence. Original Nick/art/game mechanics preserved. Local six suites and strengthened4-phone/broaddesktop-mobile Edge+inspected captures PASS as above.
+- This publication checkpoint/journal/changelog receipt are the only new pending documentation changes. Next: verify actual served GitHub README/current images/API blob, release CI and live Vercel runtime; record precise result/limits, commit/push documentation receipt and verify final clean main. No live implementation claim until those checks.
+
 ## 2026-10-06 13:25 America/Toronto — release checks pass; authorized main publication next
 
 - Branch main HEAD/origin ec3b8796983109a3d6ed41f49fa76ed6d25bb429, freshly fetched0/0. All HUD/help/README/current screenshots/Claude CI guide/visual-system/log/receipt changes uncommitted/unpushed. Original Nick/art/history preserved. No unresolved implementation issue; next step commit/push and independent remote verification, then CI/live/README check and receipt.

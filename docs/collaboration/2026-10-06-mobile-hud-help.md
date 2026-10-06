@@ -151,3 +151,39 @@ only reviewed known paths, then authorized direct-main publication.
 Assistant progress, exact text:
 
 > The booth stays clear on all four phone sizes, and the cigarette explanation is readable in the scrollable help panel. The README now has fresh gameplay photos. I’m finishing the publication checks and recording the results before pushing to main.
+
+### 13:26:08 — implementation published and independently verified
+
+Staged42 reviewed files/diff PASS. Commit
+`b0e8716b3206f289f4230e0ea48fe2204095aa55`,
+`fix: keep mobile booth clear and explain cigarette packs`, pushed to main.
+Independent `git ls-remote origin refs/heads/main` equals local HEAD;0/0 and
+clean tree at verification. This receipt follows the implementation push.
+Actual published README/image/API, CI and live runtime check next.
+
+### 13:27 — deployed game, CI and GitHub README confirmed
+
+- GitHub CI implementationb0e8716 completed success, all six Node suites:
+  https://github.com/S-Belanger/LePub/actions/runs/37503519815.
+- Actual Vercel HTTP200/title correct/new mobile header/help present;12 atlases
+  ready/no page errors. Live390x844 Sam/Gerald/Nazim overlap false; viewed actual
+  live screenshot. This is live mobile layout/help evidence, not full live
+  gameplay/physical-device QA. Local full browser checks remain separate.
+- Actual GitHub README HTTP200/all7 images and badges load, updated current
+  mobile screenshot and pack explanation present/3 new demo links. API README
+  blob8e9b3e225d290f2957c4602149cb1dab8c67e6d4 equals local HEAD:README.md.
+- HANDOFF/CHANGELOG/this journal form the final docs receipt. Implementation
+  complete; next/final commit/push independently verifies SHA and clean0/0.
+  Receipt's own hash is identified by Git history, not invented self-reference.
+
+Assistant progress, exact text:
+
+> The fix is now on main, and GitHub CI passed all six suites. I also checked the live Vercel build: the booth patrons are clear of the scorecard, the new cigarette help is present, and the published GitHub README loads the updated photos.
+
+Prepared delivery report (to send after final receipt remote/clean verification):
+
+> Added cigarette instructions to the in-game help and README: earn a pack every five customer deliveries, hold three, and press C to drop one at your feet. A hunter passing nearby picks it up and leaves for a 15-second smoke break. Unused packs expire after 25 seconds.
+>
+> Also fixed the mobile scorecard, refreshed README photos, and updated the logs. Pushed to main; all six CI suites and live checks pass.
+>
+> Play: https://lepub-five.vercel.app/ — Mobile preview: docs/art-review/mobile-hud/full-cast/mobile-gameplay.png.

@@ -6,6 +6,11 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-06 13:27 — mobile HUD/help release verified live
+
+- Published [`b0e8716`](https://github.com/S-Belanger/LePub/commit/b0e8716b3206f289f4230e0ea48fe2204095aa55), independent remote SHA matches; [all six CI suites pass](https://github.com/S-Belanger/LePub/actions/runs/37503519815).
+- [Live game](https://lepub-five.vercel.app/) HTTP200/new HUD/help,12 atlases ready/no page errors; actual mobile booth bodies clear the score strip. Updated GitHub README's7 images/badges load and exact API blob matches local README.
+- Final journal/handoff receipt follows the implementation commit. Four-phone/desktop/reduced-motion/status/cellar/rotation checks and inspected photos recorded; no physical-device or full live gameplay claim. [Detailed receipt](docs/collaboration/2026-10-06-mobile-hud-help.md).
 ## 2026-10-06 — mobile HUD visibility and cigarette-pack instructions
 
 - **Request/contributors:** user reports mobile scorecard hiding corner-booth
@@ -18,7 +23,7 @@ in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md)
   (earn every5 deliveries, hold3, drop at feet, hunter must pass near pack,
   exits for15s outside, untouched packs expire25s). Regression first, then
   desktop/mobile/rotation/status/cellar validation and new screenshots.
-- **Result:** compact portrait strip with reserved scene/toolbar space; matching materials and unobstructed in-camera booth. Help/README explain pack effects; current photos refreshed. Six Node suites and actual Edge four-phone/desktop/rotation/status/help/cellar/art/fallback checks PASS. Local implementation complete; publication pending.
+- **Result:** compact portrait strip with reserved scene/toolbar space; matching materials and unobstructed in-camera booth. Help/README explain pack effects; current photos refreshed. Six Node suites and actual Edge four-phone/desktop/rotation/status/help/cellar/art/fallback checks PASS. Published to main and verified live; all6 GitHub CI suites PASS.
   [Exact requests, journal and results](docs/collaboration/2026-10-06-mobile-hud-help.md).
 
 ## 2026-10-06 13:04 — professional README publication verified
