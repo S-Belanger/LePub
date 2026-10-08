@@ -2004,8 +2004,28 @@ function updateFartClouds(dt) {
   }
 }
 
+// Walking through a cloud fogs the screen: the haze rises fast while the Doe
+// stands in one and drains over ~2s once she is clear. Presentation only.
+let fartHaze = 0;
+const FART_HAZE_RISE = 3;
+const FART_HAZE_FALL = 0.5;
+function playerInFartCloud() {
+  if (cellar) return false;
+  for (const c of fartClouds) {
+    const t = c.age / c.ttl;
+    if (t > 0.85) continue;
+    if (Math.hypot(c.x - player.x, c.y - 4 - player.y) < c.r + t * 3 + 4) return true;
+  }
+  return false;
+}
+function updateFartHaze(dt) {
+  if (playerInFartCloud()) fartHaze = Math.min(1, fartHaze + FART_HAZE_RISE * dt);
+  else fartHaze = Math.max(0, fartHaze - FART_HAZE_FALL * dt);
+}
+
 function updateNick(dt) {
   updateFartClouds(dt);
+  updateFartHaze(dt);
   if (paused || caught || shiftTally) return;
   if (!nick) {
     nickDelay -= dt;
@@ -2695,6 +2715,7 @@ function resetGame() {
   alex = null;
   nick = null;
   fartClouds.length = 0;
+  fartHaze = 0;
   nickDelay = NICK_FIRST_MIN + Math.random() * (NICK_FIRST_MAX - NICK_FIRST_MIN);
   alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
   alexLastVisitShift = 0;
@@ -5733,6 +5754,54 @@ function drawGrade() {
   drawDangerEdge();
 }
 
+// Queasy screen after breathing in Nick's cloud: a sickly green wash, a
+// drifting double image and a slow wobble. Redrawn from a copy of the finished
+// frame, so it sits under the order bubbles and HUD. Reduced motion keeps the
+// wash and a fixed double image but drops the drift and wobble.
+let hazeCanvas = null;
+function drawFartHaze() {
+  const k = fartHaze;
+  if (k <= 0.01) return;
+  if (!hazeCanvas) hazeCanvas = document.createElement('canvas');
+  if (hazeCanvas.width !== canvas.width || hazeCanvas.height !== canvas.height) {
+    hazeCanvas.width = canvas.width;
+    hazeCanvas.height = canvas.height;
+  }
+  const g = hazeCanvas.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, hazeCanvas.width, hazeCanvas.height);
+  g.drawImage(canvas, 0, 0);
+  const t = performance.now() / 1000;
+  const calm = prefersReducedMotion;
+  const sw = hazeCanvas.width, sh = hazeCanvas.height;
+  const half = (v) => Math.round(v * 2) / 2;
+  ctx.save();
+  if (!calm) {
+    // Wobble: 2-unit strips shifted along a slow sine.
+    const step = 2;
+    const amp = 1.5 * k;
+    for (let y = 0; y < viewH; y += step) {
+      const dx = half(Math.sin(y * 0.12 + t * 3) * amp);
+      ctx.drawImage(hazeCanvas, 0, y * ART_SCALE, sw, step * ART_SCALE, dx, y, viewW, step);
+    }
+  }
+  const off = half((1 + 2.5 * k) * (calm ? 1 : 0.7 + 0.3 * Math.sin(t * 2.3)));
+  const bob = calm ? 0 : half(Math.sin(t * 1.7) * k);
+  ctx.globalAlpha = 0.33 * k;
+  ctx.drawImage(hazeCanvas, 0, 0, sw, sh, -off, bob, viewW, viewH);
+  ctx.drawImage(hazeCanvas, 0, 0, sw, sh, off, -bob, viewW, viewH);
+  ctx.globalAlpha = 0.17 * k * (calm ? 1 : 0.85 + 0.15 * Math.sin(t * 2));
+  ctx.fillStyle = '#8fa23a';
+  ctx.fillRect(0, 0, viewW, viewH);
+  const grad = ctx.createRadialGradient(viewW / 2, viewH / 2, Math.min(viewW, viewH) * 0.3, viewW / 2, viewH / 2, Math.max(viewW, viewH) * 0.7);
+  grad.addColorStop(0, 'rgba(60,80,30,0)');
+  grad.addColorStop(1, 'rgba(60,80,30,0.8)');
+  ctx.globalAlpha = 0.5 * k;
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, viewW, viewH);
+  ctx.restore();
+}
+
 // A red pulse creeping in from the edge the hunter is on while he's close
 // and chasing — strongest when he's off camera, which is when you need it.
 const DANGER_RANGE = 80;
@@ -7360,6 +7429,7 @@ function render() {
   drawFloorLight(camX, camY);
   drawForeground(camX, camY);
   drawGrade();
+  drawFartHaze();
   drawCellarHatchCue(camX, camY);
 
   // Order bubbles float above the scene and above the grade, so a patience bar
@@ -7448,6 +7518,7 @@ window.__debug = {
   getNick: () => nick,
   spawnNick,
   getFartClouds: () => fartClouds,
+  getFartHaze: () => fartHaze,
   spawnBusboy,
   getAlex: () => alex,
   spawnAlex,
