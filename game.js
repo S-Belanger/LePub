@@ -1801,8 +1801,46 @@ function alexFollowPath(dt) {
   return false;
 }
 
+// Walking alongside Alex while he is mid-split trips the Doe: the tray goes
+// everywhere, she is down for a moment and the room shakes. Once per split.
+// Dropped orders stay on the board (patience keeps running) and must be
+// fetched again. Presentation + a short input lock; no life or tip cost.
+const ALEX_TRIP_REACH = 5;     // px from the split box
+const ALEX_FALL_TIME = 0.9;    // input locked
+const SHAKE_TIME = 0.55;
+const SHAKE_AMP = 2.2;
+let fallTimer = 0;
+let shakeTimer = 0;
+
+function playerNearAlexSplit() {
+  if (cellar || !alex || alex.state !== 'splitting' || alex.tripped || !alex.blocker) return false;
+  const b = alex.blocker.collider;
+  const dx = Math.max(b.x - player.x, 0, player.x - (b.x + b.w));
+  const dy = Math.max(b.y - player.y, 0, player.y - (b.y + b.h));
+  return Math.hypot(dx, dy) <= ALEX_TRIP_REACH;
+}
+
+function tripOverAlex() {
+  alex.tripped = true;
+  const hadDrinks = player.tray.length > 0;
+  for (const item of player.tray) {
+    if (item.customer) item.customer.beingCarried = false;
+    addSpill(player.x + (Math.random() - 0.5) * 10, player.y + (Math.random() - 0.5) * 6);
+  }
+  player.tray.length = 0;
+  doubleArmed = false;
+  fallTimer = ALEX_FALL_TIME;
+  shakeTimer = SHAKE_TIME;
+  react(player, 'hit');
+  Sound.play('spill');
+  addFloatingText(player.x, player.y - player.h - 4, hadDrinks ? 'TIMBER!' : 'WHOA!', PUB.amber);
+}
+
 function updateAlex(dt) {
+  if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+  if (fallTimer > 0) fallTimer = Math.max(0, fallTimer - dt);
   if (paused || caught || shiftTally) return;
+  if (playerNearAlexSplit()) tripOverAlex();
   if (!alex) {
     alexDelay = Math.max(0, alexDelay - dt);
     if (alexDelay <= 0) {
@@ -2716,6 +2754,8 @@ function resetGame() {
   nick = null;
   fartClouds.length = 0;
   fartHaze = 0;
+  fallTimer = 0;
+  shakeTimer = 0;
   nickDelay = NICK_FIRST_MIN + Math.random() * (NICK_FIRST_MAX - NICK_FIRST_MIN);
   alexDelay = ALEX_FIRST_MIN + Math.random() * (ALEX_FIRST_MAX - ALEX_FIRST_MIN);
   alexLastVisitShift = 0;
@@ -3685,7 +3725,7 @@ function update(dt) {
   // Player movement (slides along furniture/walls via per-axis collision).
   // Down in the cellar the input drives the stand-in Doe instead, and the
   // real one stands still at the hatch.
-  const input = getInputVector();
+  const input = fallTimer > 0 ? { x: 0, y: 0 } : getInputVector();
   if (cellar) {
     updateCellar(dt, input);
   } else {
@@ -7372,6 +7412,13 @@ function render() {
   const camY = cam.y;
 
   drawBackdrop();
+  const shaking = shakeTimer > 0 && !prefersReducedMotion;
+  if (shaking) {
+    ctx.save();
+    const k = shakeTimer / SHAKE_TIME;
+    const tt = performance.now() / 1000;
+    ctx.translate(Math.round(Math.sin(tt * 90) * SHAKE_AMP * k * 2) / 2, Math.round(Math.cos(tt * 77) * SHAKE_AMP * k * 2) / 2);
+  }
   // The portrait sign has its own space; the pub can scroll underneath that
   // boundary, never underneath the sign itself.
   if (viewIsPortrait) {
@@ -7459,6 +7506,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
 
+  if (shaking) ctx.restore();
   if (viewIsPortrait) ctx.restore();
   drawHud();
 

@@ -10,6 +10,7 @@ in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md)
 
 - **Request:** "How difficult would it be to add a special effect when Richard (the deer waiter) walks in Nick's fart?", then a visual effect (double vision / blur) for the player; user said "Let's do it".
 - **Done (not committed/published):** `game.js` gains `fartHaze` (rises 3/s inside a cloud, drains over ~2s), `drawFartHaze()` after `drawGrade()` (wobble strips, double image, green wash/vignette; reduced motion drops drift/wobble), reset in `resetGame()`, `__debug.getFartHaze`. Presentation only.
+- **Follow-up request:** walking next to Alex during his split makes the player fall, drop the whole tray and shake the screen. Done in `game.js` (`tripOverAlex`, `playerNearAlexSplit`): once per split, within 5px of the split box; tray cleared with `beingCarried` reset (orders stay open, patience keeps running), a spill per dropped drink, 0.9s input lock, `hit` squash, 0.55s camera shake on the scene only (HUD steady; skipped under reduced motion). Verified in preview by forcing the state: trip fires, tray empties, no console errors; shake/feel not eyeballed, node tests not run.
 - **Checks:** browser preview at localhost:8917: haze reaches 1 in a cloud, effect renders, HUD/bubbles stay crisp, no console errors. `node` unavailable in this shell, so `tests/*.js` were NOT run. No physical-device check.
 
 ## 2026-10-06 — approved cast perspective and new regular likenesses
