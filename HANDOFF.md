@@ -1,5 +1,20 @@
 # LePub durable handoff
 
+## 2026-10-11 12:30 America/Toronto — live verified; CI regression assertion correction
+
+- main5460c5f97b52847acde7f97f369f355c6d1d410b independentlyremote-matched. Verceldeployment6998393060SUCCESS. ProductionverifierPASS34exactGitblobs/3private404/13readyatlases176mappings desktop-mobile/0errors; captures generated for review. Runtime/art released unchanged.
+- CI38155558163FAIL at dynamic-edge chase regression; preceding8suitesPASS,input/hazerendererskipped. Parent seeded100trajectoryprobe finds3ending-distancefailures atseeds62/75/99, yet each reachesexistingcatchrange at0.35s beforelaterovershoot. Test called updateHunter alone for3s, skipping normal update's hit handling, then checked onlyendposition. Correcttest stopatfirstcatchrange and seedjitter explicitly; do not changegameplayto satisfyartificialendtime.
+- Localreceiptfiles dirty/uncommitted; correctiontests next, freshNode/CI, retainfailedrunhistory. No remainingruntimebug currentlyevidenced. Next publishtest+receiptfollowup, verifyremote/newCI/live unchanged, finalcleanstatus. Physical/humanlimitationsremain.
+
+
+## 2026-10-11 12:27:45 America/Toronto — implementation pushed; remote matched
+
+- main implementation commit5460c5f97b52847acde7f97f369f355c6d1d410b contains132taskfiles. git push origin main succeeded; independent git ls-remote origin refs/heads/main matches exactSHA. Postpushstatusclean main...origin/main0/0 beforethisreceipt edit. No rawprivateinputs staged (132file privacycheck0), docs12files134links/cached diffcheckPASS.
+- All delivered functionality/checks in12:26checkpoint unchanged. Fresh11Node/8browser-profile suitesPASS; independentreviewaccepted. No codechangeaftervalidation.
+- NewCI/deployment notyetobserved (ghrunliststillpreviousHEAD); do notinferlivefrompush. Thisreceipt/HANDOFF edit local/uncommitted next. Next inspect newCI/currentVerceldeployment and run datedproductionverifier against5460c5f34Gitblobs/13atlasdesktop-mobile, inspectcaptures, appendreceipts and publishdocs-only followup.
+- Physicalphone/GPU/human difficulty testing unavailable/unverified; playabletools ready, noadditionalproductblocker.
+
+
 ## 2026-10-11 12:26 America/Toronto — final local validation; authorized publication next
 
 - Branch main, HEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34, fresh fetched origin/main0/0. All task work local/uncommitted/unpushed; prior effects commits preserved. User authorized all audit recommendations/push main and resumed; no phone testing available.

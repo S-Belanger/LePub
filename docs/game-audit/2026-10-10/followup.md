@@ -84,3 +84,18 @@ Implementation and verification are recorded in the collaborator journal and
 latest HANDOFF checkpoint. Publication receipts are appended after independently
 checking the actual remote SHA, CI and live Git-blob equality; a push alone does
 not establish deployment.
+
+Implementation [`5460c5f`](https://github.com/S-Belanger/LePub/commit/5460c5f97b52847acde7f97f369f355c6d1d410b)
+was pushed and independently remote-matched. Vercel deployment6998393060 is successful;
+[production receipt](production-receipt.json) verifies34exact Git blobs,
+3excluded private-image404s and desktop/mobile13readyatlases/176pose mappings with
+zero errors. [Live desktop](live-desktop.png) and [live phone emulation](live-mobile.png)
+were inspected.
+
+The initial CI run failed one chase test that checked an unseeded final position
+after3seconds of isolated pursuit. The hunter had reached catch range at0.35seconds
+then drifted past the target because the fixture omitted normal hit handling.
+Tests now stop at first contact, seed the jitter and check every step for collision;
+the reviewer confirms both guards still fail when approach routing is disabled.
+The runtime/art remain unchanged. Fresh11local suites pass; the follow-up CI result
+will be recorded in the release journal and latest handoff.

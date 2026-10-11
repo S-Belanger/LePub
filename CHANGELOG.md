@@ -6,12 +6,14 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
-## 2026-10-11 — Approved game audit follow-up (validated; publication pending)
+## 2026-10-11 — Approved game audit follow-up (implementation published)
 
 - User authorized every audit recommendation and pushing `main`; physical-phone testing unavailable, then requested "Resume". Original October10 fixes are included.
 - Safe NPC waiting/replanning, reachable hunter chase approaches, illustrated20frame busboy, cached/bounded haze, collision/input/effects modules and playable balance/performance review tools. Existing speeds/patience/scoring preserved.
 - Fresh11Node suites PASS, routing31cases;8actualEdge browser/profile commands PASS,13atlases/176pose mappings,6shift/input scenarios. Independent review accepted chase/wall safety and40customer/80waiter legs. Matched haze submissions182→53mobile/92→43desktop; CPU/emulation only, human difficulty and physical-phone/GPU testing unverified.
 - [Follow-up outcomes and checks](docs/game-audit/2026-10-10/followup.md), [busboy review](docs/art-review/busboy/README.md), [exact requests, failures and journal](docs/collaboration/2026-10-10-collision-game-audit.md). Main5a6eb03, all work local before implementation commit; append actual publication receipt after verification.
+- Implementation [`5460c5f`](https://github.com/S-Belanger/LePub/commit/5460c5f97b52847acde7f97f369f355c6d1d410b) pushed/independently remote-matched. Vercel deployment6998393060SUCCESS; actual live34Gitblobs exact,3privateinput404,13readyatlases/176pose mappings desktop/mobile with0errors and inspected captures.
+- Initial [CI38155558163](https://github.com/S-Belanger/LePub/actions/runs/38155558163) failed an unseeded final-time chase assertion: hunter reached catch range before isolated pursuit overshot. Corrected tests use seeded randomness, first contact and per-step collision checks; independent review proves both guards fail without approach routing. Fresh11local suites PASS; publishing test/receipt follow-up, newCI pending. No runtime/art change.
 
 ## 2026-10-10 — Table collisions and gameplay audit (initial local outcome)
 

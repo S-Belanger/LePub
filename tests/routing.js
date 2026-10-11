@@ -8,8 +8,10 @@ const failures = [];
 function check(name, test) {
   const { context } = createRuntime();
   const run = code => vm.runInContext(code, context);
+  const originalRandom = Math.random;
   try { test(run); console.log('PASS ' + name); }
   catch (e) { failures.push(name + ': ' + e.message); console.error('FAIL ' + name + ': ' + e.message); }
+  finally { Math.random = originalRandom; }
 }
 const wall = "FURNITURE.push({type:'routing-test',collider:{x:0,y:296,w:200,h:2}})";
 const removeWall = "FURNITURE.splice(FURNITURE.findIndex(f=>f.type==='routing-test'),1)";
@@ -160,20 +162,24 @@ check('hunter chase waits on an impossible route and retries at one second', run
   assert(run('hunter.y') < 296, 'hunter crosses only after a clear route exists');
 });
 check('hunter approaches a player at a legal narrower-body furniture contact', run => {
+  run('let chaseSeed=62;Math.random=()=>{chaseSeed=(Math.imul(1664525,chaseSeed)+1013904223)>>>0;return chaseSeed/4294967296;};');
   run('resetGame();paused=false;player.x=80;player.y=150;Object.assign(player,tryMove(player,20,0));hunter.x=75;hunter.y=125;setHunterState("chase");');
   assert.equal(run('player.x'), 86.6);
   assert.equal(run('collidesAt(player,player.x,player.y)'), false);
   assert.equal(run('pointBlocked(player.x,player.y,null,HUNTER_FOOTPRINT)'), true);
   assert.equal(run('computeCustomerPath(hunter,player,null,HUNTER_FOOTPRINT).length'), 0);
-  run('for(let i=0;i<60;i++)updateHunter(0.05)');
+  // The real update handles a hit at first contact. Isolating updateHunter
+  // beyond that point can jitter past the target, so stop at catch distance.
+  run('for(let i=0;i<60&&Math.hypot(hunter.x-player.x,hunter.y-player.y)>=(player.w+hunter.w)/2.4;i++){updateHunter(0.05);if(collidesAt(hunter,hunter.x,hunter.y))throw Error("Hunter penetrated furniture");}');
   assert(run('Math.hypot(hunter.x-player.x,hunter.y-player.y)<(player.w+hunter.w)/2.4'), 'hunter must approach within normal catch distance');
   assert.equal(run('collidesAt(hunter,hunter.x,hunter.y)'), false, 'hunter body must remain outside the furniture');
 });
 check('a player near a dynamic-body edge can be approached without body penetration', run => {
+  run('let chaseSeed=62;Math.random=()=>{chaseSeed=(Math.imul(1664525,chaseSeed)+1013904223)>>>0;return chaseSeed/4294967296;};');
   run('resetGame();paused=false;player.x=140;player.y=300;hunter.x=125;hunter.y=275;dynamicBlockers.push({w:14,x:148.5,y:300});setHunterState("chase");');
   assert.equal(run('collidesAt(player,player.x,player.y)'), false);
   assert.equal(run('pointBlocked(player.x,player.y,null,HUNTER_FOOTPRINT)'), true);
-  run('for(let i=0;i<60;i++)updateHunter(0.05)');
+  run('for(let i=0;i<60&&Math.hypot(hunter.x-player.x,hunter.y-player.y)>=(player.w+hunter.w)/2.4;i++){updateHunter(0.05);if(collidesAt(hunter,hunter.x,hunter.y))throw Error("Hunter penetrated body");}');
   assert(run('Math.hypot(hunter.x-player.x,hunter.y-player.y)<(player.w+hunter.w)/2.4'));
   assert.equal(run('collidesAt(hunter,hunter.x,hunter.y)'), false);
 });
