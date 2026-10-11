@@ -191,3 +191,15 @@ Fresh tests not run yet. Planned six existing Node suites, collision regression,
 - Exact assistant progress: "The hunter reached catch distance in the failing case, then moved past the player because the test kept running pursuit alone without the game’s hit handling. I’ve corrected the test to check first contact with seeded randomness. Live verification also passed: all 34 checked files match the pushed commit."
 - node docs/game-audit/2026-10-10/verify-production.js5460c5f97b52847acde7f97f369f355c6d1d410b exit0: currentlepub-five34servedGitblobsexact,3privatephoto404s, desktop/mobile13readyatlases176verifiedpose mappings actualNick/Alex/busboymop and0errors. Native liveimagesinspected; deployedbusboymatchescast andtouch/HUDretainroomvisibility. production-receipt.json recordshashes/time/sourcecommit.
 - Testcorrection+verifiedproductionreceipt/docs beingcommitted/pushednext; newCIunverifieduntilobserved. Implementation5460c5f remains published/remote-matched. Physicalphone/GPU/humanfeel notclaimed.
+
+### Test and release receipt publication
+
+- Commit4ecc4069e1fe9accff2f608cd31075f375776c4c `test: verify first chase contact and record production release`;8files, runtime/art unchanged. gitpushoriginmain exit0, independentgitls-remoteexact4ecc4069e1fe9accff2f608cd31075f375776c4c, postpushclean/upstream0/0 beforecheckpoint. Initial failedCI remains historical, newCIstatusverification next.
+
+### 2026-10-11 final successful release verification
+
+- Exact assistant progress: "The corrected CI run passed all 11 suites, and Vercel reports a successful deployment. I’m saving the final receipts and verifying that `main` and the live files match."
+- Correctedtest/receipt4ecc4069e1fe9accff2f608cd31075f375776c4c remote-matched. gh run view38155881399--jsonconclusion,jobs confirmsSUCCESSall11Nodegate steps includingrouting/input/effectsrenderer. CurrentVerceldeployment6998450063SUCCESS. No runtime/artchangesfrom5460c5f.
+- Freshproductionverifieragainst4ecc406exit0:34exactGitblobs,3privateinput404,13readyatlases176mappings desktop/mobileactualvisitors+busboy/0errors. Nativecapturesinspected. NewreceiptJSON preservesactualcheckedcommit/time/hashes; closingdocscannotembedownSHA, resolvefromGitlog.
+- Final docs/evidence commit includesHANDOFF/CHANGELOG/journal/followup/updatedproductionreceipt/captures. InitialCI failure/source-spacing/harnesscorrections preservedas history. Next gitcommit/push/ls-remote/status/newCI+deployment checks; no remainingproductchange/test/approvaldependency. Any finalreceiptSHA/statusreportedafteractualverification.
+- Exact final user-facing outcome intended after closingremoteverification: "Implemented and pushed to `main`; the live release is verified. Table collisions, NPC recovery, busboy art, haze performance, runtime modules and playtest tools are complete. All11test suites and browser checks passed. Physical-phone testing and subjective balance playtesting remain unverified."

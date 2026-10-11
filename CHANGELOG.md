@@ -6,7 +6,7 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
-## 2026-10-11 — Approved game audit follow-up (implementation published)
+## 2026-10-11 — Approved game audit follow-up (published and verified live)
 
 - User authorized every audit recommendation and pushing `main`; physical-phone testing unavailable, then requested "Resume". Original October10 fixes are included.
 - Safe NPC waiting/replanning, reachable hunter chase approaches, illustrated20frame busboy, cached/bounded haze, collision/input/effects modules and playable balance/performance review tools. Existing speeds/patience/scoring preserved.
@@ -14,6 +14,7 @@ in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md)
 - [Follow-up outcomes and checks](docs/game-audit/2026-10-10/followup.md), [busboy review](docs/art-review/busboy/README.md), [exact requests, failures and journal](docs/collaboration/2026-10-10-collision-game-audit.md). Main5a6eb03, all work local before implementation commit; append actual publication receipt after verification.
 - Implementation [`5460c5f`](https://github.com/S-Belanger/LePub/commit/5460c5f97b52847acde7f97f369f355c6d1d410b) pushed/independently remote-matched. Vercel deployment6998393060SUCCESS; actual live34Gitblobs exact,3privateinput404,13readyatlases/176pose mappings desktop/mobile with0errors and inspected captures.
 - Initial [CI38155558163](https://github.com/S-Belanger/LePub/actions/runs/38155558163) failed an unseeded final-time chase assertion: hunter reached catch range before isolated pursuit overshot. Corrected tests use seeded randomness, first contact and per-step collision checks; independent review proves both guards fail without approach routing. Fresh11local suites PASS; publishing test/receipt follow-up, newCI pending. No runtime/art change.
+- Test/receipt [`4ecc406`](https://github.com/S-Belanger/LePub/commit/4ecc4069e1fe9accff2f608cd31075f375776c4c) pushed/independently remote-matched; [CI38155881399](https://github.com/S-Belanger/LePub/actions/runs/38155881399) all11suitesSUCCESS. Vercel deployment6998450063SUCCESS; fresh live34Gitblobs/13atlases/176mappings/3private404 PASS against this exact revision. Closing evidence/docs receipt follows; resolve its own SHA from Git history. No remaining implementation issue; human/physical-phone checks remain unverified.
 
 ## 2026-10-10 — Table collisions and gameplay audit (initial local outcome)
 

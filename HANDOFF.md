@@ -1,5 +1,23 @@
 # LePub durable handoff
 
+## 2026-10-11 12:34 America/Toronto — approved game improvements complete; final release receipt
+
+- main implementation5460c5f97b52847acde7f97f369f355c6d1d410b and corrected test/receipt4ecc4069e1fe9accff2f608cd31075f375776c4c committed/pushed/independentlyremote-matched. HEADatthischeckpoint4ecc406, origin/main0/0; only finaldocumentation/evidence edits local. This closing docs receipt's own SHA is resolved from git log, rather than embedded in itself. Publish it and confirm clean remote match; no remaining product work.
+- User requests fulfilled: visibletable/chair collisions/contact/sliding/escape; Alex moving four-sided trip and fall-action locks; safe all-NPC route failure/recovery/temporary blockers/own-table/self exclusion; smoke timeout cancellation; widerhunter catch approaches without wall penetration/radius change; authored20framebusboy; bounded/cached scene haze; focused collision-routing/input/effects modules; repeatable balance/device review tools. Existing balance constants preserved. Exact sourceprompts/failures/requests/methods/captures in versioned datedjournal.
+- Fresh11local Node suites and8actualEdge browser/profile tools PASS. Independent finalreview accepted runtime and first-contact regression correction; both guards fail withoutapproachfix. InitialCI38155558163failure preserved; correctedCI38155881399all11gatesSUCCESS. Verceldeployment6998450063SUCCESS for4ecc406. Original5460deployment6998393060alsoSUCCESS.
+- Fresh currentproduction against4ecc406:34servedGitblobs exact (game/index/style/3modules/contract/manifest/26PNGJSON),3privateinput404,13readyatlases176pose mappings desktop-mobile/0errors, livecaptures inspected. production-receipt.json has hashes/time/actualsourceSHA. Currentlivehttps://lepub-five.vercel.app/ verified; no push-aloneclaim.
+- Evidence: datedaudit/followup, collision/effects/fullcast/HUD/routing/balance/performance reports/nativecaptures, busboy source/alpha/import/rejectedspacing, exactcollaboratorjournal. Matchedmobilehaze182→53imagecalls; CPU/RAFhostemulation only, not sustainedGPU/phoneproof. Sixcontrolledshifts1–3 keyboard/nativeCDPtouch pass fulltray/haze/urgency/Alexrecovereddelivery/chase; not completehumanwinning shifts.
+- Limits explicitly in force: userhasnophysicalphone; physical-phone/GPUduration/humansubjectivedifficulty remainunverified. Playable tools/performance-review.html and balance-review.html supportlaterassessment. No tuning needed solely from scriptedscenarios. No outstanding code/art/test/approval blocker.
+- Nextsession: preservehistory/readcurrentVISUALSYSTEM; optionalhumancomplete-shift playtest/deviceprofilebeforebalancechanges. Releaseclosingreceipt changesdocumentation/evidence only, no newruntime/art; independentlycheck its remote/CI/deployment afterpush. FinalactualbranchHEAD via git log/status.
+
+
+## 2026-10-11 12:32 America/Toronto — corrected regression and production receipt pushed
+
+- main HEAD4ecc4069e1fe9accff2f608cd31075f375776c4c independently gitls-remote matched, clean/upstream0/0 beforethischeckpoint. Implementation5460c5f published; test/receiptfollowup4ecc406 pushed. Runtime/art unchanged;34liveGitblobs13atlas/176mappings/3private404 verification and nativecaptures recorded/inspected.
+- tests/routing.js nowseedsjitter/restoresrandom, stopsatfirstnormalcatchrange, validateseverystep. Independentreview provesbothapproachguardsFAILwithoutfix andPASSwithfix. Freshall11localsuitesPASS. InitialCI38155558163failure retained; new4ecc406CI/deployment verification pending currenttoolresult.
+- Next observeactualnewCIall11gates/Vercelsuccess, verifycurrentremote/liveunchangedagainst4ecc406, appendfinalreceipt and docs-only closingpublication. No product/artworkchange or missingauthorization. Physicalphone/GPU/humanfeel remainsunverifiedasagreed.
+
+
 ## 2026-10-11 12:30 America/Toronto — live verified; CI regression assertion correction
 
 - main5460c5f97b52847acde7f97f369f355c6d1d410b independentlyremote-matched. Verceldeployment6998393060SUCCESS. ProductionverifierPASS34exactGitblobs/3private404/13readyatlases176mappings desktop-mobile/0errors; captures generated for review. Runtime/art released unchanged.

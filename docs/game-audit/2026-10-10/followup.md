@@ -99,3 +99,9 @@ Tests now stop at first contact, seed the jitter and check every step for collis
 the reviewer confirms both guards still fail when approach routing is disabled.
 The runtime/art remain unchanged. Fresh11local suites pass; the follow-up CI result
 will be recorded in the release journal and latest handoff.
+
+Follow-up [`4ecc406`](https://github.com/S-Belanger/LePub/commit/4ecc4069e1fe9accff2f608cd31075f375776c4c)
+is independently remote-matched; [CI38155881399](https://github.com/S-Belanger/LePub/actions/runs/38155881399)
+passes all11suites. Vercel deployment6998450063 succeeds. Fresh production verification
+against4ecc406 again passes34exact Git blobs,13readyatlases/176mappings and3private404s.
+The final documentation/evidence receipt changes no runtime/art; its SHA is in Git history.
