@@ -1,0 +1,32 @@
+{
+  "time": "2026-10-10T21:11:52.160Z",
+  "baseline": true,
+  "results": [
+    {
+      "name": "desktop",
+      "keyboardY": 235.30000000000007,
+      "geometry": {
+        "gap": true,
+        "stoolGap": true,
+        "edge": 84,
+        "tableSolid": true,
+        "chairSolid": true,
+        "routeGap": false
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "keyboardY": 235.30000000000007,
+      "geometry": {
+        "gap": true,
+        "stoolGap": true,
+        "edge": 84,
+        "tableSolid": true,
+        "chairSolid": true,
+        "routeGap": false
+      },
+      "errors": []
+    }
+  ]
+}

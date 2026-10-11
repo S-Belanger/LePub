@@ -133,6 +133,16 @@ const ENTITY_HITBOXES = {
 const TABLE_SIZE = 14; // default table size when a table doesn't specify w/h
 const CHAIR_SIZE = 6;
 const CHAIR_GAP = 2;
+const CHAIR_DRAW_WIDTH = 8;
+
+// Bounds of the visible chair body/back rail. Drop shadows do not block feet.
+// Keep the seat-spacing size above separate from the wider authored chair.
+function chairCollider(seat) {
+  const side = seat.side === 'w' || seat.side === 'e';
+  const top = seat.side === 'n' ? -4.5 : side ? -3.5 : -2.5;
+  return { x: seat.x - CHAIR_DRAW_WIDTH / 2 - (seat.side === 'w' ? 0.5 : 0),
+    y: seat.y + top, w: CHAIR_DRAW_WIDTH + (side ? 0.5 : 0), h: 4.5 - top };
+}
 
 // A table can be any size and can put any number of chairs evenly spaced
 // along each side (n/s/e/w), not just one — e.g. a long table with 4 seats
@@ -182,6 +192,18 @@ function makeTable(cx, cy, opts = {}) {
     };
   }
 
+  // The broad collider remains the service/interaction envelope. Physical
+  // movement uses the actual body plus individual chairs, leaving gaps open.
+  const colliders = [];
+  if (hasSolidBody) colliders.push({
+    x: type === 'table' ? cx - Math.round(w / 2) : cx - w / 2,
+    y: type === 'table' ? cy - Math.round(h / 2) : cy - h / 2,
+    w, h,
+  });
+  if (seatStyle !== 'bench') {
+    for (const seat of getTableSeats({ x: cx, y: cy, w, h, seats })) colliders.push(chairCollider(seat));
+  }
+
   return {
     type,
     x: cx,
@@ -196,6 +218,7 @@ function makeTable(cx, cy, opts = {}) {
     // draw in front of it, not behind.
     sortY: cy + h / 2,
     collider,
+    colliders,
   };
 }
 
@@ -366,331 +389,97 @@ function spriteAnchorX(sprite, flipX) {
   return flipX ? width - anchor : anchor;
 }
 
-// ---- Collision: furniture blocks movement for both characters. A small
-// footprint box near the feet is tested against each furniture collider so
-// characters can still visually overlap tall furniture like a real top-down
-// game (sprite draws above its feet). -------------------------------------
-function rectsOverlap(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
-function getFootBox(e, x, y) {
-  const w = e.w * 0.55;
-  const h = 7;
-  return { x: x - w / 2, y: y - h, w, h };
-}
-
-// Bodies that block movement for a while without being furniture: Nazim on
-// his feet, staggering about the booth lane. Routes ignore them (they are
-// computed once, and he isn't there for long); per-step collision slides
-// everyone else around him.
+// ---- Collision/routing compatibility wrappers -------------------------------
+// Geometry and searches live in src/collision-routing.js. State stays here.
 const dynamicBlockers = [];
+const collisionRouting = CollisionRouting.create({
+  worldW: WORLD_W, worldH: WORLD_H, hitboxes: ENTITY_HITBOXES,
+  furniture: FURNITURE, getDynamicBlockers: () => dynamicBlockers,
+});
+const { COLLISION_EPSILON, MOVE_SUBSTEP, PATH_CELL, PATH_MARGIN, PATH_FOOT_H,
+  CUSTOMER_HALF_W, CUSTOMER_HALF_H, CUSTOMER_FOOTPRINT, HUNTER_FOOTPRINT,
+  BUSBOY_FOOTPRINT, ALEX_FOOTPRINT, NICK_FOOTPRINT } = collisionRouting;
+function rectsOverlap(...args) { return collisionRouting.rectsOverlap(...args); }
+function getFootBox(...args) { return collisionRouting.getFootBox(...args); }
+function furnitureRects(...args) { return collisionRouting.furnitureRects(...args); }
+function collidesAt(...args) { return collisionRouting.collidesAt(...args); }
+function tryMove(...args) { return collisionRouting.tryMove(...args); }
+function tryMoveStep(...args) { return collisionRouting.tryMoveStep(...args); }
+function moveAxis(...args) { return collisionRouting.moveAxis(...args); }
+function footprintFor(...args) { return collisionRouting.footprintFor(...args); }
+function segmentHitsRect(...args) { return collisionRouting.segmentHitsRect(...args); }
+function findBlockingObstacle(...args) { return collisionRouting.findBlockingObstacle(...args); }
+function pointBlocked(...args) { return collisionRouting.pointBlocked(...args); }
+function cellFromKey(...args) { return collisionRouting.cellFromKey(...args); }
+function cellCenter(...args) { return collisionRouting.cellCenter(...args); }
+function reachablePoint(...args) { return collisionRouting.reachablePoint(...args); }
+function computeCustomerPath(...args) { return collisionRouting.computeCustomerPath(...args); }
 
-function collidesAt(e, x, y, exclude) {
-  const box = getFootBox(e, x, y);
-  for (const f of FURNITURE) {
-    if (f === exclude) continue;
-    if (rectsOverlap(box, f.collider)) return true;
+// Every routed actor keeps its original destination even when no waypoints
+// exist. A failed or newly obstructed leg waits, then retries at most once a
+// second. Arrival is reported only after a clear final leg actually completes.
+const ROUTE_RETRY_INTERVAL = 1;
+function beginEntityRoute(e, destination, exclude, fp = CUSTOMER_FOOTPRINT, holder = e, plannedPath) {
+  const to = reachablePoint(e, destination);
+  holder.route = { to, exclude, fp, retryIn: ROUTE_RETRY_INTERVAL };
+  holder.path = plannedPath || computeCustomerPath(e, to, exclude, fp, e);
+  holder.route.path = holder.path;
+  holder[holder === e ? 'pathIndex' : 'index'] = 0;
+  return holder.path;
+}
+
+function routedWalk(e, dt, exclude, fp = CUSTOMER_FOOTPRINT, holder = e, speed = e.speed) {
+  const indexKey = holder === e ? 'pathIndex' : 'index';
+  // Compatibility for probes and existing callers which supply a valid path.
+  // Production route setup always supplies a destination via beginEntityRoute.
+  if (!holder.route || holder.path !== holder.route.path) {
+    const to = holder.path && holder.path[holder.path.length - 1];
+    if (!to) { e.moving = false; return false; }
+    holder.route = { to: reachablePoint(e, to), exclude, fp, retryIn: 0, path: holder.path };
   }
-  for (const b of dynamicBlockers) {
-    if (b === e) continue;
-    if (rectsOverlap(box, getFootBox(b, b.x, b.y))) return true;
+  const route = holder.route;
+  route.retryIn = Math.max(0, route.retryIn - dt);
+  let target = holder.path && holder.path[holder[indexKey]];
+  if (target && findBlockingObstacle(e, target, route.exclude, route.fp, e)) {
+    holder.path = [];
+    route.path = holder.path;
+    holder[indexKey] = 0;
+    target = null;
+  }
+  if (!target) {
+    e.moving = false;
+    if (route.retryIn > COLLISION_EPSILON) return false;
+    holder.path = computeCustomerPath(e, route.to, route.exclude, route.fp, e);
+    route.path = holder.path;
+    holder[indexKey] = 0;
+    route.retryIn = ROUTE_RETRY_INTERVAL;
+    target = holder.path[0];
+    if (!target) return false;
+  }
+  const dx = target.x - e.x;
+  const dy = target.y - e.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1.5) {
+    e.x = target.x;
+    e.y = target.y;
+    e.moving = false;
+    if (holder[indexKey] < holder.path.length - 1) { holder[indexKey]++; return false; }
+    return Math.hypot(e.x - route.to.x, e.y - route.to.y) < COLLISION_EPSILON;
+  }
+  const step = Math.min(dist, speed * dt);
+  const oldX = e.x, oldY = e.y;
+  const moved = tryMove(e, dx / dist * step, dy / dist * step, route.exclude);
+  e.x = moved.x;
+  e.y = moved.y;
+  e.flip = dx < 0;
+  faceToward(e, dx, dy);
+  e.moving = Math.hypot(e.x - oldX, e.y - oldY) > COLLISION_EPSILON;
+  if (moved.blockedX || moved.blockedY) {
+    holder.path = [];
+    route.path = holder.path;
+    holder[indexKey] = 0;
   }
   return false;
-}
-
-// Moves an entity by (dx, dy), resolving each axis independently so it can
-// slide along furniture/walls instead of stopping dead on diagonal moves.
-// Long moves (a hit shove, the Jameson bounce) are swept in MOVE_SUBSTEP
-// chunks: testing only the destination would let a 40px knock hop clean over
-// a counter thinner than the jump.
-const MOVE_SUBSTEP = 3;
-
-function tryMove(e, dx, dy) {
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / MOVE_SUBSTEP));
-  if (steps === 1) return tryMoveStep(e, e.x, e.y, dx, dy);
-  const sx = dx / steps;
-  const sy = dy / steps;
-  let x = e.x;
-  let y = e.y;
-  let blockedX = false;
-  let blockedY = false;
-  for (let i = 0; i < steps; i++) {
-    const r = tryMoveStep(e, x, y, blockedX ? 0 : sx, blockedY ? 0 : sy);
-    x = r.x;
-    y = r.y;
-    blockedX = blockedX || r.blockedX;
-    blockedY = blockedY || r.blockedY;
-    if ((blockedX || sx === 0) && (blockedY || sy === 0)) break;
-  }
-  return { x, y, blockedX, blockedY };
-}
-
-function tryMoveStep(e, x0, y0, dx, dy) {
-  let x = x0;
-  let y = y0;
-  let blockedX = false;
-  let blockedY = false;
-
-  if (dx !== 0) {
-    const nx = clamp(x0 + dx, e.w / 2, WORLD_W - e.w / 2);
-    if (nx !== x0 && !collidesAt(e, nx, y)) x = nx;
-    else blockedX = true;
-  }
-  if (dy !== 0) {
-    const ny = clamp(y0 + dy, e.h / 2, WORLD_H - e.h / 2);
-    if (ny !== y0 && !collidesAt(e, x, ny)) y = ny;
-    else blockedY = true;
-  }
-  return { x, y, blockedX, blockedY };
-}
-
-// ---- Customer path routing: customers don't have real-time obstacle
-// avoidance (see tryMove above, which is for the player/hunter), but the
-// floor plan is static, so a route from the door to a seat can be worked
-// out once, up front, with a coarse-grid search — cheap since it only runs
-// when a customer starts entering/leaving, never per frame. A line-of-sight
-// smoothing pass then collapses that grid path down to a handful of
-// waypoints so movement still reads as a straight walk, not grid-snapping.
-const PATH_CELL = 8;
-const PATH_MARGIN = (ENTITY_HITBOXES.customer.w * 0.55) / 2;
-const PATH_FOOT_H = 7;
-
-// The search is body-size aware: a footprint carries the half-width of the
-// foot box (what furniture blocks) and the half extents of the hitbox (what
-// the world edge clamps). Customers are the default; the hunter's is wider,
-// which is exactly why some corridors a customer strolls through are walls
-// to him.
-function footprintFor(kind, cell) {
-  const hb = ENTITY_HITBOXES[kind];
-  return { margin: (hb.w * 0.55) / 2, halfW: hb.w / 2, halfH: hb.h / 2, cell: cell || PATH_CELL };
-}
-const CUSTOMER_FOOTPRINT = footprintFor('customer');
-// A wide body on an 8px grid finds no clear cell centre in a corridor it
-// physically fits through (the 15px lane beside the bar stem, for one), so
-// the hunter searches a 4px grid: four times the cells, still cheap for a
-// route recomputed every second or so.
-const HUNTER_FOOTPRINT = footprintFor('hunter', 4);
-const BUSBOY_FOOTPRINT = footprintFor('busboy');
-const ALEX_FOOTPRINT = footprintFor('alex');
-const NICK_FOOTPRINT = footprintFor('nick');
-
-// Exact line-segment/AABB test. Sampling a fixed number of points can skip a
-// thin chair collider on a long diagonal, which made the smoothing pass turn
-// an otherwise valid grid route into a path through furniture.
-function segmentHitsRect(p1, p2, rect) {
-  let tMin = 0;
-  let tMax = 1;
-  for (const [axis, size] of [['x', 'w'], ['y', 'h']]) {
-    const start = p1[axis];
-    const delta = p2[axis] - start;
-    const min = rect[axis];
-    const max = min + rect[size];
-    if (Math.abs(delta) < 1e-9) {
-      if (start < min || start > max) return false;
-      continue;
-    }
-    let near = (min - start) / delta;
-    let far = (max - start) / delta;
-    if (near > far) [near, far] = [far, near];
-    tMin = Math.max(tMin, near);
-    tMax = Math.min(tMax, far);
-    if (tMin > tMax) return false;
-  }
-  return true;
-}
-
-function findBlockingObstacle(p1, p2, exclude, fp) {
-  const margin = fp ? fp.margin : PATH_MARGIN;
-  for (const f of FURNITURE) {
-    if (f === exclude) continue;
-    const r = f.collider;
-    // Convert the furniture collider into the region a feet anchor cannot
-    // enter. The footprint is centered horizontally but extends upward from
-    // the anchor, so the vertical padding is deliberately asymmetric.
-    const inflated = {
-      x: r.x - margin,
-      y: r.y,
-      w: r.w + 2 * margin,
-      h: r.h + PATH_FOOT_H,
-    };
-    if (segmentHitsRect(p1, p2, inflated)) return f;
-  }
-  return null;
-}
-
-function pointBlocked(x, y, excludeTable, fp) {
-  // Mirrors getFootBox's feet-anchored shape (see collision section above)
-  // so the grid agrees with the runtime collision check that walks it.
-  const margin = fp ? fp.margin : PATH_MARGIN;
-  const box = { x: x - margin, y: y - PATH_FOOT_H, w: margin * 2, h: PATH_FOOT_H };
-  for (const f of FURNITURE) {
-    if (f === excludeTable) continue;
-    if (rectsOverlap(box, f.collider)) return true;
-  }
-  return false;
-}
-
-function cellFromKey(k, cols) {
-  return { cx: k % cols, cy: Math.floor(k / cols) };
-}
-
-// Same world clamp tryMove/updateCustomer apply to a customer's position —
-// the grid must agree, or it can route through a corner (e.g. a world edge)
-// the entity can never actually reach.
-const CUSTOMER_HALF_W = ENTITY_HITBOXES.customer.w / 2;
-const CUSTOMER_HALF_H = ENTITY_HITBOXES.customer.h / 2;
-function cellCenter(cx, cy, fp) {
-  const halfW = fp ? fp.halfW : CUSTOMER_HALF_W;
-  const halfH = fp ? fp.halfH : CUSTOMER_HALF_H;
-  const cell = fp ? fp.cell : PATH_CELL;
-  return {
-    x: clamp(cx * cell, halfW, WORLD_W - halfW),
-    y: clamp(cy * cell, halfH, WORLD_H - halfH),
-  };
-}
-
-// DOOR sits at the very bottom of the world, below the lowest y a body can
-// actually stand at — movement is clamped to half a sprite in from every
-// world edge. Walking somebody straight at it leaves them stranded a few
-// pixels short of their last waypoint, close but never "arrived", which is
-// how leaving customers used to pile up invisibly at the bottom wall and eat
-// the spawn cap. Route to the nearest point they can actually occupy instead.
-function reachablePoint(e, p) {
-  return {
-    x: clamp(p.x, e.w / 2, WORLD_W - e.w / 2),
-    y: clamp(p.y, e.h / 2, WORLD_H - e.h / 2),
-  };
-}
-
-// Full path computation: grid search for a walkable route, then collapse it
-// to the minimal set of waypoints a straight-line walk can follow without
-// clipping anything (skip ahead to the farthest point still in clear sight).
-function computeCustomerPath(from, to, excludeTable, fp) {
-  if (!findBlockingObstacle(from, to, excludeTable, fp)) return [to];
-
-  const cell = fp ? fp.cell : PATH_CELL;
-  const cols = Math.ceil(WORLD_W / cell);
-  const rows = Math.ceil(WORLD_H / cell);
-  const toCell = p => ({
-    cx: clamp(Math.round(p.x / cell), 0, cols - 1),
-    cy: clamp(Math.round(p.y / cell), 0, rows - 1),
-  });
-  const key = (cx, cy) => cy * cols + cx;
-
-  const blocked = new Map();
-  const isBlocked = (cx, cy) => {
-    const k = key(cx, cy);
-    if (!blocked.has(k)) {
-      const c = cellCenter(cx, cy, fp);
-      blocked.set(k, pointBlocked(c.x, c.y, excludeTable, fp));
-    }
-    return blocked.get(k);
-  };
-
-  // The entity usually starts between grid centers. Rounding that position
-  // can put the nominal start cell on the far side of a furniture corner,
-  // even though both the real start and the cell center are individually
-  // clear. Anchor each endpoint to the nearest grid center it can actually
-  // see so the first and last short hops are valid too.
-  const nearestVisibleCell = point => {
-    const origin = toCell(point);
-    const maxRadius = Math.max(cols, rows);
-    for (let radius = 0; radius < maxRadius; radius++) {
-      const candidates = [];
-      const minX = Math.max(0, origin.cx - radius);
-      const maxX = Math.min(cols - 1, origin.cx + radius);
-      const minY = Math.max(0, origin.cy - radius);
-      const maxY = Math.min(rows - 1, origin.cy + radius);
-      for (let cy = minY; cy <= maxY; cy++) {
-        for (let cx = minX; cx <= maxX; cx++) {
-          if (Math.max(Math.abs(cx - origin.cx), Math.abs(cy - origin.cy)) !== radius) continue;
-          const center = cellCenter(cx, cy, fp);
-          candidates.push({
-            cx,
-            cy,
-            center,
-            distance: (center.x - point.x) ** 2 + (center.y - point.y) ** 2,
-          });
-        }
-      }
-      candidates.sort((a, b) => a.distance - b.distance);
-      for (const candidate of candidates) {
-        if (isBlocked(candidate.cx, candidate.cy)) continue;
-        if (!findBlockingObstacle(point, candidate.center, excludeTable, fp)) {
-          return { cx: candidate.cx, cy: candidate.cy };
-        }
-      }
-    }
-    return origin;
-  };
-
-  const start = nearestVisibleCell(from);
-  const goal = nearestVisibleCell(to);
-
-  const open = [{ cx: start.cx, cy: start.cy, g: 0, f: 0 }];
-  const cameFrom = new Map();
-  const gScore = new Map([[key(start.cx, start.cy), 0]]);
-  const closed = new Set();
-  const heuristic = (cx, cy) => Math.hypot(cx - goal.cx, cy - goal.cy);
-
-  let reached = null;
-  while (open.length) {
-    let bi = 0;
-    for (let i = 1; i < open.length; i++) if (open[i].f < open[bi].f) bi = i;
-    const cur = open.splice(bi, 1)[0];
-    const ck = key(cur.cx, cur.cy);
-    if (closed.has(ck)) continue;
-    closed.add(ck);
-    if (cur.cx === goal.cx && cur.cy === goal.cy) { reached = ck; break; }
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = cur.cx + dx, ny = cur.cy + dy;
-        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-        if (isBlocked(nx, ny)) continue;
-        if (dx !== 0 && dy !== 0 && (isBlocked(cur.cx + dx, cur.cy) || isBlocked(cur.cx, cur.cy + dy))) continue;
-        // Endpoint occupancy alone can miss a narrow collider between two
-        // neighboring centers. Keep every A* edge collision-free so the
-        // unsmoothed path is always a valid fallback for string-pulling.
-        if (findBlockingObstacle(cellCenter(cur.cx, cur.cy, fp), cellCenter(nx, ny, fp), excludeTable, fp)) continue;
-        const g = cur.g + Math.hypot(dx, dy);
-        const nk = key(nx, ny);
-        if (gScore.has(nk) && g >= gScore.get(nk)) continue;
-        gScore.set(nk, g);
-        cameFrom.set(nk, ck);
-        open.push({ cx: nx, cy: ny, g, f: g + heuristic(nx, ny) });
-      }
-    }
-  }
-
-  if (reached === null) return [to]; // no walkable route found; fall back to a straight line
-
-  const cellPoints = [];
-  let k = reached;
-  while (true) {
-    const { cx, cy } = cellFromKey(k, cols);
-    cellPoints.unshift(cellCenter(cx, cy, fp));
-    if (!cameFrom.has(k)) break;
-    k = cameFrom.get(k);
-  }
-  cellPoints.push(to);
-
-  // String-pulling: from `from`, skip ahead to the farthest waypoint still
-  // reachable in a straight line, repeat from there.
-  const waypoints = [];
-  let cursor = from;
-  let i = 0;
-  while (i < cellPoints.length) {
-    let farthest = i;
-    for (let j = i; j < cellPoints.length; j++) {
-      if (!findBlockingObstacle(cursor, cellPoints[j], excludeTable, fp)) farthest = j;
-    }
-    waypoints.push(cellPoints[farthest]);
-    cursor = cellPoints[farthest];
-    i = farthest + 1;
-  }
-  return waypoints;
 }
 
 // ---- Entities -----------------------------------------------------------
@@ -880,7 +669,7 @@ function hunterOnSmokeBreak() { return hunterSmokeState !== null; }
 
 // Drops one held pack at the player's feet. No-op with nothing in reserve.
 function dropCigarette() {
-  if (caught || paused || shiftTally || cellar || cigaretteReserve <= 0) return;
+  if (caught || paused || shiftTally || cellar || fallTimer > 0 || cigaretteReserve <= 0) return;
   cigaretteReserve--;
   cigarettePacks.push({ x: player.x, y: player.y, ttl: CIGARETTE_PACK_TTL });
   Sound.play('pickup');
@@ -903,8 +692,7 @@ function grantSmokeBreak() {
   hunterRubTimer = 0;
   hunterSmokeTravelTimer = 0;
   hunterSmokeReturnSpot = { x: hunter.x, y: hunter.y };
-  hunter.path = computeCustomerPath(hunter, reachablePoint(hunter, DOOR), null, HUNTER_FOOTPRINT);
-  hunter.pathIndex = 0;
+  beginEntityRoute(hunter, DOOR, null, HUNTER_FOOTPRINT);
   Sound.play('smokeBreak');
   addFloatingText(hunter.x, hunter.y - hunter.h - 4, 'SMOKE BREAK', '#c9c2b3');
 }
@@ -912,29 +700,21 @@ function grantSmokeBreak() {
 // Same routed walk as the waiter's/busboy's, just against `hunter` instead —
 // used for both legs of the smoke break (see grantSmokeBreak/update).
 function hunterFollowSmokePath(dt) {
-  const target = hunter.path[hunter.pathIndex];
-  if (!target) return true;
   const oldX = hunter.x, oldY = hunter.y;
-  const dx = target.x - hunter.x;
-  const dy = target.y - hunter.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1.5) {
-    hunter.x = target.x;
-    hunter.y = target.y;
-    if (hunter.pathIndex < hunter.path.length - 1) { hunter.pathIndex++; return false; }
-    hunter.moving = false;
-    return true;
-  }
-  const step = Math.min(dist, hunter.speed * dt);
-  const nx = clamp(hunter.x + (dx / dist) * step, hunter.w / 2, WORLD_W - hunter.w / 2);
-  if (!collidesAt(hunter, nx, hunter.y)) hunter.x = nx;
-  const ny = clamp(hunter.y + (dy / dist) * step, hunter.h / 2, WORLD_H - hunter.h / 2);
-  if (!collidesAt(hunter, hunter.x, ny)) hunter.y = ny;
-  hunter.flip = dx < 0;
-  faceToward(hunter, dx, dy);
+  const arrived = routedWalk(hunter, dt, null, HUNTER_FOOTPRINT);
   if (Math.hypot(hunter.x - oldX, hunter.y - oldY) > 0.01) hunterSmokeTravelTimer = 0;
-  hunter.moving = true;
-  return false;
+  return arrived;
+}
+
+function cancelHunterSmokeRoute() {
+  hunterSmokeState = null;
+  hunterSmokeReturnSpot = null;
+  hunterSmokeTravelTimer = 0;
+  hunter.path = [];
+  hunter.pathIndex = 0;
+  hunter.route = null;
+  hunter.moving = false;
+  setHunterState('scanning');
 }
 
 // ---- Shifts: the run is a sequence of shifts, and difficulty (more
@@ -1087,8 +867,7 @@ function spawnCustomer() {
   c.look = Math.floor(Math.random() * CUSTOMER_ATLASES.length);
   c.state = 'entering';
   c.seat = seat;
-  c.path = computeCustomerPath(DOOR, seat, seat.table);
-  c.pathIndex = 0;
+  beginEntityRoute(c, seat, seat.table);
   c.sitTimer = 0;
   c.orderType = null;
   c.orderTimer = 0;
@@ -1102,43 +881,16 @@ function spawnCustomer() {
 
 function updateCustomer(c, dt) {
   if (c.state === 'entering' || c.state === 'leaving') {
-    const target = c.path[c.pathIndex];
-    const dx = target.x - c.x;
-    const dy = target.y - c.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 1.5) {
-      c.x = target.x;
-      c.y = target.y;
-      if (c.pathIndex < c.path.length - 1) {
-        c.pathIndex++;
-        return null;
-      }
-      c.moving = false;
+    if (routedWalk(c, dt, c.seat.table)) {
       if (c.state === 'entering') {
         c.state = 'sitting';
         c.facing = seatFacing(c.seat);
         c.sitTimer = randomInRange(CUSTOMER_ORDER_PATIENCE);
-        c.patienceDuration = c.sitTimer; // remembered so the patience bar can show a fraction
+        c.patienceDuration = c.sitTimer;
         c.orderTimer = 1 + Math.random() * 1.5;
       } else {
         return 'remove';
       }
-    } else {
-      const step = Math.min(dist, c.speed * dt);
-      const stepX = (dx / dist) * step;
-      const stepY = (dy / dist) * step;
-      // Slide around other tables like the player does (the routed path
-      // above avoids them, this is just a safety net), but never collide
-      // with the customer's own table — its seats sit inside that table's
-      // padded collider, so excluding it is what lets them reach the seat.
-      const ownTable = c.seat.table;
-      const nx = clamp(c.x + stepX, c.w / 2, WORLD_W - c.w / 2);
-      if (!collidesAt(c, nx, c.y, ownTable)) c.x = nx;
-      const ny = clamp(c.y + stepY, c.h / 2, WORLD_H - c.h / 2);
-      if (!collidesAt(c, c.x, ny, ownTable)) c.y = ny;
-      c.flip = dx < 0;
-      c.moving = true;
-      faceToward(c, dx, dy);
     }
   } else if (c.state === 'sitting') {
     c.moving = false;
@@ -1162,8 +914,7 @@ function updateCustomer(c, dt) {
         Dialogue.trigger('abandoned', null);
       }
       c.state = 'leaving';
-      c.path = computeCustomerPath(c, reachablePoint(c, DOOR), c.seat.table);
-      c.pathIndex = 0;
+      beginEntityRoute(c, DOOR, c.seat.table);
     }
   }
   return null;
@@ -1210,8 +961,7 @@ function scareOffCustomer(c) {
     Dialogue.trigger('abandoned', null);
   }
   c.state = 'leaving';
-  c.path = computeCustomerPath(c, reachablePoint(c, DOOR), c.seat.table);
-  c.pathIndex = 0;
+  beginEntityRoute(c, DOOR, c.seat.table);
   c.moving = true;
 }
 
@@ -1318,8 +1068,7 @@ function spawnWaiter() {
   waiter = makeEntity('waiter', DOOR.x, DOOR.y);
   waiter.state = 'entering';
   waiter.station = pickWaiterStation();
-  waiter.path = computeCustomerPath(DOOR, waiter.station, null);
-  waiter.pathIndex = 0;
+  beginEntityRoute(waiter, waiter.station);
   waiter.sprayTimer = 0;
   waiter.squirtTimer = 0;
   waiter.squeezeTimer = 0;
@@ -1336,25 +1085,7 @@ function spawnWaiter() {
 // isn't headed for a seat). Returns true on the frame he reaches the end of
 // his path.
 function waiterFollowPath(dt) {
-  const target = waiter.path[waiter.pathIndex];
-  const dx = target.x - waiter.x;
-  const dy = target.y - waiter.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 1.5) {
-    waiter.x = target.x;
-    waiter.y = target.y;
-    if (waiter.pathIndex < waiter.path.length - 1) { waiter.pathIndex++; return false; }
-    waiter.moving = false;
-    return true;
-  }
-  const step = Math.min(dist, waiter.speed * dt);
-  const nx = clamp(waiter.x + (dx / dist) * step, waiter.w / 2, WORLD_W - waiter.w / 2);
-  if (!collidesAt(waiter, nx, waiter.y)) waiter.x = nx;
-  const ny = clamp(waiter.y + (dy / dist) * step, waiter.h / 2, WORLD_H - waiter.h / 2);
-  if (!collidesAt(waiter, waiter.x, ny)) waiter.y = ny;
-  waiter.flip = dx < 0;
-  waiter.moving = true;
-  return false;
+  return routedWalk(waiter, dt, null, CUSTOMER_FOOTPRINT);
 }
 
 // One pull of the trigger: a puff of droplets out of the nozzle, arcing down
@@ -1469,8 +1200,7 @@ function updateWaiter(dt) {
     if (waiter.sprayTimer <= 0) {
       waiter.state = 'leaving';
       waiter.pose = null; // back to the walk cycle
-      waiter.path = computeCustomerPath(waiter, reachablePoint(waiter, DOOR), null);
-      waiter.pathIndex = 0;
+      beginEntityRoute(waiter, DOOR);
     }
   } else if (waiter.state === 'leaving' && waiterFollowPath(dt)) {
     waiter = null;
@@ -1548,8 +1278,7 @@ function spawnBusboy() {
   busboy = makeEntity('busboy', DOOR.x, DOOR.y);
   busboy.state = 'entering';
   busboy.target = target;
-  busboy.path = computeCustomerPath(DOOR, reachablePoint(busboy, target), null, BUSBOY_FOOTPRINT);
-  busboy.pathIndex = 0;
+  beginEntityRoute(busboy, target, null, BUSBOY_FOOTPRINT);
   busboy.travelTimer = 0;
   busboy.mopTimer = 0;
   busboy.line = null;
@@ -1560,25 +1289,7 @@ function spawnBusboy() {
 
 // Same routed walk as the waiter's, just against `busboy` instead.
 function busboyFollowPath(dt) {
-  const target = busboy.path[busboy.pathIndex];
-  const dx = target.x - busboy.x;
-  const dy = target.y - busboy.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist < 1.5) {
-    busboy.x = target.x;
-    busboy.y = target.y;
-    if (busboy.pathIndex < busboy.path.length - 1) { busboy.pathIndex++; return false; }
-    busboy.moving = false;
-    return true;
-  }
-  const step = Math.min(dist, busboy.speed * dt);
-  const nx = clamp(busboy.x + (dx / dist) * step, busboy.w / 2, WORLD_W - busboy.w / 2);
-  if (!collidesAt(busboy, nx, busboy.y)) busboy.x = nx;
-  const ny = clamp(busboy.y + (dy / dist) * step, busboy.h / 2, WORLD_H - busboy.h / 2);
-  if (!collidesAt(busboy, busboy.x, ny)) busboy.y = ny;
-  busboy.flip = dx < 0;
-  busboy.moving = true;
-  return false;
+  return routedWalk(busboy, dt, null, BUSBOY_FOOTPRINT);
 }
 
 // Sends him toward whichever puddle is still both present and not already
@@ -1587,15 +1298,13 @@ function busboySendToNextPuddleOrLeave() {
   const next = wetPantsPuddles.find(p => !p.unreachable);
   if (next) {
     busboy.target = next;
-    busboy.path = computeCustomerPath(busboy, reachablePoint(busboy, next), null, BUSBOY_FOOTPRINT);
-    busboy.pathIndex = 0;
+    beginEntityRoute(busboy, next, null, BUSBOY_FOOTPRINT);
     busboy.travelTimer = 0;
     busboy.state = 'entering';
   } else {
     busboy.pose = null; // back to the walk cycle
     busboy.state = 'leaving';
-    busboy.path = computeCustomerPath(busboy, reachablePoint(busboy, DOOR), null, BUSBOY_FOOTPRINT);
-    busboy.pathIndex = 0;
+    beginEntityRoute(busboy, DOOR, null, BUSBOY_FOOTPRINT);
     busboy.travelTimer = 0;
   }
 }
@@ -1703,7 +1412,7 @@ function alexSpotClear(x, y) {
   // Unlike getFootBox, this is the full workout footprint, not a 55% body box.
   if (box.x < 2 || box.x + box.w > WORLD_W - 2 || box.y < 16 || box.y + box.h > WORLD_H - 32) return false;
   if (rectsOverlap(box, BAR_STAFF_AREA) || Math.hypot(x - BATHROOM.x, y - BATHROOM.y) < 30) return false;
-  if (FURNITURE.some(f => f !== (alex && alex.blocker) && rectsOverlap(box, f.collider))) return false;
+  if (FURNITURE.some(f => f !== (alex && alex.blocker) && furnitureRects(f).some(r => rectsOverlap(box, r)))) return false;
   const margin = 4;
   const space = { x: box.x - margin, y: box.y - margin, w: box.w + margin * 2, h: box.h + margin * 2 };
   return !alexPeople().some(e => rectsOverlap(space, getFootBox(e, e.x, e.y)));
@@ -1744,8 +1453,7 @@ function spawnAlex() {
   alex = makeEntity('alex', DOOR.x, DOOR.y);
   alex.state = 'entering';
   alex.spot = spot;
-  alex.path = spot.path;
-  alex.pathIndex = 0;
+  beginEntityRoute(alex, spot, null, ALEX_FOOTPRINT, alex, spot.path);
   alex.travelTimer = 0;
   alex.activityTimer = 0;
   alex.prepareTimer = 0;
@@ -1771,34 +1479,14 @@ function alexLeave() {
   clearAlexBlocker();
   alex.pose = null;
   alex.state = 'leaving';
-  alex.path = alexRoute(alex, reachablePoint(alex, DOOR));
-  alex.pathIndex = 0;
+  beginEntityRoute(alex, DOOR, null, ALEX_FOOTPRINT);
   alex.travelTimer = 0;
-  if (!alex.path) dismissAlex();
+  // Failed departures wait/retry; the existing travel timeout still dismisses.
 }
 
 // Same routed walk as the waiter's/busboy's, just against `alex` instead.
 function alexFollowPath(dt) {
-  const target = alex.path[alex.pathIndex];
-  const dx = target.x - alex.x;
-  const dy = target.y - alex.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 1.5) {
-    alex.x = target.x;
-    alex.y = target.y;
-    if (alex.pathIndex < alex.path.length - 1) { alex.pathIndex++; return false; }
-    alex.moving = false;
-    return true;
-  }
-  const step = Math.min(dist, alex.speed * dt);
-  const nx = clamp(alex.x + (dx / dist) * step, alex.w / 2, WORLD_W - alex.w / 2);
-  if (!collidesAt(alex, nx, alex.y)) alex.x = nx;
-  const ny = clamp(alex.y + (dy / dist) * step, alex.h / 2, WORLD_H - alex.h / 2);
-  if (!collidesAt(alex, alex.x, ny)) alex.y = ny;
-  alex.flip = dx < 0;
-  faceToward(alex, dx, dy);
-  alex.moving = true;
-  return false;
+  return routedWalk(alex, dt, null, ALEX_FOOTPRINT);
 }
 
 // Walking alongside Alex while he is mid-split trips the Doe: the tray goes
@@ -1813,10 +1501,11 @@ let fallTimer = 0;
 let shakeTimer = 0;
 
 function playerNearAlexSplit() {
-  if (cellar || !alex || alex.state !== 'splitting' || alex.tripped || !alex.blocker) return false;
+  if (cellar || !player.moving || !alex || alex.state !== 'splitting' || alex.tripped || !alex.blocker) return false;
   const b = alex.blocker.collider;
-  const dx = Math.max(b.x - player.x, 0, player.x - (b.x + b.w));
-  const dy = Math.max(b.y - player.y, 0, player.y - (b.y + b.h));
+  const feet = getFootBox(player, player.x, player.y);
+  const dx = Math.max(b.x - (feet.x + feet.w), 0, feet.x - (b.x + b.w));
+  const dy = Math.max(b.y - (feet.y + feet.h), 0, feet.y - (b.y + b.h));
   return Math.hypot(dx, dy) <= ALEX_TRIP_REACH;
 }
 
@@ -1956,8 +1645,7 @@ function spawnNick() {
   nick = makeEntity('nick', DOOR.x, DOOR.y);
   nick.state = 'entering';
   nick.stopsLeft = NICK_STOPS_MIN + Math.floor(Math.random() * (NICK_STOPS_MAX - NICK_STOPS_MIN + 1));
-  nick.path = first.path;
-  nick.pathIndex = 0;
+  beginEntityRoute(nick, first, null, NICK_FOOTPRINT, nick, first.path);
   nick.travelTimer = 0;
   nick.lingerTimer = 0;
   nick.fartTimer = NICK_FART_MIN + Math.random() * (NICK_FART_MAX - NICK_FART_MIN);
@@ -1974,26 +1662,7 @@ function dismissNick() {
 
 // Same routed walk as the others', against `nick`.
 function nickFollowPath(dt) {
-  const target = nick.path[nick.pathIndex];
-  const dx = target.x - nick.x;
-  const dy = target.y - nick.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 1.5) {
-    nick.x = target.x;
-    nick.y = target.y;
-    if (nick.pathIndex < nick.path.length - 1) { nick.pathIndex++; return false; }
-    nick.moving = false;
-    return true;
-  }
-  const step = Math.min(dist, nick.speed * dt);
-  const nx = clamp(nick.x + (dx / dist) * step, nick.w / 2, WORLD_W - nick.w / 2);
-  if (!collidesAt(nick, nx, nick.y)) nick.x = nx;
-  const ny = clamp(nick.y + (dy / dist) * step, nick.h / 2, WORLD_H - nick.h / 2);
-  if (!collidesAt(nick, nick.x, ny)) nick.y = ny;
-  nick.flip = dx < 0;
-  faceToward(nick, dx, dy);
-  nick.moving = true;
-  return false;
+  return routedWalk(nick, dt, null, NICK_FOOTPRINT);
 }
 
 // The cloud forms behind him — opposite to the way he faces — at hip height.
@@ -2024,9 +1693,8 @@ function nickFart() {
 function nickLeave() {
   nick.state = 'leaving';
   nick.travelTimer = 0;
-  nick.path = nickRoute(nick, reachablePoint(nick, DOOR));
-  nick.pathIndex = 0;
-  if (!nick.path) dismissNick();
+  beginEntityRoute(nick, DOOR, null, NICK_FOOTPRINT);
+  // Failed departures wait/retry; the existing travel timeout still dismisses.
 }
 
 function updateFartClouds(dt) {
@@ -2108,8 +1776,7 @@ function updateNick(dt) {
       nick.stopsLeft--;
       const next = nick.stopsLeft > 0 ? pickNickStop(nick) : null;
       if (next) {
-        nick.path = next.path;
-        nick.pathIndex = 0;
+      beginEntityRoute(nick, next, null, NICK_FOOTPRINT, nick, next.path);
         nick.travelTimer = 0;
         nick.state = 'entering';
       } else {
@@ -2296,11 +1963,10 @@ function startNazimWander(r) {
   }
   if (!target) return;
   r.wander = {
-    path: computeCustomerPath(r, target, r.seat.table),
-    index: 0,
     pauseTimer: 0,
     returning: false,
   };
+  beginEntityRoute(r, target, r.seat.table, CUSTOMER_FOOTPRINT, r.wander);
   dynamicBlockers.push(r);
   Dialogue.trigger('nazimUp', null);
 }
@@ -2312,39 +1978,18 @@ function updateNazimWander(r, dt) {
     r.moving = false;
     if (w.pauseTimer <= 0 && !w.returning) {
       w.returning = true;
-      w.path = computeCustomerPath(r, { x: r.seat.x, y: r.seat.y }, r.seat.table);
-      w.index = 0;
+      beginEntityRoute(r, r.seat, r.seat.table, CUSTOMER_FOOTPRINT, w);
     }
     return;
   }
-  const target = w.path[w.index];
-  const dx = target.x - r.x;
-  const dy = target.y - r.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 1.5) {
-    r.x = target.x;
-    r.y = target.y;
-    if (w.index < w.path.length - 1) { w.index++; return; }
-    if (!w.returning) { w.pauseTimer = 1.5 + Math.random() * 1.5; return; }
-    // Home.
-    r.x = r.seat.x;
-    r.y = r.seat.y;
-    r.wander = null;
-    r.moving = false;
-    r.facing = seatFacing(r.seat);
-    r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
-    const at = dynamicBlockers.indexOf(r);
-    if (at >= 0) dynamicBlockers.splice(at, 1);
-    return;
-  }
-  const step = Math.min(dist, NAZIM_WANDER_SPEED * dt);
-  const nx = r.x + (dx / dist) * step;
-  const ny = r.y + (dy / dist) * step;
-  if (!collidesAt(r, nx, r.y, r.seat.table)) r.x = nx;
-  if (!collidesAt(r, r.x, ny, r.seat.table)) r.y = ny;
-  r.flip = dx < 0;
-  r.moving = true;
-  faceToward(r, dx, dy);
+  if (!routedWalk(r, dt, r.seat.table, CUSTOMER_FOOTPRINT, w, NAZIM_WANDER_SPEED)) return;
+  if (!w.returning) { w.pauseTimer = 1.5 + Math.random() * 1.5; return; }
+  r.wander = null;
+  r.moving = false;
+  r.facing = seatFacing(r.seat);
+  r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
+  const at = dynamicBlockers.indexOf(r);
+  if (at >= 0) dynamicBlockers.splice(at, 1);
 }
 
 function updateRegulars(dt) {
@@ -2726,6 +2371,9 @@ function resetGame() {
   hunterSmokeOutsideTimer = 0;
   hunterSmokeReturnSpot = null;
   hunterSmokeTravelTimer = 0;
+  hunter.path = [];
+  hunter.pathIndex = 0;
+  hunter.route = null;
   score = 0;
   customers.length = 0;
   for (const seat of SEATS) seat.occupied = false;
@@ -2754,6 +2402,7 @@ function resetGame() {
   nick = null;
   fartClouds.length = 0;
   fartHaze = 0;
+  hazeRenderer.reset();
   fallTimer = 0;
   shakeTimer = 0;
   nickDelay = NICK_FIRST_MIN + Math.random() * (NICK_FIRST_MAX - NICK_FIRST_MIN);
@@ -2994,7 +2643,7 @@ function nearestBarSegment() {
 }
 
 function handleInteract() {
-  if (caught) return;
+  if (caught || fallTimer > 0) return;
   if (cellar) { cellarInteract(); return; }
 
   // Deliver first: whichever tray order belongs to someone in reach. Each
@@ -3063,6 +2712,8 @@ function handleInteract() {
 
 // ---- Input ----------------------------------------------------------------
 const keys = new Set();
+const touchMove = { x: 0, y: 0 };
+const input = Input.create({ keys, touchMove });
 
 // Any real gesture may be the browser's one opportunity to start Web Audio.
 // The explicit start/action sounds also call through this path, but these two
@@ -3074,13 +2725,12 @@ window.addEventListener('keydown', Sound.unlock, { once: true, capture: true });
 // focus, entering fullscreen) funnels through here, so the player never walks
 // off on their own after an interrupted input.
 function clearHeldInputs() {
-  keys.clear();
-  releaseStick();
+  input.clear(releaseStick);
   interactTouchHeld = false;
 }
 
 window.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
+  const k = input.normalizeKey(e.key);
   keys.add(k);
   // Name entry owns the keyboard outright while it is up: every other
   // shortcut would otherwise either eat a letter or drop the score.
@@ -3114,7 +2764,7 @@ window.addEventListener('keydown', (e) => {
   if (!e.repeat && k === 'c') dropCigarette();
   if (e.key === ' ') e.preventDefault();
 });
-window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+window.addEventListener('keyup', (e) => keys.delete(input.normalizeKey(e.key)));
 window.addEventListener('blur', clearHeldInputs);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) clearHeldInputs();
@@ -3122,22 +2772,8 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Touch stick output, in the same normalized form the keyboard produces.
-const touchMove = { x: 0, y: 0 };
-
 function getInputVector() {
-  let dx = 0, dy = 0;
-  if (keys.has('arrowleft') || keys.has('a')) dx -= 1;
-  if (keys.has('arrowright') || keys.has('d')) dx += 1;
-  if (keys.has('arrowup') || keys.has('w')) dy -= 1;
-  if (keys.has('arrowdown') || keys.has('s')) dy += 1;
-  if (dx !== 0 && dy !== 0) {
-    const inv = 1 / Math.sqrt(2);
-    dx *= inv; dy *= inv;
-  }
-  // The stick wins when it's being held; otherwise the keyboard does, so a
-  // hybrid laptop/tablet can use either without them fighting.
-  if (touchMove.x !== 0 || touchMove.y !== 0) return { x: touchMove.x, y: touchMove.y };
-  return { x: dx, y: dy };
+  return input.vector();
 }
 
 // ---- Page shell: overlay, fullscreen, caught-screen buttons -----------------
@@ -3262,25 +2898,9 @@ function releaseStick() {
 
 function updateStick(clientX, clientY) {
   if (!stickOrigin) return;
-  let dx = clientX - stickOrigin.x;
-  let dy = clientY - stickOrigin.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < STICK_DEADZONE) {
-    touchMove.x = 0;
-    touchMove.y = 0;
-    touchEl.knob.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px)';
-    return;
-  }
-  // Constrain the knob to the ring, then hand movement a unit vector scaled by
-  // how far into the ring the thumb is (so small tilts walk slowly).
-  const clamped = Math.min(dist, STICK_RADIUS);
-  const nx = dx / dist;
-  const ny = dy / dist;
-  const strength = clamped / STICK_RADIUS;
-  touchMove.x = nx * strength;
-  touchMove.y = ny * strength;
-  touchEl.knob.style.transform =
-    'translate(' + Math.round(nx * clamped) + 'px,' + Math.round(ny * clamped) + 'px)';
+  const s = input.stick(clientX, clientY, stickOrigin, STICK_RADIUS, STICK_DEADZONE);
+  touchMove.x = s.x; touchMove.y = s.y;
+  touchEl.knob.style.transform = 'translate(' + s.knobX + 'px,' + s.knobY + 'px)';
 }
 
 if (touchEl.stick) {
@@ -3375,6 +2995,7 @@ let hunterState = 'scanning';
 let hunterStateTimer = 0;        // time left in a timed state (arriving/lost/drinking)
 let hunterPath = null;           // waypoints for scanning/chase
 let hunterPathIndex = 0;
+let hunterRouteState = null;     // destination/retry state survives an empty path
 let hunterRepathTimer = 0;
 let hunterLastSeenTimer = 0;     // seconds since the player was last in sight
 let hunterFacing = { x: 1, y: 0 };
@@ -3404,6 +3025,7 @@ function setHunterState(next, seconds) {
   hunterStateTimer = seconds || 0;
   hunterPath = null;
   hunterPathIndex = 0;
+  hunterRouteState = null;
   hunterRepathTimer = 0;
   hunterSlide = null;
   hunterRubTimer = 0;
@@ -3416,8 +3038,14 @@ function showHunterAlert(text, seconds) {
 
 const HUNTER_WAYPOINT_OVERSHOOT = 10;
 
-function hunterRouteTo(point) {
-  hunterPath = computeCustomerPath(hunter, reachablePoint(hunter, point), null, HUNTER_FOOTPRINT);
+function hunterRouteTo(point, approach = false) {
+  hunterRouteState = {};
+  let path;
+  if (approach && pointBlocked(point.x, point.y, null, HUNTER_FOOTPRINT, hunter)) {
+    path = collisionRouting.computeApproachPath(hunter, point, (player.w + hunter.w) / 2.4, HUNTER_FOOTPRINT, hunter);
+    if (path.length) point = path[path.length - 1];
+  }
+  hunterPath = beginEntityRoute(hunter, point, null, HUNTER_FOOTPRINT, hunterRouteState, path);
   hunterPathIndex = 0;
 }
 
@@ -3447,27 +3075,20 @@ function hunterNoticesPlayer() {
 
 // Walks the current path; returns true while there is somewhere to go.
 function hunterFollowPath(speedScale) {
-  if (!hunterPath || hunterPathIndex >= hunterPath.length) return false;
-  const target = hunterPath[hunterPathIndex];
-  const dx = target.x - hunter.x;
-  const dy = target.y - hunter.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 3) {
-    hunterPathIndex++;
-    return hunterPathIndex < hunterPath.length;
-  }
-  hunterDir = { x: dx / dist, y: dy / dist };
-  hunterFacing = hunterDir;
-  faceToward(hunter, dx, dy);
-  const step = tryMove(hunter, hunterDir.x * hunter.speed * speedScale * dt_, hunterDir.y * hunter.speed * speedScale * dt_);
-  hunter.x = step.x;
-  hunter.y = step.y;
-  hunter.moving = true;
-  // A prowl route can be the straight-line fallback; if that scrapes for a
-  // while, the caller picks somewhere else to go.
-  hunterRubTimer = step.blockedX || step.blockedY ? hunterRubTimer + dt_ : 0;
-  if (hunterDir.x !== 0) hunter.flip = hunterDir.x < 0;
-  return true;
+  if (!hunterRouteState) return false;
+  hunterRouteState.index = hunterPathIndex;
+  const oldX = hunter.x, oldY = hunter.y;
+  const arrived = routedWalk(hunter, dt_, null, HUNTER_FOOTPRINT, hunterRouteState, hunter.speed * speedScale);
+  hunterPath = hunterRouteState.path;
+  hunterPathIndex = hunterRouteState.index;
+  const dx = hunter.x - oldX, dy = hunter.y - oldY;
+  const distance = Math.hypot(dx, dy);
+  hunterDir = distance > COLLISION_EPSILON ? { x: dx / distance, y: dy / distance } : { x: 0, y: 0 };
+  if (distance > COLLISION_EPSILON) hunterFacing = hunterDir;
+  hunterRubTimer = 0;
+  // Waiting is still an active route; scanning must not launch a new search
+  // on every frame simply because the current route has no waypoints.
+  return !arrived;
 }
 let dt_ = 0; // frame dt for the helpers above; set at the top of updateHunter
 
@@ -3475,6 +3096,10 @@ let dt_ = 0; // frame dt for the helpers above; set at the top of updateHunter
 // jitter and pause chance the old pursuit had, so he still reads as a man
 // running rather than a homing missile.
 function pickNewHunterDirection() {
+  if (!hunterPath || hunterPathIndex >= hunterPath.length) {
+    hunterDir = { x: 0, y: 0 };
+    return;
+  }
   const lvl = hunterLevelSteps();
   const pauseChance = Math.max(0.01, 0.05 - lvl * 0.004);
   let aimAt = player;
@@ -3488,6 +3113,7 @@ function pickNewHunterDirection() {
     const overshot = wd < HUNTER_WAYPOINT_OVERSHOOT && wx * hunterDir.x + wy * hunterDir.y < 0;
     if (wd < 3 || overshot) hunterPathIndex++;
     if (hunterPathIndex < hunterPath.length) aimAt = hunterPath[hunterPathIndex];
+    else { hunterDir = { x: 0, y: 0 }; return; }
   }
   if (Math.random() < pauseChance) {
     hunterDir = { x: 0, y: 0 };
@@ -3621,9 +3247,25 @@ function updateHunter(dt) {
         hunterStepTimer = 0.28 + 0.3 * (stepDist / (DANGER_RANGE * 1.3));
       }
       hunterRepathTimer -= dt;
+      if (hunterRouteState) {
+        hunterRouteState.route.retryIn = Math.max(0, hunterRouteState.route.retryIn - dt);
+        if (hunterPath && hunterPath[hunterPathIndex] &&
+            findBlockingObstacle(hunter, hunterPath[hunterPathIndex], null, HUNTER_FOOTPRINT)) {
+          hunterPath = hunterRouteState.path = [];
+          hunterRouteState.route.path = hunterPath;
+          hunterPathIndex = hunterRouteState.index = 0;
+          hunterRepathTimer = hunterRouteState.route.retryIn;
+        }
+      }
       if (hunterRepathTimer <= 0 || !hunterPath) {
-        hunterRepathTimer = hunterRepathInterval();
-        hunterRouteTo(player);
+        hunterRouteTo(player, true);
+        hunterRepathTimer = hunterPath.length ? hunterRepathInterval() : ROUTE_RETRY_INTERVAL;
+      }
+      if (!hunterPath.length) {
+        hunterDir = { x: 0, y: 0 };
+        hunterSlide = null;
+        hunter.moving = false;
+        return;
       }
       hunterChangeTimer -= dt;
       if (hunterSlide) {
@@ -3747,14 +3389,16 @@ function update(dt) {
     // this whole break, so there's no risk in him crossing right past the
     // player on the way.
     hunterSmokeTravelTimer += dt;
-    if (hunterFollowSmokePath(dt) || hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
-      // Either he actually made it, or the walk stalled (see
-      // HUNTER_SMOKE_STUCK_TIMEOUT) — either way he's outside now.
+    if (hunterFollowSmokePath(dt)) {
       hunter.x = DOOR.x;
       hunter.y = DOOR.y;
       hunterSmokeState = 'outside';
       hunterSmokeOutsideTimer = SMOKE_BREAK_DURATION;
       hunter.moving = false;
+    } else if (hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
+      // Cancel a failed break where he stands; timeout is not arrival and
+      // must not teleport him through the obstacle which blocked the route.
+      cancelHunterSmokeRoute();
     }
   } else if (hunterSmokeState === 'outside') {
     // Off the floor entirely — render/collision both skip him for this state
@@ -3765,26 +3409,23 @@ function update(dt) {
       hunterSmokeOutsideTimer = 0;
       hunterSmokeState = 'returning';
       hunterSmokeTravelTimer = 0;
-      hunter.x = DOOR.x;
-      hunter.y = DOOR.y;
+      const entry = reachablePoint(hunter, DOOR);
+      hunter.x = entry.x;
+      hunter.y = entry.y;
       const spot = hunterSmokeReturnSpot || reachablePoint(hunter, { x: WORLD_W / 2, y: WORLD_H / 2 });
-      hunter.path = computeCustomerPath(DOOR, spot, null, HUNTER_FOOTPRINT);
-      hunter.pathIndex = 0;
+      beginEntityRoute(hunter, spot, null, HUNTER_FOOTPRINT);
       Sound.play('smokeBreakEnd');
     }
   } else if (hunterSmokeState === 'returning') {
     hunterSmokeTravelTimer += dt;
-    if (hunterFollowSmokePath(dt) || hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
-      // Same stuck fallback as above: snap him the rest of the way in rather
-      // than leaving him parked at the door forever.
-      const spot = hunterSmokeReturnSpot || reachablePoint(hunter, { x: WORLD_W / 2, y: WORLD_H / 2 });
-      hunter.x = spot.x;
-      hunter.y = spot.y;
+    if (hunterFollowSmokePath(dt)) {
       hunterSmokeState = null;
       hunterSmokeReturnSpot = null;
       setHunterState('scanning');
       hunterRouteTo(pickClearSpawn(hunter));
       hunterChangeTimer = 0; // back on the hunt without waiting out the timer
+    } else if (hunterSmokeTravelTimer > HUNTER_SMOKE_STUCK_TIMEOUT) {
+      cancelHunterSmokeRoute();
     }
   } else {
     updateHunter(dt);
@@ -5506,7 +5147,7 @@ function drawSeatChairs(table, camX, camY) {
     const alternate = (Math.round(table.x + table.y) + i * 3) % 7 < 2;
     const base = alternate ? PUB.chairAlt : PUB.chair;
     const lit = alternate ? PUB.chairAltLit : PUB.chairLit;
-    const w = 8;
+    const w = CHAIR_DRAW_WIDTH;
     const cx = centerX - w / 2;
     const seatY = centerY - 2;          // cushion
     // Shadow and legs.
@@ -5798,49 +5439,14 @@ function drawGrade() {
 // drifting double image and a slow wobble. Redrawn from a copy of the finished
 // frame, so it sits under the order bubbles and HUD. Reduced motion keeps the
 // wash and a fixed double image but drops the drift and wobble.
-let hazeCanvas = null;
-function drawFartHaze() {
-  const k = fartHaze;
-  if (k <= 0.01) return;
-  if (!hazeCanvas) hazeCanvas = document.createElement('canvas');
-  if (hazeCanvas.width !== canvas.width || hazeCanvas.height !== canvas.height) {
-    hazeCanvas.width = canvas.width;
-    hazeCanvas.height = canvas.height;
-  }
-  const g = hazeCanvas.getContext('2d');
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  g.clearRect(0, 0, hazeCanvas.width, hazeCanvas.height);
-  g.drawImage(canvas, 0, 0);
-  const t = performance.now() / 1000;
-  const calm = prefersReducedMotion;
-  const sw = hazeCanvas.width, sh = hazeCanvas.height;
-  const half = (v) => Math.round(v * 2) / 2;
-  ctx.save();
-  if (!calm) {
-    // Wobble: 2-unit strips shifted along a slow sine.
-    const step = 2;
-    const amp = 1.5 * k;
-    for (let y = 0; y < viewH; y += step) {
-      const dx = half(Math.sin(y * 0.12 + t * 3) * amp);
-      ctx.drawImage(hazeCanvas, 0, y * ART_SCALE, sw, step * ART_SCALE, dx, y, viewW, step);
-    }
-  }
-  const off = half((1 + 2.5 * k) * (calm ? 1 : 0.7 + 0.3 * Math.sin(t * 2.3)));
-  const bob = calm ? 0 : half(Math.sin(t * 1.7) * k);
-  ctx.globalAlpha = 0.33 * k;
-  ctx.drawImage(hazeCanvas, 0, 0, sw, sh, -off, bob, viewW, viewH);
-  ctx.drawImage(hazeCanvas, 0, 0, sw, sh, off, -bob, viewW, viewH);
-  ctx.globalAlpha = 0.17 * k * (calm ? 1 : 0.85 + 0.15 * Math.sin(t * 2));
-  ctx.fillStyle = '#8fa23a';
-  ctx.fillRect(0, 0, viewW, viewH);
-  const grad = ctx.createRadialGradient(viewW / 2, viewH / 2, Math.min(viewW, viewH) * 0.3, viewW / 2, viewH / 2, Math.max(viewW, viewH) * 0.7);
-  grad.addColorStop(0, 'rgba(60,80,30,0)');
-  grad.addColorStop(1, 'rgba(60,80,30,0.8)');
-  ctx.globalAlpha = 0.5 * k;
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, viewW, viewH);
-  ctx.restore();
-}
+const hazeRenderer = Effects.createHazeRenderer({
+  canvas, context: ctx, artScale: ART_SCALE,
+  createCanvas: () => document.createElement('canvas'),
+  getView: () => ({ width: viewW, height: viewH, top: viewIsPortrait ? hudSceneTop() : 0 }),
+  getReducedMotion: () => prefersReducedMotion,
+  now: () => performance.now(),
+});
+function drawFartHaze() { hazeRenderer.draw(fartHaze); }
 
 // A red pulse creeping in from the edge the hunter is on while he's close
 // and chasing — strongest when he's off camera, which is when you need it.

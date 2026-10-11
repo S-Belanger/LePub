@@ -16,3 +16,8 @@ jobs:
       - run: node tests/alex.js
       - run: node tests/cellar.js
       - run: node tests/hud.js
+      - run: node tests/collision.js
+      - run: node tests/effects.js
+      - run: node tests/routing.js
+      - run: node tests/input.js
+      - run: node tests/effects-renderer.js

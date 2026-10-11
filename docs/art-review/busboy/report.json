@@ -1,0 +1,78 @@
+{
+  "report": [
+    {
+      "name": "desktop",
+      "frames": [
+        "idle.down",
+        "idle.right",
+        "idle.up",
+        "idle.left",
+        "walk.down",
+        "walk.right",
+        "walk.up",
+        "walk.left",
+        "mop.down",
+        "mop.right",
+        "mop.up",
+        "mop.left",
+        "mopB.down",
+        "mopB.right",
+        "mopB.up",
+        "mopB.left"
+      ],
+      "entry": {
+        "ticks": 63,
+        "x": 145,
+        "y": 280,
+        "facing": "up"
+      },
+      "cleanup": {
+        "cleared": true,
+        "left": true,
+        "ticks": 44,
+        "reset": true
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "frames": [
+        "idle.down",
+        "idle.right",
+        "idle.up",
+        "idle.left",
+        "walk.down",
+        "walk.right",
+        "walk.up",
+        "walk.left",
+        "mop.down",
+        "mop.right",
+        "mop.up",
+        "mop.left",
+        "mopB.down",
+        "mopB.right",
+        "mopB.up",
+        "mopB.left"
+      ],
+      "entry": {
+        "ticks": 63,
+        "x": 145,
+        "y": 280,
+        "facing": "up"
+      },
+      "cleanup": {
+        "cleared": true,
+        "left": true,
+        "ticks": 44,
+        "reset": true
+      },
+      "errors": []
+    }
+  ],
+  "fallback": {
+    "busboy": true,
+    "illustrated": false,
+    "other": true
+  },
+  "limits": "Headless Edge; phone emulation, no physical-device or subjective art approval."
+}

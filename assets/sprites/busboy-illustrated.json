@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.busboy.illustrated",
+  "image": "busboy-illustrated.png",
+  "imageSize": {
+    "width": 1122,
+    "height": 1402
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 9.142857142857142,
+  "alphaPolicy": "translucent",
+  "palettePolicy": "illustrated-reference",
+  "fallbackKey": "busboy",
+  "directions": [
+    "down",
+    "right",
+    "up",
+    "left"
+  ],
+  "provenance": "Built-in imagegen using documented overhead cast references; source PNG preserved. Bounds measured by tools/import-illustrated.js.",
+  "frames": {
+    "idle.down": {
+      "rect": {
+        "x": 80,
+        "y": 55,
+        "width": 146,
+        "height": 188
+      },
+      "pivot": {
+        "x": 60.5,
+        "y": 186
+      }
+    },
+    "idle.right": {
+      "rect": {
+        "x": 354,
+        "y": 54,
+        "width": 121,
+        "height": 191
+      },
+      "pivot": {
+        "x": 67,
+        "y": 189
+      }
+    },
+    "idle.up": {
+      "rect": {
+        "x": 625,
+        "y": 53,
+        "width": 140,
+        "height": 191
+      },
+      "pivot": {
+        "x": 76.5,
+        "y": 189
+      }
+    },
+    "idle.left": {
+      "rect": {
+        "x": 914,
+        "y": 54,
+        "width": 121,
+        "height": 192
+      },
+      "pivot": {
+        "x": 68,
+        "y": 190
+      }
+    },
+    "walkA.down": {
+      "rect": {
+        "x": 79,
+        "y": 320,
+        "width": 146,
+        "height": 207
+      },
+      "pivot": {
+        "x": 61.5,
+        "y": 205
+      }
+    },
+    "walkA.right": {
+      "rect": {
+        "x": 354,
+        "y": 316,
+        "width": 126,
+        "height": 200
+      },
+      "pivot": {
+        "x": 67,
+        "y": 198
+      }
+    },
+    "walkA.up": {
+      "rect": {
+        "x": 629,
+        "y": 316,
+        "width": 138,
+        "height": 211
+      },
+      "pivot": {
+        "x": 72.5,
+        "y": 209
+      }
+    },
+    "walkA.left": {
+      "rect": {
+        "x": 913,
+        "y": 321,
+        "width": 130,
+        "height": 205
+      },
+      "pivot": {
+        "x": 69,
+        "y": 203
+      }
+    },
+    "walkB.down": {
+      "rect": {
+        "x": 80,
+        "y": 581,
+        "width": 143,
+        "height": 205
+      },
+      "pivot": {
+        "x": 60.5,
+        "y": 203
+      }
+    },
+    "walkB.right": {
+      "rect": {
+        "x": 349,
+        "y": 579,
+        "width": 134,
+        "height": 198
+      },
+      "pivot": {
+        "x": 72,
+        "y": 196
+      }
+    },
+    "walkB.up": {
+      "rect": {
+        "x": 625,
+        "y": 581,
+        "width": 141,
+        "height": 209
+      },
+      "pivot": {
+        "x": 76.5,
+        "y": 207
+      }
+    },
+    "walkB.left": {
+      "rect": {
+        "x": 912,
+        "y": 585,
+        "width": 133,
+        "height": 198
+      },
+      "pivot": {
+        "x": 70,
+        "y": 196
+      }
+    },
+    "mopA.down": {
+      "rect": {
+        "x": 76,
+        "y": 842,
+        "width": 169,
+        "height": 220
+      },
+      "pivot": {
+        "x": 64.5,
+        "y": 218
+      }
+    },
+    "mopA.right": {
+      "rect": {
+        "x": 337,
+        "y": 837,
+        "width": 196,
+        "height": 217
+      },
+      "pivot": {
+        "x": 84,
+        "y": 215
+      }
+    },
+    "mopA.up": {
+      "rect": {
+        "x": 621,
+        "y": 837,
+        "width": 198,
+        "height": 215
+      },
+      "pivot": {
+        "x": 80.5,
+        "y": 213
+      }
+    },
+    "mopA.left": {
+      "rect": {
+        "x": 863,
+        "y": 840,
+        "width": 194,
+        "height": 219
+      },
+      "pivot": {
+        "x": 119,
+        "y": 217
+      }
+    },
+    "mopB.down": {
+      "rect": {
+        "x": 56,
+        "y": 1105,
+        "width": 171,
+        "height": 224
+      },
+      "pivot": {
+        "x": 84.5,
+        "y": 222
+      }
+    },
+    "mopB.right": {
+      "rect": {
+        "x": 309,
+        "y": 1103,
+        "width": 185,
+        "height": 227
+      },
+      "pivot": {
+        "x": 112,
+        "y": 225
+      }
+    },
+    "mopB.up": {
+      "rect": {
+        "x": 580,
+        "y": 1105,
+        "width": 179,
+        "height": 210
+      },
+      "pivot": {
+        "x": 121.5,
+        "y": 208
+      }
+    },
+    "mopB.left": {
+      "rect": {
+        "x": 866,
+        "y": 1106,
+        "width": 192,
+        "height": 232
+      },
+      "pivot": {
+        "x": 116,
+        "y": 230
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        }
+      ]
+    },
+    "mop.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopA.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "mopB.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopB.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        }
+      ]
+    },
+    "mop.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopA.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "mopB.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopB.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        }
+      ]
+    },
+    "mop.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopA.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "mopB.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopB.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        }
+      ]
+    },
+    "mop.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopA.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "mopB.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "mopB.left",
+          "durationMs": 1000
+        }
+      ]
+    }
+  }
+}

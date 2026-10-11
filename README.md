@@ -127,8 +127,8 @@ from across the room; place it in his path. Untouched packs disappear after
 | **The hunter** | Searches the room and pursues you when he spots you |
 | **Nazim, Sam & Gerald** | Permanent corner-booth regulars with distinct orders, moods and dialogue |
 | **Jay** | A returning member of the waiter rotation |
-| **Nick** | Baseball uniform, ginger beard, backward cap and an illustrated apology after his interruptions |
-| **Alex** | Drops in for a split, briefly blocking a patch of floor |
+| **Nick** | Baseball uniform, ginger beard, backward cap; green clouds blur the scene until you step clear |
+| **Alex** | Drops in for a split; walking near him trips you, spills the tray and briefly locks movement/actions. Fetch those open orders again |
 | **Fred & the walk-ins** | Illustrated customer appearances sharing the pub's seating and order systems |
 
 <details>
@@ -151,7 +151,8 @@ coordinates. Character image density and feet pivots determine display size.
 For new artwork, follow the [visual system](docs/VISUAL-SYSTEM.md) and
 [illustrated asset notes](assets/sprites/ILLUSTRATED.md). Production art and
 load-failure fallback are separate: the ghost's procedural material is
-intentional, and the busboy remains documented art debt.
+intentional. The busboy now has illustrated idle, opposite strides and two
+directional mop phases; see [his source and review](docs/art-review/busboy/README.md).
 
 ## Quick start
 
@@ -180,7 +181,7 @@ With the local server running, you can also open:
 
 ## Development and validation
 
-The runtime uses ten classic scripts, loaded in the order declared by
+The runtime uses thirteen classic scripts, loaded in the order declared by
 `index.html`. There is no bundler or compilation step.
 
 ### Automated checks
@@ -195,11 +196,18 @@ node tests/smoke.js
 node tests/alex.js
 node tests/cellar.js
 node tests/hud.js
+node tests/collision.js
+node tests/effects.js
+node tests/routing.js
+node tests/input.js
+node tests/effects-renderer.js
 git diff --check
 ```
 
 These check the character contract and assets, customer routes and gameplay,
-Alex's lifecycle, the cellar and mobile HUD/camera geometry. The smoke suite uses a DOM/canvas stand-in;
+Alex's lifecycle, the cellar, mobile HUD/camera geometry, physical furniture contact
+trip/haze lifecycle, failed-route recovery, held-input math and bounded haze rendering.
+The smoke suite uses a DOM/canvas stand-in;
 it does not replace a real-browser visual review.
 
 ### Browser and art review
@@ -208,6 +216,12 @@ it does not replace a real-browser visual review.
 node tools/validate-art.js
 node tools/validate-nick.js
 node tools/validate-hud.js
+node tools/validate-collision.js
+node tools/validate-effects.js
+node tools/validate-busboy.js
+node tools/validate-routing.js
+node tools/validate-balance.js
+node tools/profile-game.js
 ```
 
 The current browser harness requires local **Microsoft Edge** and an existing
@@ -216,16 +230,29 @@ requirements, separate from the game and its dependency-free preview server.
 It captures desktop/phone-emulation evidence and exercises assets, input,
 rotation and fallback; Nick's focused check drives his real special-pose lifecycle.
 The HUD check covers four phone sizes, booth clearance, help, statuses and cellar.
+Collision review covers chair gaps, exact edge contact, keyboard/touch and rotation;
+effect review covers tray recovery, action locks and reduced motion. Busboy review
+drives actual entry, mop phases, cleanup and exit. Balance review exercises shifts
+1–3 with keyboard and native touch events; it cannot establish subjective difficulty.
+The profiler compares the previous haze with the bounded renderer in matched scenes.
+Open [performance review](tools/performance-review.html) and
+[balance review](tools/balance-review.html) on a device for repeatable manual checks.
 Inspect the captures as well as the reports. See the
 [review instructions](docs/claude/05-REVIEW-TROUBLESHOOTING.md) for prerequisites,
 commands, acceptance criteria and verification limits.
+
+The [October 10 gameplay audit](docs/game-audit/2026-10-10/README.md) records
+the collision fixes, follow-up improvements, validation evidence and testing limits.
 
 ### Project structure
 
 | Path | Purpose |
 | --- | --- |
 | [`index.html`](index.html), [`style.css`](style.css) | Canvas shell, help panel, responsive layout and touch controls |
-| [`game.js`](game.js) | Game state, orders, entities, collision, hunter AI, shifts, cellar, input and rendering |
+| [`game.js`](game.js) | Game state, orders, entities, route recovery, hunter AI, shifts, cellar, page events and scene rendering |
+| [`src/collision-routing.js`](src/collision-routing.js) | Footprint geometry, swept contact, visibility and safe A* routes |
+| [`src/input.js`](src/input.js) | Keyboard vectors, analog stick math and held-state clearing |
+| [`src/effects.js`](src/effects.js) | Cached scene-only haze with a bounded strip budget |
 | [`src/`](src/) | Pixel font, scenery, sprite fallback, dialogue, regulars and audio modules |
 | [`src/assets.js`](src/assets.js) | Atlas validation, loading, frame lookup and per-family fallback |
 | [`src/character-art.js`](src/character-art.js) | Shared character family, scale, direction and required-pose contract |

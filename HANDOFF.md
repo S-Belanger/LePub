@@ -1,5 +1,109 @@
 # LePub durable handoff
 
+## 2026-10-11 12:26 America/Toronto — final local validation; authorized publication next
+
+- Branch main, HEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34, fresh fetched origin/main0/0. All task work local/uncommitted/unpushed; prior effects commits preserved. User authorized all audit recommendations/push main and resumed; no phone testing available.
+- Delivered table/individual-chair collision, exact swept contact/sliding/escape; moving four-sided Alex trip/action lock; safe no-route wait/replan across customers/waiter/busboy/Alex/Nick/Nazim/hunter; safe smoke timeout cancellation and hunter reachable catch approaches without enlarged radius. Illustrated busboy20frames,13families, ghost sole procedural exception. New collision-routing/input/effects modules and bounded/cached scene-only haze. Playable balance/performance pages and evidence/tools included. No difficulty/speed/patience/scoring tuning.
+- Independent review accepts final chase fix: every route leg/position clear at bar/dynamic edges, unchanged catch radius15.42, blocked-endpoint full-height-wall remains no-route then resumes after removal. All40customer entries and80waiter legs pass reviewer probes. No remaining important code finding.
+- Fresh11Node suites PASS: character-art13families/5guards,assets31,smoke13scripts40routes,Alex13gates,cellar,HUD4sizes,collision13,effects6,routing31,input,effects-renderer. Fresh8browser/profile commands PASS: collision/effects/routing/busboy/art/HUD/balance/profile; desktop/mobile13atlases/176mappings, native touch/keyboard/focus/rotation/reduced motion, busboy lifecycle/fallback,6shift1–3scenarios. Final routing browser also verifies hunter contact pursuit/no penetration. Native gameplay/haze/busboy/contact captures inspected.
+- Final profile matched scene calls182→53mobile/92→43desktop; CPU live p951.4–2.1ms,~75Hz host. Short benchmark normal outliers55–90ms recorded; not universal performance proof. Peak cloud deliberately anchored; initial flawed report retained. Playable10smeter and keyboard/touch/reset previous actual report passed with0errors. Physical-phone/GPU/human difficulty/full winning shifts remain unverified; tools prepared for later.
+- Changed files: game/index/README/CI; src collision-routing/input/effects/character-art; busboy PNG/JSON/manifest/source prompts; tests collision/effects/routing/input/effects-renderer/VMorder; browser/profile/balance/production-verifier tools; audit and native evidence; current visual/art docs; CHANGELOG/HANDOFF/collaboration journal. Source alpha/import20frames accepted; no raw photo copy or secrets included.
+- Syntax20changedJS, docs12files131references, git diff --check PASS before final bookkeeping. Next stage only listed task files, review cached diff/privacy, commit/push main, independently verify remote SHA, new CI/deployment and34live Git blobs plus13atlas browser captures. Publication unverified until receipt.
+
+
+## 2026-10-11 12:22 America/Toronto — resumed; chase approach fix present
+
+- User exactrequest "Resume" continues approved all audit recommendations and push main; no phone available remains in force. main HEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34. Fresh git fetch origin --prune succeeded, HEAD...origin/main0/0. All prior dirty task changes preserved; no commit/push occurred during interruption.
+- Workers were interrupted by tool usage limit October10. Actual work now inspected: computeApproachPath samples clear catch-distance approaches for narrower Doe endpoints, routes physicallyvalid/doesn't enlarge catchradius. Fresh node tests/routing.js PASS31cases; syntaxgamePASS; independent finalreview targeted recheck requested.
+- Performance playable-harness.json confirms10s actualmeter, keyboard/native-touch/clear/comparison,0errors/failedresponses. Prior profile6scenes and balance6scenarios retained, physical/GPU/human difficulty unverified.
+- Next: fresh11Node suites and browser art/HUD/collision/effects/routing/balance/profile on final code, review/inspect evidence/docs checks, commit/push main and independently verify remote/CI/live. No implementation authorization missing.
+
+
+## 2026-10-10 17:36 America/Toronto — review found hunter narrow-edge regression
+
+- main5a6eb03f/origin0/0; local/uncommitted/unpushed. Parent and independent reviewer fresh11Node suites PASS beforefinding; all40actualcustomerentries reach seats within15s in reviewerprobe. Busboy/source/capture review passed.
+- Important review: player86.6/150atbarcontact physicallyclear, widerhunter75/125cannotroute tothatfeetanchor and freezes3s. Routingworker implementing chase-only reachablecatchapproach RED/test/fix while retainingblockedwallwaiting. Prior passing gates are notfinalproof; rerunafterfix.
+- Balance6controlledshifts1–3keyboard/nativeCDPtouch and manualpage PASS; profile6correctedscenes/13atlases PASS, initialmethodfailuresretained. Physicalphone/humanfeel/fullwinning-shift notverified.
+- Next finishchasefix/reviewercheck, fullbrowser/suites/docschecks, authorizedcommit/pushmain/independentremote/CI/live receipt.
+
+
+## 2026-10-10 17:34 America/Toronto — busboy accepted / runtime validation underway
+
+- main5a6eb03f/origin0/0, all task edits uncommitted/unpushed. Corrected busboy1122x1402RGBA/70.26percentalpha-zero source accepted:20frames, measuredcuts[0,280,552,813,1082,1402],density9.14,height21. Contract/manifest13families; ghost soleexception; exactprompt/rejectedspacing retained. character-art/assets/smoke PASS, actualEdge busboy16mappings perviewport/route/mopphases/cleanup/exit/reset/fallbackPASS; nativecaptures inspected.
+- CollisionRouting/Input/Effects integrated through index/VM, input/effects testsPASS; CI adds3new gates(total11). Routing26checksGREEN then tangent-contact regression found/fix underway. Existingmovement/contact/callercontracts retained; no balance/speed tuning.
+- Profiler first6scenarios completed but measurement warmup/peakcloud flaws found: workers retain firstevidence and correct method beforefinal. Balancekeyboard/native-touch shifts1–3 worker active; no humanfeel/deviceclaim. Phoneunavailableconfirmed.
+- Next: finishworkerchecks, independentreview, full11suite/art/HUD/collision/effects/balance/profile browser validation; docs/release mainpush/remote/CI/live receipt.
+
+
+## 2026-10-10 17:30 America/Toronto — modules integrated / art spacing correction
+
+- main5a6eb03f/origin0/0; all changes uncommitted/unpushed. CollisionRouting/Input/Effects load before game; input integration complete, haze replacement next. Routing worker caller recovery active; module tests RED then GREEN; browser profile tooling complete but not run integrated.
+- Busboy initial generated1122x1402 RGBA/57.07percent alpha-zero, measured5rowcuts. Import rejected row4,column1 boundary crossing. Exact correction saved assets/sprites/busboy-prompt.md; inspect corrected source and remeasure/import next. Contract/manifest provisional until acceptance. No existing art modified.
+- Next haze integration, corrected art, full12suite/browser/profile/balance validation and authorized main release. Physical phone unavailable; no human feel claim.
+
+
+## 2026-10-10 17:26:57 America/Toronto — busboy generation / route and effects workers active
+
+- main5a6eb03f/freshfetchedorigin0/0. Priorfixes preserved/uncommitted; plan/journal new. routing owns gamecollision/path/NPCcallers; effects_input owns newmodules/tests/profiletool, no sharedintegrationfiles. Parent art/index/VM/docs/release.
+- CurrentVISUALSYSTEM/Jay/Doe/Hunter/NickB inspected; existingbusboy costume/mopcontract reviewed. Built-in20pose5row4column exactprompt saved assets/sprites/busboy-prompt.md beforelonggeneration. Contract/source notinstalledyet. No newallcheckPASS.
+- Routing RED node tests/routing.js exit1 fullwall/blockedendpoint,7NPClackguards/falsearrival/retry/hunterreset; ownTable/dynamicbaselinepass. EffectinputTDDactive.
+- Imagegen transparenttrue/Jay+NickB actualreferences, darkhair/goatee/oliveworkshirt/linenapron/oppositestrides/twomopphases/cardinalfloorgaze. Nophotosused. Nextinspectsource/import/declarefamily and realgamechecks; combineworkers/profile/balance/publication.
+
+
+## 2026-10-10 17:24:23 America/Toronto — all audit recommendations/main publication authorized
+
+- User exactfollowup: "Great do everything recommended then push to main"; scope5audit recommendations plus earlier fix publication. User confirms no phone testing available now; physicaldevice check unavailable, browser profiling/stress evidence explicitly separate. No unverified human playtest claim.
+- mainHEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34, prior uncommitted collision/effects/docs/tests/captures preserved; fresh fetch result above reviewed. No commits/push this followup yet.
+- Approved implementation plan docs/superpowers/plans/2026-10-10-game-audit-followup.md. Route worker will own collision/routing extraction/recovery; effect/input worker separate new modules/tests; parent art/integration/docs/checks/release. Journaling continues existing2026-10-10record.
+- Next: route/effectworkers, built-in busboy generation with shippedreferences, profiling/balance scenarios, full regression/browser/art checks, authorized mainpush/independentremote/CI/live receipts. Earlier8suite/4browser success is baseline, not proof of this new work.
+
+
+## 2026-10-10 17:21:53 America/Toronto — table collision/game audit complete locally
+
+- Branch main, HEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34, trackingorigin/main0/0 without freshfetch. Clean startup; all task changes now local/uncommitted/unpushed. No commit/push/remoteCI/deployment requested or performed. Original two October8 effects/artwork preserved; historical handoff/changelog below remain unchanged.
+- User requested table collision fix and audit of defects/improvements. Achieved: physical table/bench bodies plus individual visible chairs, clear empty gaps, exact edge sweep/sliding/thin blockers, fractional-contact tolerance and partial-overlap escape; movement+feet-based four-side Alex trip with full0.9s movement/action lock, recoverable open tray orders. Help/README explain hazards; eight-suite CI includes regressions. No balance/asset change.
+- Files changed: game.js mechanics; index.html player help; README validation/audit/cast descriptions; .github/workflows/validate.yml newcollision/effects gates; tests/{collision,effects}.js; tools/validate-{collision,effects}.js; docs/game-audit/2026-10-10 README/reports/nativecaptures; CHANGELOG,HANDOFF,docs/collaboration/README.md,new2026-10-10-collision-game-audit.md exact request/messages/methods/failures/checks.
+- Final fresh Node eight suites PASS: character-art11kinds/12families/5guards,assets31,smoke40routes/fullgameplay,Alex13gates,cellarlifecycle,HUD4sizes,collision13cases,effects6checks. Five changedJS syntax checks/diff PASS; doclinks5files/64targets PASS; deterministic4410player/hunter sweeps0penetration. RED reproductions and correction history retained in journal.
+- Final actual Edge four browser commands PASS: collisiondesktop/mobile keyboard/nativeCDPtouch/cancel/focus/rotation x86.6/y243contact and clear gaps; effects4normal/reduceddesktop/mobile actualtrip/tray/actions/haze/reset/help (shake0reduced/1normal); fullcast12readyatlases/160mappings/9patrons/input/fallback;HUD4phones/status/help-scroll/start/cellar/rotation/reduced. Native before/after/trip/haze/reduced/gameplay images inspected. Browser emulation only; no physicaldevice/GPU/live proof.
+- Audit docs/game-audit/2026-10-10/README.md prioritizes conditional straight-line route fallback on failedsearch (controlled barrier reproduced;all40shippedroutespass), human chase balance after open gaps/sightlines, authored busboy art, realphone activehaze profiling, runtime module extraction. These are future recommendations, not unfinished promised features.
+- Closing review: final320x568help capture inspected; added hazards readable/scrollable and START SHIFT reachable. Final documentation/status/diff checks agree; no runtime changes after final passing suites/browser runs.
+- No remaining implementation/validation blocker for requested local fix/audit. Next concrete step: human playtest changed chair gaps/chase and decide whether to authorize publication or prioritize robust NPC wait/replan. Read audit and exact journal before further changes; do not infer old authorizations as a new deployment instruction.
+
+
+## 2026-10-10 17:20 America/Toronto — audit fixes/evidence complete; final verification pending
+
+- main5a6eb03ff226d87d0b5e2645812cda53cdc58b34/tracking0/0 unchanged, all local/uncommitted/unpushed. game.js table/individual-chair physical bounds, exact sweep/sliding, shared fractional-contact tolerance, overlap escape, movement/feet-trigger and full fall-action lock complete. Artwork untouched.
+- Fresh added overlap/tangent tests RED before/GREEN after: collision now13cases. Effect6checks alreadyGREEN. Latest actual effects Edge desktop/mobile x normal/reducedmotion PASS4scenarios, tray recovery/keyboard+touch locks/haze/reset/help, shakes0inreduced/1normal/zeroerrors. Broad Edge art12atlases/160mappings/9patrons+regulars+waiter/fallback PASS; HUD4phones/help/rotation/cellar/reducedmotion PASS. Native contact/trip/haze/reduced/gameplay captures inspected.
+- README/index.html explain hazards; CI lists8suites; docs/game-audit/2026-10-10/README.md audit/priorities/evidence/repro and current collaboration index updated. Remaining suggestions: explicit no-route/replan (controlled barrier only;40shipped routespass), human balance after opened sightlines, busboy authored art, realphone haze profiling, runtime module separation. These are recommendations, not promised feature work.
+- Final syntax/diff/doclinks plus8Node/finalcollision/effects/art/HUD browser runs pending after latest tolerance/help edits; no live/CI/physicalphone validation. Next: run final checks, append actual evidence/final status and report local fix/audit without publication claim.
+
+
+## 2026-10-10 17:16 America/Toronto — collision browser pass / audit trip fixes and eight suites pass
+
+- main5a6eb03ff226d87d0b5e2645812cda53cdc58b34/tracking0/0 unchanged; all local/uncommitted/unpushed. game.js physical collision/routing/contact fixed; original sprites and October8 effects retained.
+- Browser node tools/validate-collision.js docs/game-audit/2026-10-10 PASS desktop1280x720/mobile390x844 keyboard/native CDP touch/cancel/focus/rotation,12loaded atlases/noerrors: clear gaps, exact x86.6/y243contact, solid furniture retained. Before/after screenshots inspected: original game style, player visibly reaches table through chair gap; physicalphone untested.
+- Audit reproduced four RED effect assertions: idle trip, south-side missed trip, fallen pickup/delivery and cigarette actions. game.js now requires movement, measures feet-box gap on every side, and blocks actions during0.9s fall. tests/effects.js6checks GREEN, tray spillsonce/orders recoverable/reset/haze lifecycle; all7other Node suites GREEN after fix (eight total).
+- CI workflow adds collision/effects suites (remote CI not run). New tools/validate-effects.js now exercises actual keyboard/touch actions/trip/haze and reducedmotion before next browser milestone. Report/recommendations/help updates pending.
+- Next: effect browser and broad art/HUD checks, inspect captures, write prioritized audit with remaining improvements, final diff/status/handoff. No commit/push/deploy this task.
+
+
+## 2026-10-10 17:13 America/Toronto — physical table collision fix / seven Node suites pass
+
+- main HEAD5a6eb03ff226d87d0b5e2645812cda53cdc58b34/tracking0/0 unchanged, no fresh fetch. All work local/uncommitted/unpushed; original October8 effects/assets preserved.
+- game.js physical collision now uses actual table/bench bodies and individual visible chairs; service envelopes/seats/art preserved. Runtime/routing/Alex placement share geometry. Axis sweeps stop at exact contact and slide; arbitrary thin blockers covered. tests/collision.js11cases RED before/GREEN after. Floating-point slide snag corrected, fixture errors retained in journal.
+- Fresh six existing Node suites all PASS plus collision PASS11; baseline actual Edge desktop/mobile reproduce hidden bounds/contact (y235.3/x84) with12ready atlases/zero browser errors. Before captures/baseline.json and new tools/validate-collision.js saved docs/game-audit/2026-10-10.
+- New docs/journal/HANDOFF/CHANGELOG plus game/test/browser helper changed. Final real-browser after review and broader gameplay/effects audit pending. No live/CI/physicaldevice result.
+- Next: browser after input/contact/mobile/rotation validation; reproduce/audit Alex trip proximity/action lock and effects; write prioritized findings, final checks/handoff.
+
+
+## 2026-10-10 17:10 America/Toronto — collision/game audit startup
+
+- main HEAD 5a6eb03ff226d87d0b5e2645812cda53cdc58b34, clean startup/tracking origin/main 0/0; no fresh fetch. Actual two October 8 effects commits postdate prior handoff; preserve them. Changelog's uncommitted wording for those commits is historical/stale.
+- User requests table collision fix plus general game audit. Scope local implementation/validation/report; no new publication instruction. New journal docs/collaboration/2026-10-10-collision-game-audit.md records exact request/progress/methods. Prior artwork untouched.
+- Found broad table/stool enclosing rectangles blocking empty chair gaps and all-or-nothing axis contact; reproduction/tests next. Six existing Node suites and browser desktop/mobile review pending; no fresh test/live claims.
+- Current edits documentation only, uncommitted/unpushed. Next: failing regression, consistent physical furniture collision geometry/contact, audit recent effects and gameplay, browser evidence/final handoff.
+
+
 ## 2026-10-06 14:46 America/Toronto — final publication/continuity receipt
 
 - main HEAD at verified receipt0d5099637d9fb696b0f8bd6d0e84133ea88e7c8c; independently remote-matched/clean/upstream0/0 before this closing annotation. Implementationc479a1418856d9c62205b2bea4fb556b0ccd3362 and documentation/evidence0d50996 both committed/pushed. CI37513126046 and37513695213 completedSUCCESS; current Vercel deployments6892323513 and6892416863SUCCESS. All5character sources and durable authoring guides/receipts published, user request complete.

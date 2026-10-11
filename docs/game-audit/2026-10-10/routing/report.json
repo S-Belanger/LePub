@@ -1,0 +1,101 @@
+{
+  "report": [
+    {
+      "name": "desktop",
+      "results": [
+        {
+          "afterPlan": false,
+          "blocked": {
+            "x": 125,
+            "y": 342,
+            "pathLength": 0,
+            "moving": false
+          },
+          "resumed": {
+            "x": 125,
+            "y": 258,
+            "ticks": 23,
+            "arrived": true
+          }
+        },
+        {
+          "afterPlan": true,
+          "blocked": {
+            "x": 125,
+            "y": 342,
+            "pathLength": 0,
+            "moving": false
+          },
+          "resumed": {
+            "x": 125,
+            "y": 258,
+            "ticks": 23,
+            "arrived": true
+          }
+        }
+      ],
+      "chase": {
+        "player": {
+          "x": 86.6,
+          "y": 150
+        },
+        "hunter": {
+          "x": 85.225,
+          "y": 151.47938292423385
+        },
+        "distance": 2.019702660421748,
+        "radius": 15.416666666666668
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "results": [
+        {
+          "afterPlan": false,
+          "blocked": {
+            "x": 125,
+            "y": 342,
+            "pathLength": 0,
+            "moving": false
+          },
+          "resumed": {
+            "x": 125,
+            "y": 258,
+            "ticks": 23,
+            "arrived": true
+          }
+        },
+        {
+          "afterPlan": true,
+          "blocked": {
+            "x": 125,
+            "y": 342,
+            "pathLength": 0,
+            "moving": false
+          },
+          "resumed": {
+            "x": 125,
+            "y": 258,
+            "ticks": 23,
+            "arrived": true
+          }
+        }
+      ],
+      "chase": {
+        "player": {
+          "x": 86.6,
+          "y": 150
+        },
+        "hunter": {
+          "x": 85.225,
+          "y": 151.04685893793544
+        },
+        "distance": 1.7281604774833028,
+        "radius": 15.416666666666668
+      },
+      "errors": []
+    }
+  ],
+  "limits": "Edge browser and phone emulation; deterministic temporary divider, all NPC caller cases separately checked by Node suite."
+}

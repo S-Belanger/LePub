@@ -21,6 +21,11 @@ const CharacterArt = (() => {
     sam: person('Sam', 'sam', 'talk', { rowCuts: [0, 312, 621, 927, 1254] }),
     gerald: person('Gerald', 'gerald', 'talk', { rowCuts: [0, 314, 617, 907, 1254] }),
     waiter: person('Jay', 'waiter', 'spray'),
+    busboy: person('Busboy', 'busboy', 'mop', {
+      rowCuts: [0, 280, 552, 813, 1082, 1402],
+      rows: ['idle', 'walkA', 'walkB', 'mopA', 'mopB'],
+      animations: { idle: ['idle'], walk, mop: ['mopA'], mopB: ['mopB'] },
+    }),
     nick: person('Nick', 'nick', 'sorry', {
       // Approved B source: clear silhouette gutter centers measured in Edge.
       // One source density/pivot convention across all directions and poses.
@@ -40,7 +45,6 @@ const CharacterArt = (() => {
   };
   const proceduralExceptions = {
     ghost: 'Intentional translucent apparition; keep its procedural material.',
-    busboy: 'Legacy art debt from the gameplay merge; needs a dedicated illustrated idle/walk/mop sheet. Do not copy for new people.',
   };
   return { directions, families, proceduralExceptions, minSourceDensity: 4 };
 })();

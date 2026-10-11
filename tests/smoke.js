@@ -13,6 +13,9 @@ const SCRIPT_FILES = [
   'src/sound.js',
   'src/assets.js',
   'src/character-art.js',
+  'src/collision-routing.js',
+  'src/input.js',
+  'src/effects.js',
   'game.js',
 ];
 

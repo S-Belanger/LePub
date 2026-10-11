@@ -65,6 +65,8 @@ discarding another collaborator's work.
 
 ## Current record
 
+- [2026-10-10 — table collisions and gameplay audit](2026-10-10-collision-game-audit.md).
+
 - [2026-10-06 — approved cast perspective and new regular likenesses](2026-10-06-cast-perspective-release.md).
 
 - [2026-10-06 — same-face overhead perspective previews](2026-10-06-face-perspective-previews.md).

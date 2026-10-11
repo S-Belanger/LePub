@@ -1,10 +1,11 @@
 # Illustrated overhead cast
 
-The production manifest selects twelve `*-illustrated.json` atlases: Doe,
+The production manifest selects thirteen `*-illustrated.json` atlases: Doe,
 Hunter, Nazim, Sam, Gerald, Jay (`waiter`), Nick, Alex, and four walk-in looks,
-including Fred. These are new raster illustrations, not exports of `ohFigure`.
+including Fred, plus the busboy. These are new raster illustrations, not exports of `ohFigure`.
 Built-in imagegen produced the original PNGs on September 21–28, 2026; Nick and the latest Alex/Nazim/Sam/Gerald revisions are October 6. No external
-image API was used.
+image API was used. The busboy was generated October 10 using Jay and approved
+Nick B as style/camera references; his existing costume controls identity.
 Source PNGs remain unchanged after generation; the importer only writes JSON.
 These are AI-generated, visually reviewed assets, not hand-cleaned Aseprite art.
 
@@ -23,7 +24,10 @@ to inspect every direction and pose at desktop, phone or enlarged size.
 
 ## Frame contract
 
-Every selected source is 1254×1254 with four columns and four rows.
+The original twelve sources are 1254×1254 with four columns and four rows.
+The busboy source is 1122×1402 with four columns and five rows:
+idle, walk A, walk B, mop A, mop B. His measured cuts are stored in the contract;
+both mop phases retain their existing gameplay cadence.
 Columns are **down, right, up, left**. Cell boundaries are rounded from actual
 image dimensions; do not assume the prompt's requested 384px cells were obeyed.
 Nick, Alex, Nazim, Sam and Gerald use measured row seams inside generated

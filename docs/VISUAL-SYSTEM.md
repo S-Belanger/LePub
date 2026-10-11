@@ -310,3 +310,16 @@ procedural idle fallback; it is no longer a production-art exception. See
 `node tools/validate-nick.js` for real walking/apology/reset/fallback checks
 and desktop/phone-emulation previews. The identity photo was already tracked
 by the referenced collaborator commit; this art pass makes no additional copy.
+
+## Busboy
+
+The busboy is now an illustrated supporting character: short dark hair and goatee,
+olive work shirt, warm gray-beige linen apron, charcoal trousers and dark work shoes.
+Keep the existing wooden handle and cream cotton-string mop. His five source rows
+are idle, opposite strides and two directional side-to-side mop phases. Maximum
+idle height is21world units, with one density/pivot convention across the source.
+`mop`/`mopB` select the two rows at the existing cleanup cadence. The source uses
+measured transparent row seams; remeasure replacements rather than assuming equal
+rows. See [source, rejected spacing and actual-game review](art-review/busboy/README.md)
+and [exact prompts](../assets/sprites/busboy-prompt.md). Ghost remains the intentional
+procedural exception; missing-source fallback is resilience, not completed artwork.

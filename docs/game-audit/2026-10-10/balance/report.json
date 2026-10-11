@@ -1,0 +1,2834 @@
+{
+  "time": "2026-10-11T16:24:46.081Z",
+  "browser": "Local headless Microsoft Edge",
+  "method": "Actual game; seeded fixture setup; held keyboard/native CDP joystick and native action taps; deterministic <=0.02s game updates with natural NPC/order timers. All illustrated families loaded. No movement/action/collision/chase mocks.",
+  "limits": "Controlled scripted scenarios establish input, route, order recovery and early-shift numerical scaling only. They do not establish subjective difficulty, a complete winning shift, human playtesting, physical-phone/GPU performance or production deployment. Alex and bathroom are separate because urgency normally releases Alex.",
+  "manualPage": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "scenes": [
+      {
+        "mode": "loaded",
+        "shift": 3,
+        "tray": 2
+      },
+      {
+        "mode": "alex",
+        "shift": 3,
+        "tray": 2
+      },
+      {
+        "mode": "chase",
+        "shift": 3,
+        "tray": 2
+      }
+    ],
+    "errors": []
+  },
+  "results": [
+    {
+      "device": "keyboard",
+      "shift": 1,
+      "loadedStart": {
+        "shift": {
+          "shift": 1,
+          "clock": 25,
+          "tips": 0,
+          "target": 100,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 40,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 51.20356652576104,
+            "cooldown": 26.695000087842345
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 42.600303214207294,
+            "cooldown": 23.312008697539568
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.8700000000000003,
+        "end": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.9,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.40609411633838,
+            "y": 320.0464772466385,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.665,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 50.31356652576091,
+              "cooldown": 26.695000087842345
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 41.710303214207165,
+              "cooldown": 23.312008697539568
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 1,
+            "clock": 25,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 55.71063959523663,
+              "cooldown": 24.611836465075612
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 46.75267129083723,
+              "cooldown": 20.372583955526352
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 55.310639595236566,
+              "cooldown": 24.611836465075612
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 46.352671290837165,
+              "cooldown": 20.372583955526352
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 1,
+            "clock": 36.2,
+            "tips": 46,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.72698778555909,
+            "y": 61.995229527996315,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 1,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 29.262028343975544
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 17.892726462334394
+            }
+          ]
+        },
+        "secondsToTaps": 6.089999999999987,
+        "secondsToShelf": 1.8300000000000007,
+        "secondsToBooth": 2.280000000000001
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 1,
+            "clock": 25,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 144.99701163915105,
+            "y": 270.0398882150445,
+            "speed": 40,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 64.9664074104987,
+              "cooldown": 29.17782704718411
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 40.49725096409768,
+              "cooldown": 16.167697593569756
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 144.02374886458657,
+            "y": 297.84734004719326,
+            "speed": 40,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 64.26640741049884,
+              "cooldown": 29.17782704718411
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 39.79725096409757,
+              "cooldown": 16.167697593569756
+            }
+          ]
+        },
+        "startSeparation": 29.960111933991975,
+        "endSeparation": 39.96458561756846
+      }
+    },
+    {
+      "device": "keyboard",
+      "shift": 2,
+      "loadedStart": {
+        "shift": {
+          "shift": 2,
+          "clock": 25,
+          "tips": 0,
+          "target": 140,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 42.5,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 52.31434384423867,
+            "cooldown": 26.775282060727477
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 46.32848725856841,
+            "cooldown": 19.29727514460683
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.8700000000000003,
+        "end": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.9,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.40609411633838,
+            "y": 320.0464772466385,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.665,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 51.42434384423854,
+              "cooldown": 26.775282060727477
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 45.43848725856828,
+              "cooldown": 19.29727514460683
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 2,
+            "clock": 25,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 58.908593306500464,
+              "cooldown": 25.44601513259113
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 42.404126798450946,
+              "cooldown": 22.69591286405921
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 58.5085933065004,
+              "cooldown": 25.44601513259113
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 42.00412679845088,
+              "cooldown": 22.69591286405921
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 2,
+            "clock": 34.9,
+            "tips": 46,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.29568785479577,
+            "y": 62.27106570925753,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 1,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 23.214080898091197
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 19.54405795224011
+            }
+          ]
+        },
+        "secondsToTaps": 4.7849999999999975,
+        "secondsToShelf": 1.8150000000000006,
+        "secondsToBooth": 2.2800000000000016
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 2,
+            "clock": 25,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 145.0018756792806,
+            "y": 270.0424585895578,
+            "speed": 42.5,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 62.233227233566346,
+              "cooldown": 26.494430869817734
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 51.328766666051,
+              "cooldown": 20.532900309190154
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 141.50836005501557,
+            "y": 299.2100728215897,
+            "speed": 42.5,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 61.53322723356624,
+              "cooldown": 26.494430869817734
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 50.62876666605089,
+              "cooldown": 20.532900309190154
+            }
+          ]
+        },
+        "startSeparation": 29.95754146916153,
+        "endSeparation": 38.747568041625264
+      }
+    },
+    {
+      "device": "keyboard",
+      "shift": 3,
+      "loadedStart": {
+        "shift": {
+          "shift": 3,
+          "clock": 25,
+          "tips": 0,
+          "target": 180,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 45,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 51.363074071869256,
+            "cooldown": 28.173185605555773
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 48.77030274148658,
+            "cooldown": 16.95369870401919
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.8700000000000003,
+        "end": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.9,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.40609411633838,
+            "y": 320.0464772466385,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.665,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 50.47307407186913,
+              "cooldown": 28.173185605555773
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 47.88030274148645,
+              "cooldown": 16.95369870401919
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 3,
+            "clock": 25,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 60.21305405692756,
+              "cooldown": 22.66873102262616
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 48.5049302300401,
+              "cooldown": 17.067803839221597
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 59.8130540569275,
+              "cooldown": 22.66873102262616
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 48.10493023004004,
+              "cooldown": 17.067803839221597
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 3,
+            "clock": 34.6,
+            "tips": 46,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.82808569096719,
+            "y": 62.515110965267425,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 1,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 29.336856363341212
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 19.697739904746413
+            }
+          ]
+        },
+        "secondsToTaps": 4.829999999999997,
+        "secondsToShelf": 1.8300000000000007,
+        "secondsToBooth": 1.9800000000000009
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 3,
+            "clock": 25,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 145.00918510566004,
+            "y": 270.04405262573346,
+            "speed": 45,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 52.785853402853014,
+              "cooldown": 22.387655194848776
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 46.56539258051291,
+              "cooldown": 22.326204614713788
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 146.17807466855427,
+            "y": 299.03944317627685,
+            "speed": 45,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 52.085853402852905,
+              "cooldown": 22.387655194848776
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 45.865392580512804,
+              "cooldown": 22.326204614713788
+            }
+          ]
+        },
+        "startSeparation": 29.955948782437066,
+        "endSeparation": 38.77845568366173
+      }
+    },
+    {
+      "device": "native-touch",
+      "shift": 1,
+      "loadedStart": {
+        "shift": {
+          "shift": 1,
+          "clock": 25,
+          "tips": 0,
+          "target": 100,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 40,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 51.20356652576104,
+            "cooldown": 26.695000087842345
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 42.600303214207294,
+            "cooldown": 23.312008697539568
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.7350000000000002,
+        "end": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.8,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.46056911168643,
+            "y": 319.6917543154805,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7325,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 50.44856652576093,
+              "cooldown": 26.695000087842345
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 41.845303214207185,
+              "cooldown": 23.312008697539568
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 1,
+            "clock": 25,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 49.939424850694834,
+              "cooldown": 29.66555503755808
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 44.54971381388232,
+              "cooldown": 23.1292258631438
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 49.53942485069477,
+              "cooldown": 29.66555503755808
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 44.14971381388226,
+              "cooldown": 23.1292258631438
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 1,
+            "clock": 34,
+            "tips": 46,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.5497900564552,
+            "y": 62.48663045555671,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 40,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 29.890818724408746
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 16.580651896074414
+            }
+          ]
+        },
+        "secondsToTaps": 4.515,
+        "secondsToShelf": 1.5600000000000003,
+        "secondsToBooth": 1.9800000000000009
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 1,
+            "clock": 25,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 144.99210389501772,
+            "y": 270.0392128999962,
+            "speed": 40,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 49.525572496630254,
+              "cooldown": 28.011016607284546
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 52.55682553320751,
+              "cooldown": 17.198237663134933
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 1,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 100,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 147.3290155006869,
+            "y": 296.57419522291843,
+            "speed": 40,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 48.825572496630144,
+              "cooldown": 28.011016607284546
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 51.8568255332074,
+              "cooldown": 17.198237663134933
+            }
+          ]
+        },
+        "startSeparation": 29.96078814050506,
+        "endSeparation": 41.29154020765555
+      }
+    },
+    {
+      "device": "native-touch",
+      "shift": 2,
+      "loadedStart": {
+        "shift": {
+          "shift": 2,
+          "clock": 25,
+          "tips": 0,
+          "target": 140,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 42.5,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 49.651453301474454,
+            "cooldown": 26.775244642049074
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 44.88730712856725,
+            "cooldown": 22.17205677367747
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.7350000000000002,
+        "end": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.8,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.4605696490611,
+            "y": 319.6917543154805,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7325,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 48.896453301474345,
+              "cooldown": 26.775244642049074
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 44.13230712856714,
+              "cooldown": 22.17205677367747
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 2,
+            "clock": 25,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 51.469888675209134,
+              "cooldown": 22.507325874641538
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 45.92887242203206,
+              "cooldown": 21.161796554923058
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 51.06988867520907,
+              "cooldown": 22.507325874641538
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 45.528872422031995,
+              "cooldown": 21.161796554923058
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 2,
+            "clock": 34,
+            "tips": 46,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.54995401861456,
+            "y": 62.486779171100785,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 42.5,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 27.80775330401957
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 23.057200180366635
+            }
+          ]
+        },
+        "secondsToTaps": 4.455,
+        "secondsToShelf": 1.5600000000000003,
+        "secondsToBooth": 1.9800000000000009
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 2,
+            "clock": 25,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 144.99785980766626,
+            "y": 270.0424460784617,
+            "speed": 42.5,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 62.134411619208755,
+              "cooldown": 24.179290764033794
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 46.27874870009348,
+              "cooldown": 16.60724046640098
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 2,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 140,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 145.6052946401941,
+            "y": 299.4142902256012,
+            "speed": 42.5,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 61.434411619208646,
+              "cooldown": 24.179290764033794
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 45.57874870009337,
+              "cooldown": 16.60724046640098
+            }
+          ]
+        },
+        "startSeparation": 29.957553997986857,
+        "endSeparation": 38.39048184753327
+      }
+    },
+    {
+      "device": "native-touch",
+      "shift": 3,
+      "loadedStart": {
+        "shift": {
+          "shift": 3,
+          "clock": 25,
+          "tips": 0,
+          "target": 180,
+          "lastCall": false,
+          "tally": null,
+          "stats": {
+            "deliveries": 0,
+            "forgotten": 0,
+            "clutch": 0,
+            "doubles": 0,
+            "rounds": 0,
+            "hits": 0
+          }
+        },
+        "player": {
+          "x": 145,
+          "y": 300,
+          "speed": 54,
+          "tray": 2
+        },
+        "hunter": {
+          "x": 100,
+          "y": 357,
+          "speed": 45,
+          "state": "scanning",
+          "timer": 0,
+          "order": null,
+          "path": null,
+          "alert": null
+        },
+        "life": 1,
+        "haze": 1,
+        "bladder": {
+          "level": 3,
+          "max": 3,
+          "urgent": 60,
+          "wet": 0,
+          "puddles": 0
+        },
+        "fall": 0,
+        "spills": 0,
+        "orders": [
+          {
+            "id": "sam",
+            "type": "beer-blond",
+            "served": false,
+            "carried": true,
+            "patience": 52.78594116137922,
+            "cooldown": 25.2252363152802
+          },
+          {
+            "id": "gerald",
+            "type": "wine",
+            "served": false,
+            "carried": true,
+            "patience": 43.81351977463439,
+            "cooldown": 20.655986974015832
+          }
+        ]
+      },
+      "bathroom": {
+        "seconds": 0.7350000000000002,
+        "end": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.8,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 179.46056911168643,
+            "y": 319.6917543154805,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7325,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 52.03094116137911,
+              "cooldown": 25.2252363152802
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 43.058519774634284,
+              "cooldown": 20.655986974015832
+            }
+          ]
+        }
+      },
+      "alex": {
+        "trip": {
+          "shift": {
+            "shift": 3,
+            "clock": 25,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.9,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 52.919386278089135,
+              "cooldown": 24.189350919798017
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 48.590028905026614,
+              "cooldown": 21.331519797444344
+            }
+          ]
+        },
+        "locked": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.4,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 3,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 301.42,
+            "speed": 37.199999999999996,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0.49999999999999967,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": false,
+              "patience": 52.51938627808907,
+              "cooldown": 24.189350919798017
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": false,
+              "patience": 48.19002890502655,
+              "cooldown": 21.331519797444344
+            }
+          ]
+        },
+        "recovery": {
+          "shift": {
+            "shift": 3,
+            "clock": 34,
+            "tips": 46,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 5,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 1,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 84.54987206864448,
+            "y": 62.48670420507805,
+            "speed": 54,
+            "tray": 0
+          },
+          "hunter": {
+            "x": 100,
+            "y": 357,
+            "speed": 45,
+            "state": "scanning",
+            "timer": 0,
+            "order": null,
+            "path": null,
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0,
+          "bladder": {
+            "level": 2,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 2,
+          "orders": [
+            {
+              "id": "sam",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 22.399869166314602
+            },
+            {
+              "id": "gerald",
+              "type": null,
+              "served": false,
+              "carried": false,
+              "patience": 0,
+              "cooldown": 19.38831066712737
+            }
+          ]
+        },
+        "secondsToTaps": 4.484999999999999,
+        "secondsToShelf": 1.5600000000000003,
+        "secondsToBooth": 1.9800000000000009
+      },
+      "chase": {
+        "start": {
+          "shift": {
+            "shift": 3,
+            "clock": 25,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 300,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 144.9932694553306,
+            "y": 270.04449381719354,
+            "speed": 45,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 1,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 65.607998126816,
+              "cooldown": 22.207513624802232
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 47.500979210413995,
+              "cooldown": 20.455908320844173
+            }
+          ]
+        },
+        "end": {
+          "shift": {
+            "shift": 3,
+            "clock": 25.7,
+            "tips": 0,
+            "target": 180,
+            "lastCall": false,
+            "tally": null,
+            "stats": {
+              "deliveries": 0,
+              "forgotten": 0,
+              "clutch": 0,
+              "doubles": 0,
+              "rounds": 0,
+              "hits": 0
+            }
+          },
+          "player": {
+            "x": 145,
+            "y": 337.79999999999944,
+            "speed": 54,
+            "tray": 2
+          },
+          "hunter": {
+            "x": 143.82039690298024,
+            "y": 298.7031464171359,
+            "speed": 45,
+            "state": "chase",
+            "timer": 0,
+            "order": null,
+            "path": [
+              {
+                "x": 145,
+                "y": 300
+              }
+            ],
+            "alert": null
+          },
+          "life": 1,
+          "haze": 0.7599999999999998,
+          "bladder": {
+            "level": 0,
+            "max": 3,
+            "urgent": 0,
+            "wet": 0,
+            "puddles": 0
+          },
+          "fall": 0,
+          "spills": 0,
+          "orders": [
+            {
+              "id": "sam",
+              "type": "beer-blond",
+              "served": false,
+              "carried": true,
+              "patience": 64.90799812681614,
+              "cooldown": 22.207513624802232
+            },
+            {
+              "id": "gerald",
+              "type": "wine",
+              "served": false,
+              "carried": true,
+              "patience": 46.800979210413885,
+              "cooldown": 20.455908320844173
+            }
+          ]
+        },
+        "startSeparation": 29.95550693893174,
+        "endSeparation": 39.11464461741114
+      }
+    }
+  ]
+}

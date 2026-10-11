@@ -1,0 +1,71 @@
+{
+  "time": "2026-10-10T21:36:59.755Z",
+  "keyboardDelta": 7.4585999999999615,
+  "touch": {
+    "x": 0.6521739130434783,
+    "y": 0
+  },
+  "cleared": {
+    "x": 0,
+    "y": 0
+  },
+  "report": {
+    "time": "2026-10-10T21:36:59.059Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "limits": "CPU submission/frame schedule only; no GPU duration or assumed physical-device result.",
+    "scene": "haze",
+    "metrics": {
+      "seconds": 10,
+      "frameSchedule": {
+        "count": 748,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 13.600000000000364,
+        "over20ms": 0
+      },
+      "submission": {
+        "count": 749,
+        "medianMs": 1,
+        "p95Ms": 1.7000000029802322,
+        "maxMs": 2.5,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 1,
+        "caught": false,
+        "paused": false,
+        "customers": 6
+      }
+    }
+  },
+  "comparison": {
+    "time": "2026-10-10T21:36:59.731Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "limits": "CPU submission/frame schedule only; no GPU duration or assumed physical-device result.",
+    "scene": "haze",
+    "comparison": {
+      "legacy": {
+        "submission": {
+          "count": 300,
+          "medianMs": 0.7999999970197678,
+          "p95Ms": 1.6000000089406967,
+          "maxMs": 4.200000002980232,
+          "over20ms": 0
+        },
+        "hazeImageSubmissions": 182
+      },
+      "bounded": {
+        "submission": {
+          "count": 300,
+          "medianMs": 0.6000000089406967,
+          "p95Ms": 2.7000000029802322,
+          "maxMs": 9,
+          "over20ms": 0
+        },
+        "hazeImageSubmissions": 53
+      }
+    }
+  },
+  "errors": [],
+  "failedResponses": []
+}

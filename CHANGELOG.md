@@ -6,6 +6,19 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-11 — Approved game audit follow-up (validated; publication pending)
+
+- User authorized every audit recommendation and pushing `main`; physical-phone testing unavailable, then requested "Resume". Original October10 fixes are included.
+- Safe NPC waiting/replanning, reachable hunter chase approaches, illustrated20frame busboy, cached/bounded haze, collision/input/effects modules and playable balance/performance review tools. Existing speeds/patience/scoring preserved.
+- Fresh11Node suites PASS, routing31cases;8actualEdge browser/profile commands PASS,13atlases/176pose mappings,6shift/input scenarios. Independent review accepted chase/wall safety and40customer/80waiter legs. Matched haze submissions182→53mobile/92→43desktop; CPU/emulation only, human difficulty and physical-phone/GPU testing unverified.
+- [Follow-up outcomes and checks](docs/game-audit/2026-10-10/followup.md), [busboy review](docs/art-review/busboy/README.md), [exact requests, failures and journal](docs/collaboration/2026-10-10-collision-game-audit.md). Main5a6eb03, all work local before implementation commit; append actual publication receipt after verification.
+
+## 2026-10-10 — Table collisions and gameplay audit (initial local outcome)
+
+- User requests collision fixes plus an audit of bugs/improvements. Codex fixes physical table/chair bounds, exact contact/sliding, overlap escape, fair Alex trip triggers and fall action locks; help/README and CI regression gates updated.
+- All eight Node suites PASS; actual Edge collision/effects/cast desktop/mobile and four-phone HUD/reduced-motion checks PASS. Captures inspected; 4,410 swept movement probes report zero penetration. [Audit and priorities](docs/game-audit/2026-10-10/README.md) cover conditional route failure/replanning, balance playtest, busboy art, phone effect profiling and runtime organization. Local/uncommitted; no new push/CI/deployment or physical-phone claim.
+- Starting main 5a6eb03 already contains October 8 haze/trip commits; previous uncommitted wording below is historical. No commit/push/deploy requested this session.
+- [Exact requests, methods, checks and findings](docs/collaboration/2026-10-10-collision-game-audit.md).
 ## 2026-10-08 — Nick's fart haze screen effect
 
 - **Request:** "How difficult would it be to add a special effect when Richard (the deer waiter) walks in Nick's fart?", then a visual effect (double vision / blur) for the player; user said "Let's do it".

@@ -1,0 +1,349 @@
+{
+  "time": "2026-10-11T16:22:40.414Z",
+  "browser": "155.0.4283.45",
+  "limits": "Desktop host Edge. Phone viewport emulation only. Submission timings include JS/canvas command submission, not GPU completion. Native RAF intervals include browser scheduling. Live samples follow30nativeRAFwarmup frames after synchronous comparisons. Haze/stress live scenes keep a controlled cloud centered on the player to measure peak haze despite actual chase shoves. No physical-phone or human-playtest claim.",
+  "results": [
+    {
+      "device": "desktop",
+      "mode": "normal",
+      "scene": {
+        "mode": "normal",
+        "viewport": {
+          "viewW": 320,
+          "viewH": 180,
+          "pixelScale": 4,
+          "portrait": false
+        },
+        "customers": 6,
+        "haze": 0,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.4000000059604645,
+            "p95Ms": 2.0999999940395355,
+            "maxMs": 90.5,
+            "over20ms": 1
+          },
+          "hazeImageSubmissions": 0
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.4000000059604645,
+            "p95Ms": 1.7999999821186066,
+            "maxMs": 55.29999998211861,
+            "over20ms": 1
+          },
+          "hazeImageSubmissions": 0
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 13.800000000000182,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 0.7999999821186066,
+        "p95Ms": 1.4000000059604645,
+        "maxMs": 1.7999999821186066,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 0,
+        "caught": false,
+        "customers": 6
+      }
+    },
+    {
+      "device": "desktop",
+      "mode": "haze",
+      "scene": {
+        "mode": "haze",
+        "viewport": {
+          "viewW": 320,
+          "viewH": 180,
+          "pixelScale": 4,
+          "portrait": false
+        },
+        "customers": 6,
+        "haze": 1,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.699999988079071,
+            "p95Ms": 1.199999988079071,
+            "maxMs": 1.5999999940395355,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 92
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.5,
+            "p95Ms": 0.7999999821186066,
+            "maxMs": 1.4000000059604645,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 43
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 13.600000000000364,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 1,
+        "p95Ms": 1.699999988079071,
+        "maxMs": 2,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 1,
+        "caught": false,
+        "customers": 6
+      }
+    },
+    {
+      "device": "desktop",
+      "mode": "stress",
+      "scene": {
+        "mode": "stress",
+        "viewport": {
+          "viewW": 320,
+          "viewH": 180,
+          "pixelScale": 4,
+          "portrait": false
+        },
+        "customers": 12,
+        "haze": 1,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.7000000178813934,
+            "p95Ms": 1.4000000059604645,
+            "maxMs": 1.7000000178813934,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 92
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.5999999940395355,
+            "p95Ms": 0.800000011920929,
+            "maxMs": 1.4000000059604645,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 43
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 13.800000000001091,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 1.199999988079071,
+        "p95Ms": 1.800000011920929,
+        "maxMs": 7.300000011920929,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 1,
+        "caught": false,
+        "customers": 12
+      }
+    },
+    {
+      "device": "mobile",
+      "mode": "normal",
+      "scene": {
+        "mode": "normal",
+        "viewport": {
+          "viewW": 195,
+          "viewH": 360,
+          "pixelScale": 2,
+          "portrait": true
+        },
+        "customers": 6,
+        "haze": 0,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.5999999940395355,
+            "p95Ms": 0.9000000059604645,
+            "maxMs": 7.299999982118607,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 0
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.5,
+            "p95Ms": 0.7000000178813934,
+            "maxMs": 8.299999982118607,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 0
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 14.400000000000091,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 0.9000000059604645,
+        "p95Ms": 1.4000000059604645,
+        "maxMs": 1.800000011920929,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 0,
+        "caught": false,
+        "customers": 6
+      }
+    },
+    {
+      "device": "mobile",
+      "mode": "haze",
+      "scene": {
+        "mode": "haze",
+        "viewport": {
+          "viewW": 195,
+          "viewH": 360,
+          "pixelScale": 2,
+          "portrait": true
+        },
+        "customers": 6,
+        "haze": 1,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.800000011920929,
+            "p95Ms": 1.5,
+            "maxMs": 4.4000000059604645,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 182
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.5999999940395355,
+            "p95Ms": 1.0999999940395355,
+            "maxMs": 4.9000000059604645,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 53
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.5,
+        "maxMs": 13.600000000000364,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 1.0999999940395355,
+        "p95Ms": 1.699999988079071,
+        "maxMs": 2.399999976158142,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 1,
+        "caught": false,
+        "customers": 6
+      }
+    },
+    {
+      "device": "mobile",
+      "mode": "stress",
+      "scene": {
+        "mode": "stress",
+        "viewport": {
+          "viewW": 195,
+          "viewH": 360,
+          "pixelScale": 2,
+          "portrait": true
+        },
+        "customers": 12,
+        "haze": 1,
+        "loadedAtlases": 13
+      },
+      "comparison": {
+        "legacy": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.800000011920929,
+            "p95Ms": 1.800000011920929,
+            "maxMs": 9.099999994039536,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 182
+        },
+        "bounded": {
+          "submission": {
+            "count": 300,
+            "medianMs": 0.699999988079071,
+            "p95Ms": 1.5999999940395355,
+            "maxMs": 6.300000011920929,
+            "over20ms": 0
+          },
+          "hazeImageSubmissions": 53
+        }
+      },
+      "frameSchedule": {
+        "count": 179,
+        "medianMs": 13.399999999999636,
+        "p95Ms": 13.599999999998545,
+        "maxMs": 13.700000000000728,
+        "over20ms": 0
+      },
+      "gameLoopSubmission": {
+        "count": 180,
+        "medianMs": 1.399999976158142,
+        "p95Ms": 2.0999999940395355,
+        "maxMs": 7.800000011920929,
+        "over20ms": 0
+      },
+      "ending": {
+        "haze": 1,
+        "caught": false,
+        "customers": 12
+      }
+    }
+  ]
+}

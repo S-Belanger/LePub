@@ -1,0 +1,53 @@
+{
+  "time": "2026-10-11T16:24:08.798Z",
+  "results": [
+    {
+      "name": "desktop",
+      "trip": {
+        "fallen": true,
+        "tray": 0,
+        "spills": 2,
+        "recoverable": true,
+        "reduced": false
+      },
+      "translations": 1,
+      "errors": []
+    },
+    {
+      "name": "desktop-reduced",
+      "trip": {
+        "fallen": true,
+        "tray": 0,
+        "spills": 2,
+        "recoverable": true,
+        "reduced": true
+      },
+      "translations": 0,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "trip": {
+        "fallen": true,
+        "tray": 0,
+        "spills": 2,
+        "recoverable": true,
+        "reduced": false
+      },
+      "translations": 1,
+      "errors": []
+    },
+    {
+      "name": "mobile-reduced",
+      "trip": {
+        "fallen": true,
+        "tray": 0,
+        "spills": 2,
+        "recoverable": true,
+        "reduced": true
+      },
+      "translations": 0,
+      "errors": []
+    }
+  ]
+}
