@@ -2171,6 +2171,7 @@ function resetRegular(r) {
   // Nazim only: a water Gerald has ordered for him, and his time on his feet.
   r.waterOwed = false;
   r.wander = null;          // { path, index, pauseTimer, returning } while up
+  r.trip = null;            // Nazim's toilet break: { state: 'going' | 'inside' | 'returning', ... }
   r.wanderTimer = randomInRange(NAZIM_WANDER_INTERVAL);
   r.moving = false;
   r.palette = r.id === 'nazim' ? NAZIM_STAGE_PALETTES.sober : null;
@@ -2293,8 +2294,97 @@ function updateNazimWander(r, dt) {
   if (at >= 0) dynamicBlockers.splice(at, 1);
 }
 
+// Nazim's toilet break. Every NAZIM_LOO_EVERY shifts, at some point in the
+// shift, he gets up, walks to the WC door, disappears inside the booth for a
+// good while and walks back. He has no order while he is away (none lapses),
+// and the room smells: Rich takes a life hit every few seconds in there.
+const NAZIM_LOO_EVERY = 3;
+const NAZIM_LOO_AT = [35, 90];       // seconds into the shift
+const NAZIM_LOO_TIME = [24, 34];     // seconds in the booth
+const NAZIM_LOO_SPEED = 30;
+const NAZIM_LOO_STUCK = 25;
+let nazimLooShift = 0;               // last shift he already went in
+let nazimLooPending = 0;             // shift the next trip time was rolled for
+let nazimLooAt = 0;
+
+function nazimInLoo() {
+  const n = regularById.get('nazim');
+  return !!(n && n.trip && n.trip.state === 'inside');
+}
+
+function startNazimLoo(r) {
+  if (r.trip || r.wander) return false;
+  if (r.orderType) clearRegularOrder(r);   // no penalty: he simply isn't there to ask
+  r.trip = { state: 'going', stuck: 0, timer: 0 };
+  beginEntityRoute(r, BATHROOM, r.seat.table, CUSTOMER_FOOTPRINT, r.trip);
+  dynamicBlockers.push(r);
+  nazimLooShift = shift;
+  Dialogue.trigger('nazimLoo', null);
+  return true;
+}
+
+function endNazimLooWalk(r) {
+  r.trip = null;
+  r.moving = false;
+  r.x = r.seat.x;
+  r.y = r.seat.y;
+  r.facing = seatFacing(r.seat);
+  r.orderCooldown = randomInRange(r.cfg.orderDelay);
+  const at = dynamicBlockers.indexOf(r);
+  if (at >= 0) dynamicBlockers.splice(at, 1);
+  Dialogue.trigger('nazimLooBack', null);
+}
+
+function updateNazimLoo(r, dt) {
+  const t = r.trip;
+  const unblock = () => { const at = dynamicBlockers.indexOf(r); if (at >= 0) dynamicBlockers.splice(at, 1); };
+  if (t.state === 'going') {
+    t.stuck += dt;
+    if (routedWalk(r, dt, r.seat.table, CUSTOMER_FOOTPRINT, t, NAZIM_LOO_SPEED) || t.stuck > NAZIM_LOO_STUCK) {
+      t.state = 'inside';
+      t.timer = randomInRange(NAZIM_LOO_TIME);
+      r.moving = false;
+      r.x = BATHROOM.x;
+      r.y = BATHROOM.y;
+      unblock();
+    }
+  } else if (t.state === 'inside') {
+    t.timer -= dt;
+    if (t.timer <= 0) {
+      t.state = 'returning';
+      t.stuck = 0;
+      beginEntityRoute(r, r.seat, r.seat.table, CUSTOMER_FOOTPRINT, t);
+      dynamicBlockers.push(r);
+    }
+  } else {
+    t.stuck += dt;
+    if (routedWalk(r, dt, r.seat.table, CUSTOMER_FOOTPRINT, t, NAZIM_LOO_SPEED) || t.stuck > NAZIM_LOO_STUCK) endNazimLooWalk(r);
+  }
+}
+
+// Whether it is time for his trip: only on every third shift, once per shift,
+// never mid-round, wander or last call.
+function maybeStartNazimLoo(r) {
+  if (r.trip || r.wander || cellar || shift % NAZIM_LOO_EVERY !== 0 || nazimLooShift >= shift) return;
+  if (nazimLooPending !== shift) { nazimLooPending = shift; nazimLooAt = shiftClock + randomInRange(NAZIM_LOO_AT); }
+  if (shiftClock < nazimLooAt || round || isLastCall()) return;
+  startNazimLoo(r);
+}
+
 function updateRegulars(dt) {
   for (const r of regulars) {
+    if (r.id === 'nazim') {
+      if (r.trip) {
+        updateNazimLoo(r, dt);
+        if (r.talkTimer > 0) r.talkTimer -= dt;
+        if (r.dialogueCooldown > 0) r.dialogueCooldown -= dt;
+        tickOrderExit(r, dt);
+        r.swayOffset = 0;
+        r.pose = regularPose(r, NAZIM_STAGE_VISUALS[r.stage.id]);
+        continue;
+      }
+      maybeStartNazimLoo(r);
+    }
     if (r.id === 'nazim') {
       if (r.wander) updateNazimWander(r, dt);
       else if (r.stage.id === 'gone') {
@@ -2348,7 +2438,7 @@ function regularPose(r, vis) {
   const set = SPRITES[r.cfg.spriteKey];
   const hasPose = name => !!(set[name] || set[name + '.' + (r.facing || 'down')] ||
     Assets.frameFor(r.kind, name + '.' + (r.facing || 'down'), 0));
-  const base = r.wander ? 'lean' : (vis ? vis.pose : 'idle');
+  const base = (r.wander || r.trip) ? 'lean' : (vis ? vis.pose : 'idle');
   if (r.talkTimer > 0) {
     const talkKey = base === 'idle' ? 'talk' : base + 'Talk';
     if (hasPose(talkKey)) return talkKey;
@@ -2415,7 +2505,7 @@ let roundTimer = 0;
 let round = null;   // { deadline, served, servedIds }
 
 function tryCallRound() {
-  for (const r of regulars) if (r.orderType || r.wander) return false;
+  for (const r of regulars) if (r.orderType || r.wander || r.trip) return false;
   for (const r of regulars) {
     r.orderCooldown = 0;
     regularPlaceOrder(r);
@@ -2723,6 +2813,8 @@ function resetGame() {
   if (!regulars.length) buildRegulars();
   else for (const r of regulars) resetRegular(r);
   dynamicBlockers.length = 0;
+  nazimLooShift = 0;
+  nazimLooPending = 0;
   spills.length = 0;
   round = null;
   roundTimer = randomInRange(ROUND_INTERVAL);
@@ -4432,6 +4524,8 @@ const BATH_COLLIDERS = [
 ];
 const BATH_ROOM = { colliders: BATH_COLLIDERS, minX: BATH_SIDE + 5, maxX: BATH_W - BATH_SIDE - 5, minY: BATH_WALL + 8, maxY: BATH_H - 1 };
 const BATH_RELIEF_TIME = 1.6;
+const BATH_SMELL_FIRST = 1.5;        // seconds in before the first whiff of Nazim hurts
+const BATH_SMELL_INTERVAL = 4;       // then one life segment this often
 const BATH_WASH_TIME = 1.1;
 const BATH_DRY_TIME = 0.9;
 
@@ -4451,6 +4545,9 @@ function enterBathroom() {
     dry: false,
     texts: [],
     sparks: [],
+    puffs: [],
+    smellTimer: BATH_SMELL_FIRST,
+    puffTimer: 0,
   };
   player.moving = false;
   Sound.play('cellarDown');
@@ -4476,6 +4573,11 @@ function bathroomInteract() {
   if (c.relieve || c.task) return;
   const spot = bathroomSpot(d);
   if (spot === 'door') { exitCellar(false); return; }
+  if (spot === 'toilet' && nazimInLoo()) {
+    cellarText(d.x, d.y - 22, 'OCCUPIED', PUB.tomato);
+    Sound.play('whiff');
+    return;
+  }
   if (spot === 'urinal' || spot === 'toilet') {
     if (!bathroomNeed()) {
       cellarText(d.x, d.y - 22, 'NOT NEEDED', PUB.creamDim);
@@ -4508,6 +4610,35 @@ function updateBathroom(dt, input) {
   if (d.reaction) {
     d.reaction.t -= dt;
     if (d.reaction.t <= 0) d.reaction = null;
+  }
+
+  // Nazim's in the booth: the room stinks, and Rich pays for standing in it.
+  if (nazimInLoo()) {
+    c.puffTimer -= dt;
+    if (c.puffTimer <= 0) {
+      c.puffTimer = 0.12;
+      c.puffs.push({ x: BATH_TOILET.x + 7 + (Math.random() - 0.5) * 6, y: BATH_TOILET.y + 22, vx: (Math.random() - 0.5) * 14, vy: 4 + Math.random() * 8,
+        ttl: 2.4, maxTtl: 2.4, r: 3 });
+    }
+    c.smellTimer -= dt;
+    if (c.smellTimer <= 0) {
+      c.smellTimer = BATH_SMELL_INTERVAL;
+      if (hitInvulnTimer <= 0 && !caught) {
+        cellarText(d.x, d.y - 22, 'PHEW!', '#8bd23a');
+        Sound.play('penalty');
+        takeLifeHit();
+      }
+    }
+  } else {
+    c.smellTimer = BATH_SMELL_FIRST;
+  }
+  for (let i = c.puffs.length - 1; i >= 0; i--) {
+    const f = c.puffs[i];
+    f.ttl -= dt;
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    f.r += dt * 4;
+    if (f.ttl <= 0) c.puffs.splice(i, 1);
   }
 
   if (c.relieve) {
@@ -6911,6 +7042,7 @@ function bathroomPromptFor(spot) {
   const c = cellar;
   if (c.relieve || c.task) return null;
   if (spot === 'door') return 'E: OUT';
+  if (spot === 'toilet' && nazimInLoo()) return 'OCCUPIED';
   if (spot === 'urinal' || spot === 'toilet') return bathroomNeed() ? 'E: RELIEVE' : null;
   if (spot === 'sink') return 'E: WASH';
   if (spot === 'dryer') return c.washed ? 'E: DRY' : null;
@@ -6991,6 +7123,23 @@ function renderBathroom() {
   drawBackdrop();
   ctx.drawImage(bathroomCanvas, 0, 0, BATH_W * ART_SCALE, BATH_H * ART_SCALE, -camX, -camY, BATH_W, BATH_H);
   drawEntity(d, camX, camY);
+  if (nazimInLoo()) {
+    // Nazim on the throne, bowl-side of the booth.
+    const n = regularById.get('nazim');
+    const sx = n.x, sy = n.y, sf = n.facing, so = n.swayOffset;
+    n.x = BATH_TOILET.x + BATH_TOILET.w / 2;
+    n.y = BATH_TOILET.y + 20;
+    n.facing = 'down';
+    n.swayOffset = 0;
+    drawEntity(n, camX, camY);
+    n.x = sx; n.y = sy; n.facing = sf; n.swayOffset = so;
+  }
+  // The stink: translucent green clouds rolling out of the booth.
+  for (const f of c.puffs) {
+    ctx.globalAlpha = 0.45 * clamp(f.ttl / f.maxTtl, 0, 1);
+    fillDisc(ctx, Math.round(f.x - camX), Math.round(f.y - camY), f.r, '#7fbf2a');
+  }
+  ctx.globalAlpha = 1;
 
   // Bright, cold strip lighting: a light multiply and pools of cool white.
   drawDarkness('#c3ccd6');
@@ -7039,6 +7188,17 @@ function renderBathroom() {
   }
   const line = bladderUrgentTimer > 0 ? 'HOLDING ON' : 'BLADDER ' + bladderLevel + '/' + BLADDER_MAX;
   drawCellarUpstairsPlate(line, bladderUrgentTimer > 0 ? PUB.tomato : PUB.coolPale);
+}
+
+// The WC door while Nazim is in there: a sign to read before you go in.
+function drawWcOccupied(camX, camY) {
+  if (!nazimInLoo()) return;
+  const label = 'OCCUPIED';
+  const wallX = WORLD_W - WALL_SIDE_W;
+  const on = prefersReducedMotion || Math.floor(gameTime * 2) % 2 === 0;
+  const x = Math.round(wallX - fontTextWidth(label) - 4 - camX);
+  const y = Math.round(BATHROOM.y - 16 - camY);
+  fontDrawTextShadow(ctx, label, x, y, on ? PUB.tomato : PUB.creamDim);
 }
 
 // The hatch upstairs, drawn flat on the floor under everyone.
@@ -7976,6 +8136,7 @@ function render() {
   drawRoom(camX, camY);
   drawDarkness(DARK_FLOOR);
   drawCellarHatch(camX, camY);
+  drawWcOccupied(camX, camY);
   drawSpills(camX, camY);
   drawWetPantsPuddles(camX, camY);
   drawCigarettePacks(camX, camY);
@@ -7991,7 +8152,7 @@ function render() {
   pushDrawable(player.y, 'entity', player);
   if (hunterState !== 'arriving' && hunterSmokeState !== 'outside') pushDrawable(hunter.y, 'entity', hunter);
   for (const c of customers) pushDrawable(c.y, 'entity', c);
-  for (const r of regulars) pushDrawable(r.y, 'entity', r);
+  for (const r of regulars) if (!(r.trip && r.trip.state === 'inside')) pushDrawable(r.y, 'entity', r);
   // Floats above the floor with no ground shadow and no collision — it should
   // read as passing through the scene, not standing in it.
   if (ghost) pushDrawable(ghost.y, 'ghost', ghost);
@@ -8151,6 +8312,8 @@ window.__debug = {
   getSpills: () => spills,
   getRound: () => round,
   callRound: tryCallRound,
+  sendNazimToLoo: () => startNazimLoo(regularById.get('nazim')),
+  nazimInLoo: () => nazimInLoo(),
   startNazimWander: () => startNazimWander(regularById.get('nazim')),
   getJameson: () => ({ active: jamesonActive(), remaining: +jamesonTimer.toFixed(2) }),
   // No delivery needed: hands the shot over as if the player were standing.

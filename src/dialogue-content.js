@@ -180,6 +180,12 @@ const DIALOGUE_LINES = [
   { who: 'sam', category: 'nazimUp', text: "He's up. Nobody make eye contact." },
   { who: 'gerald', category: 'nazimUp', text: "Sit down, Nazim. That's a lane." },
   { who: 'nazim', category: 'nazimUp', stage: ['gone'], text: "Just stretching. Legs. Both." },
+  { who: 'nazim', category: 'nazimLoo', text: "Back in a bit. Don't touch my drink." },
+  { who: 'sam', category: 'nazimLoo', text: "He's got that look. Nobody use the toilet." },
+  { who: 'gerald', category: 'nazimLoo', text: "Twenty minutes. Minimum. Lovely." },
+  { who: 'sam', category: 'nazimLooBack', text: "Welcome back. Wash your hands?" },
+  { who: 'gerald', category: 'nazimLooBack', text: "Somebody go in and open a window." },
+  { who: 'nazim', category: 'nazimLooBack', text: "I'd give it a few minutes." },
   { who: 'gerald', category: 'roundMissed', text: "That wasn't a round. That was three drinks." },
   { who: 'sam', category: 'roundMissed', text: "Staggered arrivals. Like a bad wedding." },
   // ------------------------------------------------------------- LAST CALL

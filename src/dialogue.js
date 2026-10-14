@@ -38,6 +38,8 @@ const Dialogue = (function () {
     roundMissed: 1,
     spill: 2,
     nazimUp: 2,
+    nazimLoo: 2,
+    nazimLooBack: 2,
     hunterSpotted: 2,
     hunterArrives: 3,
     hunterServed: 3,
