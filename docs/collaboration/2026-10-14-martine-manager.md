@@ -46,6 +46,16 @@
 - Refactor: hunter-hit life/caught code extracted into `takeLifeHit()` (behaviour unchanged) and reused by Martine's wrath.
 - Checks: browser only (see CHANGELOG entry). Not tested: phone viewport, cellar while she waits (cellar plate does not list her ticket), reduced-motion sway.
 
+### 2026-10-14 — user — guarantee a visit (exact)
+
+- Exact: "Martine has to be there at least once per shift..."
+- Action: added a per-shift guarantee at 100s (`martineVisitedShift`, `martineForced`, retry every 10s if the floor/cellar blocks it; never during last call). Debug: `__debug.martineSchedule()`. Checked in browser for shifts 1 and 2 with the random timer forced off. Limit: if the player reaches the tip target before 100s, the shift ends without her (not changed).
+
+### 2026-10-14 — user — more lines, singing (exact)
+
+- Exact: "Also, add these lines: \"On le prend tu ce shot la?\", \"J'ai pas juste ca a faire\" (when she is waiting for her shot) If she comes after 150 sec, she sings Celine Dion lyrics in french"
+- Action: added the two lines to the waiting pool (accents added). Singing implemented with `martine.singing` (visit starts at shiftClock >= 150) but the assistant declined to write Céline Dion lyrics (copyrighted) and used wordless placeholders the user can replace in `MARTINE_LINES_SING`. Added `~` glyph in `src/pixelfont.js`. Follow-up user message: "Can she says: \"Mets du Celine!\"" -> added "Mets du Céline!" to `MARTINE_LINES_SING` (user's own phrase, not lyrics). Verified the glyph and line render after a cache-clearing reload.
+
 ## Implementation and evidence
 
 - `src/sprites.js`: `MARTINE_PALETTE`, `OH_MARTINE` (ohSheetSet), `SPRITES.martine`.

@@ -9,6 +9,8 @@
 - UPDATE same day: illustrated atlas now integrated (`assets/sprites/martine-illustrated.png/.json`, manifest entry, `families.martine`, exception removed, clipboard `talk` pose while lingering). Source = free ChatGPT sheet, green keyed by `docs/claude/scripts/key-green.py`; metadata by Python port `import-martine.py` (no Node). **Defect: walk A ≈ walk B.** Provenance in `assets/sprites/martine-prompt.md`.
 - Also same day: Québécois lines; hunter `following` state (follows Martine saying "Tsk tsk tsk tsk...", cannot catch while she is there; `updateHunter`, `hunterCanCatch`, `startHunterFollowingMartine`/`hunterTsk` in game.js). Browser-verified only.
 - Also same day: late-shift shot (`shiftClock >= 90`): Martine tipsy, `martine.state 'waiting'`, order type `shot` (sprites.js ORDER_ICONS, SHELF station, stock-exempt), penalty via new `takeLifeHit()` (hunter hit code now calls it too), `martineWantsShot/Served/Wrath/ClearOrder`. Tipsy tint in `statusRasterFrame`/`jamesonPaletteFor`. Browser-verified; not tested on phone or with the cellar plate (does not show her ticket).
+- Also: Martine guaranteed once per shift (visit forced at 100s if none yet; `martineVisitedShift`, `martineForced`, `__debug.martineSchedule`). Shift ending before 100s on tips alone skips her.
+- Also: two more waiting lines; singing visits after 150s with wordless placeholder lines (`MARTINE_LINES_SING`; no real lyrics by design); `~` glyph added to pixelfont.
 - Next: run the Node suites where Node exists (`character-art`, `assets`, `smoke`, `routing`, `alex`; re-run `tools/import-illustrated.js martine` to confirm identical JSON); fix walk B with prompt D, re-key, re-import.
 
 

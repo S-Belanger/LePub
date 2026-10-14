@@ -71,6 +71,7 @@ const FONT_GLYPHS = {
   '<': ['..#', '.#.', '#..', '.#.', '..#'],
   '>': ['#..', '.#.', '..#', '.#.', '#..'],
   '=': ['...', '###', '...', '###', '...'],
+  '~': ['....', '.#.#', '#.#.', '....', '....'],
 };
 
 // Accented characters that show up in French get folded onto their base glyph

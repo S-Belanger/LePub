@@ -1803,6 +1803,13 @@ const MARTINE_FIRST_MAX = 45;
 const MARTINE_REPEAT_MIN = 70;
 const MARTINE_REPEAT_MAX = 120;
 let martineDelay = MARTINE_FIRST_MIN + Math.random() * (MARTINE_FIRST_MAX - MARTINE_FIRST_MIN);
+// She is on the floor at least once every shift: if the random schedule has not
+// brought her in by MARTINE_GUARANTEE_AT, she comes now (and, being past
+// MARTINE_SHOT_AFTER, wants her shot). `martineVisitedShift` is the highest
+// shift she has appeared in, so a run that re-crosses a level never counts twice.
+const MARTINE_GUARANTEE_AT = 100;
+let martineVisitedShift = 0;
+let martineForced = false;
 const MARTINE_STOPS_MIN = 3;
 const MARTINE_STOPS_MAX = 4;
 const MARTINE_LINGER_TIME = 2.4;
@@ -1829,7 +1836,15 @@ const MARTINE_NAG_MAX = 6.5;
 const MARTINE_SOBER_SWAY = 0;
 const MARTINE_TIPSY_SWAY = 1.2;         // world units of side-to-side weave
 const MARTINE_SERVED_SWAY = 2;          // happier, wobblier
-const MARTINE_LINES_NAG = ['Rich, envoye!', 'Rich, tu me niaises?', 'Rich, mon shot!'];
+const MARTINE_LINES_NAG = ['Rich, envoye!', 'Rich, tu me niaises?', 'Rich, mon shot!',
+  'On le prend tu ce shot là?', 'J\'ai pas juste ça à faire'];
+// A visit that starts after MARTINE_SING_AFTER is a singing one: she is well
+// into the night. These are wordless on purpose (no song lyrics in the repo);
+// swap in your own text here. '~' is the pixel font's musical note.
+const MARTINE_SING_AFTER = 150;
+const MARTINE_SING_CHANCE = 0.65;       // share of her non-urgent remarks that are song
+const MARTINE_LINES_SING = ['~ La la la laaa ~', '~ Ouuuh, ouuuh ~', '~ Naa na na naaa ~', '~ Laaa laaa laaaaa ~',
+  'Mets du Céline!'];
 const MARTINE_LINE_ORDER = 'Rich, un shot!';
 const MARTINE_LINES_THANKS = ['Enfin, Rich!', 'Ah! Là on se parle.', 'T\'es fine, Rich!'];
 const MARTINE_LINES_WRATH = ['Rich, t\'es dans le trouble!', 'C\'est pas drôle, Rich!'];
@@ -1880,7 +1895,10 @@ function spawnMartine() {
   martine.sitTimer = 0;
   martine.patienceDuration = MARTINE_SHOT_PATIENCE;
   martine.orderPlacedAt = 0;
+  martineVisitedShift = shift;
+  martineForced = false;
   martine.wantsShot = shiftClock >= MARTINE_SHOT_AFTER;
+  martine.singing = shiftClock >= MARTINE_SING_AFTER;
   martine.shotDone = false;
   martine.nagTimer = 0;
   martine.tipsy = martine.wantsShot;
@@ -1965,6 +1983,8 @@ function martineWrath() {
 // on the floor, then how full the room is.
 function martineLineFor() {
   const pick = pool => pool[Math.floor(Math.random() * pool.length)];
+  // Well into the night she is mostly singing.
+  if (martine.singing && Math.random() < MARTINE_SING_CHANCE) return pick(MARTINE_LINES_SING);
   // He is on her heels, so that is what she is annoyed about.
   if (hunterState === 'following') return pick(MARTINE_LINES_HUNTER);
   const lapsing = c => c && c.orderType && !c.served && c.patienceDuration > 0 &&
@@ -1981,9 +2001,15 @@ function martineSay() {
 function updateMartine(dt) {
   if (paused || caught || shiftTally) return;
   if (!martine) {
+    // Owed a visit this shift and it is getting late: skip the wait, once. A
+    // failed attempt falls back to the normal 10s retry below.
+    if (martineVisitedShift < shift && shiftClock >= MARTINE_GUARANTEE_AT && !martineForced) {
+      martineForced = true;
+      martineDelay = 0;
+    }
     martineDelay -= dt;
     if (martineDelay <= 0) {
-      if (gameTime >= 15 && !isLastCall() && !cellar) spawnMartine();
+      if ((gameTime >= 15 || martineForced) && !isLastCall() && !cellar) spawnMartine();
       if (!martine) martineDelay = 10; // floor too busy or no route: try again soon
     }
     return;
@@ -2031,8 +2057,11 @@ function updateMartine(dt) {
     martine.nagTimer -= dt;
     if (martine.nagTimer <= 0 && !martine.line) {
       const urgent = martine.sitTimer / martine.patienceDuration < 0.35;
+      const pickFrom = pool => pool[Math.floor(Math.random() * pool.length)];
+      // Past the urgent mark she stops singing and means it.
       martine.line = urgent ? 'Rich, tu me niaises?'
-        : MARTINE_LINES_NAG[Math.floor(Math.random() * MARTINE_LINES_NAG.length)];
+        : martine.singing && Math.random() < MARTINE_SING_CHANCE ? pickFrom(MARTINE_LINES_SING)
+        : pickFrom(MARTINE_LINES_NAG);
       martine.lineTtl = MARTINE_LINE_TTL;
       martine.nagTimer = MARTINE_NAG_MIN + Math.random() * (MARTINE_NAG_MAX - MARTINE_NAG_MIN);
     }
@@ -2672,6 +2701,8 @@ function resetGame() {
   alex = null;
   nick = null;
   martine = null;
+  martineVisitedShift = 0;
+  martineForced = false;
   martineDelay = MARTINE_FIRST_MIN + Math.random() * (MARTINE_FIRST_MAX - MARTINE_FIRST_MIN);
   fartClouds.length = 0;
   fartHaze = 0;
@@ -7532,6 +7563,7 @@ window.__debug = {
   spawnNick,
   getMartine: () => martine,
   spawnMartine,
+  martineSchedule: () => ({ visitedShift: martineVisitedShift, shift, dueIn: +martineDelay.toFixed(1), forced: martineForced }),
   getFartClouds: () => fartClouds,
   getFartHaze: () => fartHaze,
   spawnBusboy,
