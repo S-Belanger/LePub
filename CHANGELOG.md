@@ -6,6 +6,13 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-14 — The bathroom as a side room (local, uncommitted)
+
+- **Request:** build the bathroom properly as a side room like the cellar: 3 urinals on the left, door bottom left, a toilet booth in the top-right corner, the sink along the right wall up to the booth, white square floor tiles with small black 45-degree tiles at the corners, black tile walls. Mid-task addition: a very high-tech, futuristic hand dryer between the sink and the booth.
+- **Done:** `kind: 'bathroom'` variant of the cellar slot in `game.js` (`enterBathroom`, `updateBathroom`, `bathroomInteract`, `renderBathroom`, `drawBathroomRoom`), so the hunter lockout and the pub-keeps-running rules are shared. The WC door auto-opens when the bladder is urgent and the Doe walks up, or opens with E while the bladder is not empty. Relief at a urinal or the toilet (1.6s) clears the bladder; the 60s bladder clock holds while inside. Optional wash at the sink and dry at the dryer (cosmetic text, no score). `cellarTryMove` now takes a room descriptor. Leaving does not re-trigger the door until the Doe steps away (`bathroomArmed`).
+- **Checks:** browser only (render screenshot, entry/hold/relief/wash/dry/exit/re-entry via `__debug`, collision spot checks). `node` is not installed, so `tests/smoke.js` was edited for the new flow (door opens a room, clock holds, urinal relieves) but NOT run; please run `node tests/smoke.js` and `node tests/hud.js`. Not tested on a phone. Not committed.
+- **Limits:** the room is procedural art in the existing material style, not an illustrated atlas; no new sound cues (reuses relief/pickup/cellarDown).
+
 ## 2026-10-14 — Martine, the manager (local, uncommitted)
 
 - **Request:** "Could we add Martine to the pub. She is the manager" with a photo (not copied into the repo).

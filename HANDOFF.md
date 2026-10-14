@@ -1,5 +1,11 @@
 # LePub durable handoff
 
+## 2026-10-14 (later) — Bathroom side room added locally
+
+- Branch main, HEAD 9efdf76, uncommitted. User asked for the bathroom as a cellar-like side room (3 urinals left, door bottom left, toilet booth top right, sink along the right wall to the booth, white tiles with rotated black corner tiles, black tile walls); then added a futuristic hand dryer between sink and booth.
+- Implemented in `game.js` as `cellar.kind === 'bathroom'` (functions `enterBathroom`/`updateBathroom`/`bathroomInteract`/`renderBathroom`/`drawBathroomRoom`). `cellarTryMove(e,dx,dy,room)` generalized. Bladder clock holds inside; `bathroomArmed` prevents re-entry at the door. Debug: `getBathroom`, `enterBathroom`, `bathroomSpot`.
+- `tests/smoke.js` bathroom block rewritten for the new flow; NOT run (no Node here). Browser-verified only. Next: run smoke/hud/alex suites where Node exists; check phone layout (room is 116x120 game units).
+
 ## 2026-10-14 — Martine (manager) added locally; art debt and untested suites
 
 - Branch main, HEAD 8ba9024, started clean; changes local/uncommitted/unpushed.

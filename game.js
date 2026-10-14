@@ -630,6 +630,7 @@ const WET_PANTS_PENALTY = 20;
 const WET_PANTS_SCARE_RADIUS = 28; // walk-ins this close to the puddle bail
 let bladderLevel = 0;
 let bladderUrgentTimer = 0; // >0 once full: seconds left to reach the bathroom
+let bathroomArmed = true;   // false after leaving the WC until the Doe steps away from its door
 let wetPantsTimer = 0;      // >0 briefly after an accident — just the sprite tint
 // Every accident leaves its own puddle, and unlike the tint it doesn't fade —
 // it's a stain on the floor, not a status effect, and stays for the rest of
@@ -2665,6 +2666,7 @@ function resetGame() {
   jamesonBounceTimer = 0;
   bladderLevel = 0;
   bladderUrgentTimer = 0;
+  bathroomArmed = true;
   wetPantsTimer = 0;
   wetPantsPuddles.length = 0;
   cigarettePacks.length = 0;
@@ -2977,6 +2979,14 @@ function handleInteract() {
   if (nearCellarHatch()) {
     if (shelfHasRoom()) { enterCellar(); return; }
     addFloatingText(player.x, player.y - player.h - 4, 'SHELF FULL', PUB.creamDim);
+    registerWhiff();
+    return;
+  }
+
+  // The WC door in the right wall: open to anyone with a full-ish bladder.
+  if (Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y) < BLADDER_REACH_RADIUS + 2) {
+    if (bladderLevel > 0 || bladderUrgentTimer > 0) { enterBathroom(); return; }
+    addFloatingText(player.x, player.y - player.h - 4, 'NOT NEEDED', PUB.creamDim);
     registerWhiff();
     return;
   }
@@ -3952,13 +3962,13 @@ function update(dt) {
   // clock doesn't. Independent of the Jameson countdown above — drinking
   // through the timer buys no extra time to get there.
   if (wetPantsTimer > 0) wetPantsTimer -= dt;
+  const bathDist = Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y);
+  if (!cellar && !bathroomArmed && bathDist > BLADDER_REACH_RADIUS + 4) bathroomArmed = true;
   if (bladderUrgentTimer > 0) {
-    if (!cellar && Math.hypot(player.x - BATHROOM.x, player.y - BATHROOM.y) < BLADDER_REACH_RADIUS) {
-      bladderUrgentTimer = 0;
-      bladderLevel = 0;
-      Sound.play('bathroomRelief');
-      addFloatingText(player.x, player.y - player.h - 4, 'RELIEF!', PUB.coolPale);
-      Dialogue.trigger('bathroomRelief', null);
+    if (inBathroom()) {
+      // Inside, the clock holds: you made it. Leaving unrelieved restarts it.
+    } else if (!cellar && bathroomArmed && bathDist < BLADDER_REACH_RADIUS) {
+      enterBathroom();
     } else {
       bladderUrgentTimer -= dt;
       if (bladderUrgentTimer <= 0) {
@@ -4106,6 +4116,7 @@ function enterCellar() {
   doe.facing = 'up';
   doe.reaction = null;
   cellar = {
+    kind: 'cellar',
     doe,
     bottles: CELLAR_BOTTLE_XS.map(x => ({ x, state: 'bare', heat: 0 })),
     ghost: null,
@@ -4130,7 +4141,8 @@ function exitCellar(quiet) {
   cellar = null;
   hitInvulnTimer = Math.max(hitInvulnTimer, CELLAR_EXIT_GRACE);
   player.facing = 'down';
-  if (quiet) return;
+  if (trip.kind === 'bathroom') bathroomArmed = false;   // no instant re-entry at the door
+  if (quiet || trip.kind === 'bathroom') return;
   Sound.play('cellarUp');
   if (trip.sealed > 0) Dialogue.trigger(trip.hits > 0 ? 'cellarHaunted' : 'cellarBack', null);
 }
@@ -4152,6 +4164,7 @@ function cellarBottleInReach() {
 }
 
 function cellarInteract() {
+  if (cellar.kind === 'bathroom') { bathroomInteract(); return; }
   const c = cellar;
   const d = c.doe;
   if (c.stun > 0) return;
@@ -4172,19 +4185,22 @@ function cellarInteract() {
   Sound.play('whiff');
 }
 
-function cellarTryMove(e, dx, dy) {
+const CELLAR_ROOM = { colliders: CELLAR_COLLIDERS, minX: CELLAR_SIDE + 5, maxX: CELLAR_W - CELLAR_SIDE - 5, minY: CELLAR_WALL + 8, maxY: CELLAR_H - 1 };
+
+// Shared by every side room: `room` is its collider list and walkable bounds.
+function cellarTryMove(e, dx, dy, room = CELLAR_ROOM) {
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / MOVE_SUBSTEP));
   let x = e.x;
   let y = e.y;
   const hit = (px, py) => {
     const box = getFootBox(e, px, py);
-    for (const r of CELLAR_COLLIDERS) if (rectsOverlap(box, r)) return true;
+    for (const r of room.colliders) if (rectsOverlap(box, r)) return true;
     return false;
   };
   for (let i = 0; i < steps; i++) {
-    const nx = clamp(x + dx / steps, CELLAR_SIDE + 5, CELLAR_W - CELLAR_SIDE - 5);
+    const nx = clamp(x + dx / steps, room.minX, room.maxX);
     if (!hit(nx, y)) x = nx;
-    const ny = clamp(y + dy / steps, CELLAR_WALL + 8, CELLAR_H - 1);
+    const ny = clamp(y + dy / steps, room.minY, room.maxY);
     if (!hit(x, ny)) y = ny;
   }
   e.x = x;
@@ -4323,6 +4339,7 @@ function updateCellarGhost(dt) {
 }
 
 function updateCellar(dt, input) {
+  if (cellar.kind === 'bathroom') { updateBathroom(dt, input); return; }
   const c = cellar;
   const d = c.doe;
   if (c.stun > 0) c.stun -= dt;
@@ -4367,6 +4384,168 @@ function updateCellar(dt, input) {
   }
 
   updateCellarGhost(dt);
+
+  for (let i = c.sparks.length - 1; i >= 0; i--) {
+    const s = c.sparks[i];
+    s.ttl -= dt;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    if (s.ttl <= 0) c.sparks.splice(i, 1);
+  }
+  for (let i = c.texts.length - 1; i >= 0; i--) {
+    const t = c.texts[i];
+    t.ttl -= dt;
+    t.y -= 10 * dt;
+    if (t.ttl <= 0) c.texts.splice(i, 1);
+  }
+}
+
+
+// ---- The bathroom: the WC door in the right wall opens onto a side room ------
+// Same plumbing as the cellar (the `cellar` slot with kind 'bathroom', its own
+// coordinates, colliders and camera, the hunter shut out, the pub running on).
+// Door bottom left, three open urinals (no partitions) down the left wall, a toilet booth in the top
+// right corner, the hand dryer and the sinks along the right wall. Relief
+// (urinal or toilet) clears the bladder; the bladder clock holds while inside.
+const BATH_W = 116;
+const BATH_H = 120;
+const BATH_WALL = 16;
+const BATH_SIDE = 6;
+const BATH_FRONT = 6;
+const BATH_TILE = 8;
+const BATH_DOOR = { x: 8, y: BATH_H - 14, w: 20, h: 14 };
+const BATH_SPAWN = { x: 18, y: BATH_H - 14 };
+const BATH_URINAL_YS = [30, 50, 70];
+const BATH_BOOTH = { x: 80, y: 16, w: 30, h: 36 };
+const BATH_TOILET = { x: 88, y: 17, w: 14, h: 15 };
+const BATH_DRYER = { x: 98, y: 55, w: 12, h: 18 };
+const BATH_SINK = { x: 98, y: 77, w: 12, h: 30 };
+const BATH_BOOTH_WALLS = [{ x: 80, y: 16, w: 2, h: 36 }, { x: 82, y: 50, w: 8, h: 2 }, { x: 100, y: 50, w: 10, h: 2 }];
+const BATH_COLLIDERS = [
+  ...BATH_URINAL_YS.map(y => ({ x: BATH_SIDE, y: y - 5, w: 8, h: 10 })),
+  ...BATH_BOOTH_WALLS,                                // side wall and front, door gap between
+  BATH_TOILET,
+  BATH_DRYER,
+  BATH_SINK,
+  { x: 0, y: BATH_H - BATH_FRONT, w: 8, h: BATH_FRONT },   // front wall either side of the door
+  { x: 28, y: BATH_H - BATH_FRONT, w: BATH_W - 28, h: BATH_FRONT },
+];
+const BATH_ROOM = { colliders: BATH_COLLIDERS, minX: BATH_SIDE + 5, maxX: BATH_W - BATH_SIDE - 5, minY: BATH_WALL + 8, maxY: BATH_H - 1 };
+const BATH_RELIEF_TIME = 1.6;
+const BATH_WASH_TIME = 1.1;
+const BATH_DRY_TIME = 0.9;
+
+function inBathroom() { return cellar !== null && cellar.kind === 'bathroom'; }
+
+function enterBathroom() {
+  const doe = makeEntity('doe', BATH_SPAWN.x, BATH_SPAWN.y);
+  doe.facing = 'up';
+  doe.reaction = null;
+  cellar = {
+    kind: 'bathroom',
+    doe,
+    relieve: null,      // { t, facing } while at a urinal or the toilet
+    task: null,         // { kind: 'wash' | 'dry', t } at the sinks / the dryer
+    relieved: false,
+    washed: false,
+    dry: false,
+    texts: [],
+    sparks: [],
+  };
+  player.moving = false;
+  Sound.play('cellarDown');
+}
+
+function bathroomNeed() { return bladderLevel > 0 || bladderUrgentTimer > 0; }
+
+// What the Doe could do from where she stands, or null.
+function bathroomSpot(d) {
+  if (nearRect(d.x, d.y, BATH_DOOR, 2)) return 'door';
+  if (d.x > BATH_BOOTH.x + 2 && d.y > BATH_TOILET.y + BATH_TOILET.h && d.y < BATH_BOOTH.y + BATH_BOOTH.h) return 'toilet';
+  for (const uy of BATH_URINAL_YS) {
+    if (d.x < 32 && Math.abs(d.y - uy) <= 6) return 'urinal';
+  }
+  if (d.y < BATH_SINK.y && nearRect(d.x, d.y, BATH_DRYER, 8)) return 'dryer';
+  if (nearRect(d.x, d.y, BATH_SINK, 8)) return 'sink';
+  return null;
+}
+
+function bathroomInteract() {
+  const c = cellar;
+  const d = c.doe;
+  if (c.relieve || c.task) return;
+  const spot = bathroomSpot(d);
+  if (spot === 'door') { exitCellar(false); return; }
+  if (spot === 'urinal' || spot === 'toilet') {
+    if (!bathroomNeed()) {
+      cellarText(d.x, d.y - 22, 'NOT NEEDED', PUB.creamDim);
+      Sound.play('whiff');
+      return;
+    }
+    c.relieve = { t: BATH_RELIEF_TIME, facing: spot === 'toilet' ? 'up' : 'left' };
+    return;
+  }
+  if (spot === 'sink') { c.task = { kind: 'wash', t: BATH_WASH_TIME }; return; }
+  if (spot === 'dryer') {
+    if (!c.washed) { cellarText(d.x, d.y - 22, 'WASH FIRST', PUB.creamDim); Sound.play('whiff'); return; }
+    c.task = { kind: 'dry', t: BATH_DRY_TIME };
+    return;
+  }
+  Sound.play('whiff');
+}
+
+function updateBathroom(dt, input) {
+  const c = cellar;
+  const d = c.doe;
+  d.speed = player.tray.length >= TRAY_MAX ? TRAY_SPEED : PLAYER_SPEED;
+  const busy = c.relieve || c.task;
+  const ix = busy ? 0 : input.x;
+  const iy = busy ? 0 : input.y;
+  d.moving = ix !== 0 || iy !== 0;
+  faceToward(d, ix, iy);
+  cellarTryMove(d, ix * d.speed * dt, iy * d.speed * dt, BATH_ROOM);
+  tickLegs(d, dt);
+  if (d.reaction) {
+    d.reaction.t -= dt;
+    if (d.reaction.t <= 0) d.reaction = null;
+  }
+
+  if (c.relieve) {
+    const r = c.relieve;
+    d.facing = r.facing;
+    r.t -= dt;
+    if (r.t <= 0) {
+      c.relieve = null;
+      c.relieved = true;
+      bladderLevel = 0;
+      bladderUrgentTimer = 0;
+      Sound.play('bathroomRelief');
+      cellarText(d.x, d.y - 22, 'RELIEF!', PUB.coolPale);
+      Dialogue.trigger('bathroomRelief', null);
+    }
+  } else if (c.task) {
+    const t = c.task;
+    d.facing = 'right';
+    t.t -= dt;
+    // Water from the tap, or the dryer's cold blue wash of air.
+    const tapY = t.kind === 'wash' ? BATH_SINK.y + 8 : BATH_DRYER.y + BATH_DRYER.h / 2;
+    const tapX = t.kind === 'wash' ? BATH_SINK.x + 2 : BATH_DRYER.x - 1;
+    for (let i = 0; i < 2; i++) {
+      c.sparks.push({ x: tapX, y: tapY + (Math.random() - 0.5) * 3, vx: -14 - Math.random() * 12, vy: (Math.random() - 0.5) * 8,
+        ttl: 0.25, maxTtl: 0.25, color: t.kind === 'wash' ? '#bfe6ff' : '#5ad2ff', size: 1 });
+    }
+    if (t.t <= 0) {
+      c.task = null;
+      if (t.kind === 'wash') {
+        c.washed = true;
+        cellarText(d.x, d.y - 22, 'CLEAN HANDS', PUB.cream);
+      } else {
+        c.dry = true;
+        cellarText(d.x, d.y - 22, 'BONE DRY', PUB.amber);
+      }
+      Sound.play('pickup');
+    }
+  }
 
   for (let i = c.sparks.length - 1; i >= 0; i--) {
     const s = c.sparks[i];
@@ -4879,10 +5058,8 @@ function drawArchitecture(ctx) {
   }
 
   // The bathroom: a small door set into the right wall, in the hallway gap
-  // above the first table on that side. Purely a landmark for the bladder
-  // mechanic (see BATHROOM in game.js) — there's no room behind it, just the
-  // door and a sign, the same way the bar's back rooms are implied rather
-  // than modeled.
+  // above the first table on that side. Walking up to it (or pressing E)
+  // opens the bathroom side room (see enterBathroom in game.js).
   {
     const doorH = 20;
     const wallX = left + WORLD_W - WALL_SIDE_W;
@@ -6405,7 +6582,7 @@ function drawCellarGhostCue(g, camX, camY) {
 
 // What's waiting upstairs, so a trip down is a decision rather than a blind
 // spot: the number of open orders and the most urgent one's patience.
-function drawCellarUpstairsPlate() {
+function drawCellarUpstairsPlate(stock, stockColor) {
   let waiting = 0;
   let worst = 1;
   const note = e => {
@@ -6417,7 +6594,7 @@ function drawCellarUpstairsPlate() {
   for (const r of regulars) note(r);
   if (hunterState !== 'arriving' && !hunterOnSmokeBreak()) note(hunter);
   const line = 'UPSTAIRS ' + waiting + ' WAITING';
-  const stock = 'SHELF ' + shelfStock + '/' + SHELF_STOCK_MAX;
+  stock = stock || 'SHELF ' + shelfStock + '/' + SHELF_STOCK_MAX;
   const w = Math.max(fontTextWidth(line), fontTextWidth(stock)) + 10;
   const h = FONT_H * 2 + 12;
   const x = Math.round((viewW - w) / 2);
@@ -6430,10 +6607,11 @@ function drawCellarUpstairsPlate() {
     ctx.fillStyle = patienceBarColor(worst);
     ctx.fillRect(x + 5, y + 4 + FONT_H, Math.ceil((w - 10) * worst), 2);
   }
-  fontDrawTextShadow(ctx, stock, x + 5, y + 8 + FONT_H, PUB.amber, UI.walnutDark);
+  fontDrawTextShadow(ctx, stock, x + 5, y + 8 + FONT_H, stockColor || PUB.amber, UI.walnutDark);
 }
 
 function renderCellar() {
+  if (cellar.kind === 'bathroom') { renderBathroom(); return; }
   if (!cellarCanvas) cellarCanvas = buildCellarCanvas();
   const c = cellar;
   const cam = getCellarCamera();
@@ -6496,6 +6674,371 @@ function renderCellar() {
     drawOrderBubble(d.x, entityHeadTop(d), camX, camY, item.type, false, f ? clamp(f.sitTimer / f.patienceDuration, 0, 1) : null);
   }
   drawCellarUpstairsPlate();
+}
+
+
+// ---- The bathroom, drawn ------------------------------------------------------
+// Painted once in bathroom coordinates; `ctx` shadows the screen context.
+function drawBathDiamond(ctx, cx, cy, r, color) {
+  ctx.fillStyle = color;
+  for (let dy = -r; dy < r; dy += 0.5) {
+    const half = Math.max(0, r - Math.abs(dy + 0.25));
+    ctx.fillRect(cx - half, cy + dy, half * 2, 0.5);
+  }
+}
+
+function drawBathroomRoom(ctx) {
+  // Floor: square white tiles, a small black tile turned 45 degrees at every
+  // inner corner where four of them meet.
+  ctx.fillStyle = '#9aa0a6';
+  ctx.fillRect(0, 0, BATH_W, BATH_H);
+  const whites = ['#eceef0', '#e6e8ea', '#f0f1f2', '#e9ebed'];
+  for (let ty = BATH_WALL; ty < BATH_H; ty += BATH_TILE) {
+    for (let tx = BATH_SIDE; tx < BATH_W - BATH_SIDE; tx += BATH_TILE) {
+      ctx.fillStyle = whites[Math.floor(floorHash(tx, ty) * whites.length) % whites.length];
+      ctx.fillRect(tx + 0.5, ty + 0.5, BATH_TILE - 0.5, BATH_TILE - 0.5);
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(tx + 0.5, ty + 0.5, BATH_TILE - 0.5, 0.5);
+    }
+  }
+  for (let ty = BATH_WALL + BATH_TILE; ty < BATH_H; ty += BATH_TILE) {
+    for (let tx = BATH_SIDE + BATH_TILE; tx < BATH_W - BATH_SIDE; tx += BATH_TILE) {
+      drawBathDiamond(ctx, tx, ty, 1.75, '#14151a');
+    }
+  }
+  // A floor drain mid-room.
+  fillDisc(ctx, 58, 74, 3, '#6d737a');
+  fillDisc(ctx, 58, 74, 2.2, '#2a2d32');
+  ctx.fillStyle = '#6d737a';
+  ctx.fillRect(56.5, 74, 3, 0.5);
+  ctx.fillRect(58, 72.5, 0.5, 3);
+
+  // Walls: small glossy black tiles, clipped to everything that is not floor
+  // (and not the doorway in the front wall).
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, BATH_W, BATH_H);
+  ctx.rect(BATH_SIDE, BATH_WALL, BATH_W - BATH_SIDE * 2, BATH_H - BATH_WALL - BATH_FRONT);
+  ctx.rect(BATH_DOOR.x, BATH_H - BATH_FRONT, BATH_DOOR.w, BATH_FRONT);
+  ctx.clip('evenodd');
+  ctx.fillStyle = '#08090b';
+  ctx.fillRect(0, 0, BATH_W, BATH_H);
+  for (let y = 0; y < BATH_H; y += 4) {
+    for (let x = 0; x < BATH_W; x += 4) {
+      ctx.fillStyle = floorHash(x + 3, y + 7) < 0.15 ? '#1f2228' : '#15171c';
+      ctx.fillRect(x + 0.25, y + 0.25, 3.5, 3.5);
+      ctx.fillStyle = '#2b2f37';
+      ctx.fillRect(x + 0.25, y + 0.25, 3.5, 0.5);
+      ctx.fillStyle = '#3a3f49';
+      ctx.fillRect(x + 0.75, y + 0.75, 0.5, 0.5);
+    }
+  }
+  ctx.restore();
+  // Rear wall base and the shadow it throws on the floor.
+  ctx.fillStyle = '#3a3f49';
+  ctx.fillRect(BATH_SIDE, BATH_WALL - 1, BATH_W - BATH_SIDE * 2, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(BATH_SIDE, BATH_WALL, BATH_W - BATH_SIDE * 2, 2);
+  ctx.fillRect(BATH_SIDE, BATH_WALL, 2, BATH_H - BATH_WALL - BATH_FRONT);
+  // GENTS plate on the rear wall.
+  drawBathPlate(ctx, 'GENTS', 8, 3);
+
+  // The doorway: frame, rubber mat and a brass kick strip.
+  const dr = BATH_DOOR;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(dr.x - 1, BATH_H - BATH_FRONT, 1, BATH_FRONT);
+  ctx.fillRect(dr.x + dr.w, BATH_H - BATH_FRONT, 1, BATH_FRONT);
+  ctx.fillStyle = '#2b2e33';
+  ctx.fillRect(dr.x + 2, BATH_H - 7, dr.w - 4, 5);
+  ctx.fillStyle = '#3c4047';
+  for (let i = 0; i < dr.w - 4; i += 2) ctx.fillRect(dr.x + 2 + i, BATH_H - 7, 1, 5);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(dr.x, BATH_H - 1, dr.w, 1);
+
+  // Urinals: porcelain backs against the wall, a dark basin, chrome flush.
+  for (const y of BATH_URINAL_YS) {
+    const ux = BATH_SIDE, uy = y - 5;
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(ux + 1, uy + 1, 9, 10);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(ux, uy, 9, 10);
+    ctx.fillStyle = '#f4f5f6';
+    ctx.fillRect(ux + 0.5, uy + 0.5, 8, 9);
+    ctx.fillStyle = '#c5cad0';
+    ctx.fillRect(ux + 0.5, uy + 8.5, 8, 1);
+    ctx.fillStyle = '#3b4650';
+    ctx.fillRect(ux + 3.5, uy + 2, 4.5, 6);
+    ctx.fillStyle = '#6a7a88';
+    ctx.fillRect(ux + 4, uy + 2.5, 1, 5);
+    ctx.fillStyle = '#d8dde2';
+    ctx.fillRect(ux + 1, uy + 4, 2, 2);          // chrome flush button
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ux + 1, uy + 4, 1, 1);
+  }
+  // Booth: charcoal partition panels with the door gap in the front, bowl and
+  // cistern against the rear wall.
+  for (const w of BATH_BOOTH_WALLS) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(w.x + 1, w.y + 1, w.w, w.h);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(w.x - 0.5, w.y - 0.5, w.w + 1, w.h + 1);
+    ctx.fillStyle = '#4b5560';
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.fillStyle = '#6a7683';
+    ctx.fillRect(w.x, w.y, w.w, 0.5);
+  }
+  const t = BATH_TOILET;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(t.x + 1, t.y + 1, t.w, t.h);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(t.x - 0.5, t.y - 0.5, t.w + 1, 5.5);     // cistern
+  ctx.fillStyle = '#f4f5f6';
+  ctx.fillRect(t.x, t.y, t.w, 4.5);
+  ctx.fillStyle = '#d0d5da';
+  ctx.fillRect(t.x, t.y + 3.5, t.w, 1);
+  ctx.fillStyle = '#d8dde2';
+  ctx.fillRect(t.x + t.w - 3.5, t.y + 1, 2, 1.5);       // flush lever
+  // The bowl from above: oval seat ring around a dark well.
+  const bx = t.x + t.w / 2, by = t.y + 10;
+  fillDisc(ctx, bx, by + 0.5, 6, PUB.ink);
+  fillDisc(ctx, bx, by, 5.5, '#f4f5f6');
+  fillDisc(ctx, bx, by + 0.5, 3.6, '#c5cad0');
+  fillDisc(ctx, bx, by + 1, 2.6, '#3b4650');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(bx - 4, by - 3.5, 2, 0.5);
+  // A spare roll on the booth wall.
+  fillDisc(ctx, BATH_BOOTH.x + 4, BATH_BOOTH.y + 20, 1.8, '#f4f5f6');
+  fillDisc(ctx, BATH_BOOTH.x + 4, BATH_BOOTH.y + 20, 0.7, '#b8a58a');
+
+  // The hand dryer: a futuristic pod standing off the wall. Seamless white
+  // shell, a tall dark glass intake with a glowing cyan ring and scanning
+  // bars, a slim light strip along the top and a status light facing the room.
+  const hd = BATH_DRYER;
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.fillRect(hd.x - 1, hd.y + 2, hd.w, hd.h);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(hd.x - 0.5, hd.y - 0.5, hd.w + 1, hd.h + 1);
+  ctx.fillStyle = '#d9e2ec';
+  ctx.fillRect(hd.x, hd.y, hd.w, hd.h);
+  ctx.fillStyle = '#f7fbff';
+  ctx.fillRect(hd.x, hd.y, hd.w, 1);
+  ctx.fillRect(hd.x, hd.y, 1, hd.h);
+  ctx.fillStyle = '#a9b6c4';
+  ctx.fillRect(hd.x, hd.y + hd.h - 1, hd.w, 1);
+  // Glass intake bay.
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(hd.x + 1.5, hd.y + 3, 6.5, hd.h - 6);
+  ctx.fillStyle = '#04131d';
+  ctx.fillRect(hd.x + 2, hd.y + 3.5, 5.5, hd.h - 7);
+  ctx.fillStyle = '#0d4f70';
+  ctx.fillRect(hd.x + 2, hd.y + 3.5, 5.5, 1);
+  // Cyan scan bars and a ring of light inside the bay.
+  ctx.fillStyle = '#8be9ff';
+  for (let y = hd.y + 5.5; y < hd.y + hd.h - 4; y += 2.5) ctx.fillRect(hd.x + 2.5, y, 4.5, 0.5);
+  ctx.fillStyle = '#e6fbff';
+  ctx.fillRect(hd.x + 4.25, hd.y + 4.5, 1, hd.h - 9);
+  // Control column on the room side: status lights.
+  ctx.fillStyle = '#5ad2ff';
+  ctx.fillRect(hd.x + 9, hd.y + 4, 1.5, 1.5);
+  ctx.fillStyle = '#8bffb2';
+  ctx.fillRect(hd.x + 9, hd.y + 8, 1.5, 1.5);
+  ctx.fillStyle = '#5ad2ff';
+  ctx.fillRect(hd.x + 9, hd.y + 12, 1.5, 1.5);
+  // Light strip along the top edge.
+  ctx.fillStyle = '#5ad2ff';
+  ctx.fillRect(hd.x + 1.5, hd.y + 1.5, hd.w - 3, 0.5);
+
+  // Sinks: a long white trough along the right wall, two basins, chrome taps,
+  // a soap pump between them.
+  const sk = BATH_SINK;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(sk.x - 1, sk.y + 1, sk.w, sk.h);
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(sk.x - 0.5, sk.y - 0.5, sk.w + 1, sk.h + 1);
+  ctx.fillStyle = '#e8ebee';
+  ctx.fillRect(sk.x, sk.y, sk.w, sk.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(sk.x, sk.y, 0.5, sk.h);
+  for (const by2 of [sk.y + 2, sk.y + 16]) {
+    ctx.fillStyle = '#b3bac1';
+    ctx.fillRect(sk.x + 1.5, by2, 7.5, 12);
+    ctx.fillStyle = '#e1e5e9';
+    ctx.fillRect(sk.x + 2, by2 + 0.5, 6.5, 11);
+    fillDisc(ctx, sk.x + 4.5, by2 + 6, 1, '#5d666e');   // plug
+    ctx.fillStyle = '#d8dde2';
+    ctx.fillRect(sk.x + 9, by2 + 4.5, 2.5, 3);            // tap on the wall side
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sk.x + 9, by2 + 4.5, 2.5, 0.5);
+  }
+  ctx.fillStyle = '#5a8f70';
+  ctx.fillRect(sk.x + 9.5, sk.y + 13.5, 2, 2);            // soap pump
+  ctx.fillStyle = '#9cc4d8';
+  ctx.fillRect(BATH_W - BATH_SIDE, sk.y, 1, sk.h);      // mirror glint on the wall
+}
+
+function drawBathPlate(ctx, text, x, y) {
+  const w = fontTextWidth(text) + 6;
+  const h = FONT_H + 4;
+  ctx.fillStyle = PUB.ink;
+  ctx.fillRect(x - 0.5, y - 0.5, w + 1, h + 1);
+  ctx.fillStyle = PUB.brass;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#f6d688';
+  ctx.fillRect(x, y, w, 0.5);
+  fontDrawText(ctx, text, x + 3, y + 2, PUB.ink);
+}
+
+let bathroomCanvas = null;
+function buildBathroomCanvas() {
+  const cv = document.createElement('canvas');
+  cv.width = BATH_W * ART_SCALE;
+  cv.height = BATH_H * ART_SCALE;
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.setTransform(ART_SCALE, 0, 0, ART_SCALE, 0, 0);
+  drawBathroomRoom(g);
+  return cv;
+}
+
+function getBathroomCamera() {
+  const d = cellar.doe;
+  const camX = viewW >= BATH_W ? (BATH_W - viewW) / 2 : clamp(d.x - viewW / 2, 0, BATH_W - viewW);
+  const camY = viewH >= BATH_H ? (BATH_H - viewH) / 2 : clamp(d.y - viewH / 2, 0, BATH_H - viewH);
+  return { x: Math.round(camX), y: Math.round(camY) };
+}
+
+function bathroomPromptFor(spot) {
+  const c = cellar;
+  if (c.relieve || c.task) return null;
+  if (spot === 'door') return 'E: OUT';
+  if (spot === 'urinal' || spot === 'toilet') return bathroomNeed() ? 'E: RELIEVE' : null;
+  if (spot === 'sink') return 'E: WASH';
+  if (spot === 'dryer') return c.washed ? 'E: DRY' : null;
+  return null;
+}
+
+// The hand dryer's light show, over the lighting: a chasing RGB LED frame,
+// a laser scanning up and down its glass bay, beams fanning out into the room
+// and a colour-cycling pool on the floor. Wilder while someone is drying.
+function drawBathroomDryerFx(camX, camY) {
+  const hd = BATH_DRYER;
+  const x0 = hd.x - camX;
+  const y0 = hd.y - camY;
+  const t = prefersReducedMotion ? 0 : gameTime;
+  const using = cellar.task && cellar.task.kind === 'dry';
+  const hue = (t * (using ? 360 : 90)) % 360;
+  // Solid colour, not additive: on white tiles light would only wash out.
+
+  // Pool of cycling light on the floor in front of it.
+  ctx.globalAlpha = using ? 0.4 : 0.22;
+  ctx.fillStyle = 'hsl(' + hue + ',100%,55%)';
+  ctx.fillRect(Math.round(x0 - 22), Math.round(y0 - 3), 22, hd.h + 6);
+
+  // Chasing LEDs around the shell: every perimeter cell lit by its phase.
+  const cells = [];
+  for (let i = 0; i < hd.w; i++) cells.push([i, 0]);
+  for (let j = 1; j < hd.h; j++) cells.push([hd.w - 1, j]);
+  for (let i = hd.w - 2; i >= 0; i--) cells.push([i, hd.h - 1]);
+  for (let j = hd.h - 2; j > 0; j--) cells.push([0, j]);
+  const n = cells.length;
+  for (let k = 0; k < n; k++) {
+    const phase = (k / n + t * (using ? 2.4 : 0.8)) % 1;
+    ctx.globalAlpha = 0.5 + 0.5 * (phase < 0.5 ? 1 - phase * 2 : 0);
+    ctx.fillStyle = 'hsl(' + ((phase * 360 + hue) % 360) + ',100%,60%)';
+    ctx.fillRect(Math.round(x0 + cells[k][0]), Math.round(y0 + cells[k][1]), 1, 1);
+  }
+
+  // The scanning laser inside the glass bay.
+  const sweep = prefersReducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * (using ? 12 : 4));
+  const ly = y0 + 4 + sweep * (hd.h - 8);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#ff2a6a';
+  ctx.fillRect(Math.round(x0 + 2), Math.round(ly), 5.5, 1);
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = '#ff9ab8';
+  ctx.fillRect(Math.round(x0 + 2), Math.round(ly) - 1, 5.5, 3);
+
+  // Laser beams fanning out into the room, swinging slowly; a crowd of them
+  // while drying, with a bright dot where each lands.
+  const beams = using ? 9 : 5;
+  for (let b = 0; b < beams; b++) {
+    const fan = (b - (beams - 1) / 2) / beams;
+    const ang = Math.PI + fan * 1.1 + (prefersReducedMotion ? 0 : Math.sin(t * 1.7 + b) * 0.18);
+    const len = 26 + (using ? 14 : 0) + (b % 2) * 8;
+    const bx = x0 + 1;
+    const by = y0 + hd.h / 2;
+    const color = b % 3 === 0 ? '#ff2a6a' : b % 3 === 1 ? '#38ffb0' : '#4aa8ff';
+    ctx.fillStyle = color;
+    for (let d = 2; d < len; d += 1) {
+      ctx.globalAlpha = 1 - 0.6 * (d / len);
+      ctx.fillRect(Math.round(bx + Math.cos(ang) * d), Math.round(by + Math.sin(ang) * d), 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(bx + Math.cos(ang) * len) - 1, Math.round(by + Math.sin(ang) * len) - 1, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function renderBathroom() {
+  if (!bathroomCanvas) bathroomCanvas = buildBathroomCanvas();
+  const c = cellar;
+  const d = c.doe;
+  const cam = getBathroomCamera();
+  const camX = cam.x;
+  const camY = cam.y;
+
+  drawBackdrop();
+  ctx.drawImage(bathroomCanvas, 0, 0, BATH_W * ART_SCALE, BATH_H * ART_SCALE, -camX, -camY, BATH_W, BATH_H);
+  drawEntity(d, camX, camY);
+
+  // Bright, cold strip lighting: a light multiply and pools of cool white.
+  drawDarkness('#c3ccd6');
+  drawGlow(glowFor(70, COOL_RGB, 0.22), BATH_W / 2, 40, 1, camX, camY);
+  drawGlow(glowFor(70, COOL_RGB, 0.22), BATH_W / 2, 92, 1, camX, camY);
+  drawGlow(glowFor(26, COOL_RGB, 0.4), BATH_BOOTH.x + 15, 38, 1, camX, camY);
+  drawGlow(glowFor(20, COOL_RGB, 0.7), BATH_DRYER.x + 2, BATH_DRYER.y + 9, prefersReducedMotion ? 1 : 0.8 + 0.2 * Math.sin(gameTime * 4), camX, camY);
+  ensureVignette();
+  ctx.drawImage(vignetteCanvas, 0, 0);
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of c.sparks) {
+    ctx.globalAlpha = clamp(s.ttl / s.maxTtl, 0, 1);
+    ctx.fillStyle = s.color;
+    ctx.fillRect(Math.round(s.x - camX), Math.round(s.y - camY), s.size, s.size);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  drawBathroomDryerFx(camX, camY);
+
+  // Progress gauge while relieving, washing or drying; otherwise the prompt.
+  const job = c.relieve ? { t: c.relieve.t, total: BATH_RELIEF_TIME }
+    : c.task ? { t: c.task.t, total: c.task.kind === 'wash' ? BATH_WASH_TIME : BATH_DRY_TIME } : null;
+  if (job) {
+    const gw = 14;
+    const gx = Math.round(d.x - camX) - gw / 2;
+    const gy = Math.round(entityHeadTop(d) - camY) - 6;
+    drawParchmentPlate(gx - 1, gy - 1, gw + 2, 4, UI.brassDark);
+    ctx.fillStyle = PUB.ink;
+    ctx.fillRect(gx, gy, gw, 2);
+    ctx.fillStyle = '#8be9ff';
+    ctx.fillRect(gx, gy, Math.ceil(gw * clamp(1 - job.t / job.total, 0, 1)), 2);
+  } else {
+    const label = bathroomPromptFor(bathroomSpot(d));
+    if (label) fontDrawTextShadow(ctx, label, Math.round(d.x - camX - fontTextWidth(label) / 2), Math.round(d.y - camY - 26), PUB.cream);
+  }
+  for (const t of c.texts) {
+    const tw = fontTextWidth(t.text);
+    ctx.globalAlpha = clamp(t.ttl, 0, 1);
+    fontDrawTextShadow(ctx, t.text, Math.round(t.x - camX - tw / 2), Math.round(t.y - camY), t.color);
+  }
+  ctx.globalAlpha = 1;
+  for (const item of player.tray) {
+    const f = item.customer;
+    drawOrderBubble(d.x, entityHeadTop(d), camX, camY, item.type, false, f ? clamp(f.sitTimer / f.patienceDuration, 0, 1) : null);
+  }
+  const line = bladderUrgentTimer > 0 ? 'HOLDING ON' : 'BLADDER ' + bladderLevel + '/' + BLADDER_MAX;
+  drawCellarUpstairsPlate(line, bladderUrgentTimer > 0 ? PUB.tomato : PUB.coolPale);
 }
 
 // The hatch upstairs, drawn flat on the floor under everyone.
@@ -7561,6 +8104,9 @@ window.__debug = {
   getGhost: () => ghost,
   spawnGhost,
   getCellar: () => cellar,
+  getBathroom: () => (inBathroom() ? cellar : null),
+  enterBathroom: () => { if (!cellar) enterBathroom(); return inBathroom(); },
+  bathroomSpot: () => (inBathroom() ? bathroomSpot(cellar.doe) : null),
   enterCellar,
   exitCellar,
   getShelfStock: () => shelfStock,
