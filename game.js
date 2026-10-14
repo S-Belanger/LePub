@@ -262,7 +262,10 @@ function stationForType(type) {
   return null;
 }
 const BAR_SEGMENTS = [
-  { x: 1, y: 67, w: 71, h: 22, station: 'taps' },    // short counter, upper-left
+  // Upper-left counter. y 73, not the traced 67: Nazim's chair ends at y 60.5, and
+  // the feet need 7px, so at 67 the aisle under the booth was 0.5px too tight to
+  // walk and Rich could not pass south of it.
+  { x: 1, y: 73, w: 71, h: 22, station: 'taps' },
   { x: 91, y: 109, w: 27, h: 90, station: 'shelf' }, // vertical stem
   { x: 1, y: 177, w: 87, h: 23, station: 'hatch' },  // foot, meets the stem, touches the wall
 ].map(r => ({
@@ -6739,6 +6742,14 @@ function orderBubbleSpotFree(rect) {
 // bubble with its icon and patience bar. Stepping it keeps the animation on
 // whole pixels instead of easing through fractional sizes.
 function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, patienceFraction, frameColor, grow) {
+  // A ticket belongs to someone you can see. Clamping an off-screen owner's
+  // ticket into view pinned a row of icons to the screen edge that slid along
+  // with the camera, as if they followed the Doe. The clamp below is only for
+  // an owner who is on screen but whose ticket would poke past the edge.
+  const ownerX = worldX - camX;
+  const ownerHeadY = headTopY - camY;
+  const sceneTop = viewIsPortrait ? hudSceneTop() : 0;
+  if (ownerHeadY < sceneTop - 2 || ownerHeadY > viewH + 6 || ownerX < -6 || ownerX > viewW + 6) return;
   const icon = ORDER_ICONS[orderType];
   // A ticket is compact while nobody is in a hurry; it grows to the full
   // card once patience drops under 40% or it is yours, so the room's lamps

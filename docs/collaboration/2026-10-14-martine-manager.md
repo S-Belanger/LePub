@@ -56,6 +56,17 @@
 - Exact: "Also, add these lines: \"On le prend tu ce shot la?\", \"J'ai pas juste ca a faire\" (when she is waiting for her shot) If she comes after 150 sec, she sings Celine Dion lyrics in french"
 - Action: added the two lines to the waiting pool (accents added). Singing implemented with `martine.singing` (visit starts at shiftClock >= 150) but the assistant declined to write Céline Dion lyrics (copyrighted) and used wordless placeholders the user can replace in `MARTINE_LINES_SING`. Added `~` glyph in `src/pixelfont.js`. Follow-up user message: "Can she says: \"Mets du Celine!\"" -> added "Mets du Céline!" to `MARTINE_LINES_SING` (user's own phrase, not lyrics). Verified the glyph and line render after a cache-clearing reload.
 
+### 2026-10-14 — user — two bugs (exact)
+
+- Exact: "There are two bugs: * getting stuck in the top left corner table when trying to serve Sam * The icons for the things to serve customers follow Rich in the screen". Answers to assistant questions: symptom = "Can't reach Sam"; side = "South side"; Sam's order on the tray = "Yes, it was".
+- Bug 2 root cause and fix: see CHANGELOG (off-screen tickets clamped to the screen edge). Fixed in `drawOrderBubble`.
+- Bug 1: investigated, not reproduced (details in CHANGELOG). Booth collider x34-90,y27-59; west lane between bench and Sam's chair is ~12px wide for the foot centre; the slot under the booth (y58-66) is a dead end closed by Nazim's chair at x54-70; deliverable region (14px margin) covers all four sides. Hypothesis not proven: the south slot/west lane is a long dead-end the player can enter but must exit via the north.
+
+### 2026-10-14 — user — bug 1 clarified (exact)
+
+- Exact: "It's not that Rich get stuck, more that he cannot pass south of the booth".
+- Finding: colliders there are table x42–82,y29–51; Nazim's chair x58–66,y53.5–60.5; counter top y67. Foot box is 7px tall, so the aisle under the chair (6.5px) was impassable by 0.5px, and above the chair only 2.5px. Fix: move the TAPS counter to y 73. Rejected: moving the booth up (risks the phone HUD clearance tests, which could not be run), shaving the chair collider (leaves a 0.5px window), shrinking the counter (squashes its art).
+
 ## Implementation and evidence
 
 - `src/sprites.js`: `MARTINE_PALETTE`, `OH_MARTINE` (ohSheetSet), `SPRITES.martine`.

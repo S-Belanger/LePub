@@ -11,6 +11,8 @@
 - Also same day: late-shift shot (`shiftClock >= 90`): Martine tipsy, `martine.state 'waiting'`, order type `shot` (sprites.js ORDER_ICONS, SHELF station, stock-exempt), penalty via new `takeLifeHit()` (hunter hit code now calls it too), `martineWantsShot/Served/Wrath/ClearOrder`. Tipsy tint in `statusRasterFrame`/`jamesonPaletteFor`. Browser-verified; not tested on phone or with the cellar plate (does not show her ticket).
 - Also: Martine guaranteed once per shift (visit forced at 100s if none yet; `martineVisitedShift`, `martineForced`, `__debug.martineSchedule`). Shift ending before 100s on tips alone skips her.
 - Also: two more waiting lines; singing visits after 150s with wordless placeholder lines (`MARTINE_LINES_SING`; no real lyrics by design); `~` glyph added to pixelfont.
+- Bugs: off-screen order tickets pinned to the screen edge FIXED (`drawOrderBubble` owner-on-screen test). "Stuck at Sam's booth (south side, carrying his order)" NOT reproduced; see CHANGELOG for what was ruled out. Next step is a user repro (position when it happens).
+- Layout change: TAPS counter `BAR_SEGMENTS[0]` y 67 -> 73 so the aisle under the regulars' booth (below Nazim's chair) is walkable; hunter can use it too. RUN node tests (smoke, routing, alex, hud, collision) — layout-sensitive and not run.
 - Next: run the Node suites where Node exists (`character-art`, `assets`, `smoke`, `routing`, `alex`; re-run `tools/import-illustrated.js martine` to confirm identical JSON); fix walk B with prompt D, re-key, re-import.
 
 
