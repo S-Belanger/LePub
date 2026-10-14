@@ -31,6 +31,10 @@ const CharacterArt = (() => {
       // One source density/pivot convention across all directions and poses.
       rowCuts: [0, 328, 629, 917, 1254],
     }),
+    // Manager walk-on. Source is a free-tier generation with the flat green
+    // background keyed out; equal quarter rows have clear gutters (see
+    // assets/sprites/martine-prompt.md). Special row is the clipboard stance.
+    martine: person('Martine', 'martine', 'talk'),
     'customer-teal': person('Teal sweater', 'customer', 'talk'),
     'customer-ochre': person('Ochre jacket', 'customer', 'talk'),
     'customer-blue': person('Blue shirt', 'customer', 'talk'),
@@ -44,8 +48,7 @@ const CharacterArt = (() => {
     }),
   };
   const proceduralExceptions = {
-    ghost: 'Intentional translucent apparition; keep its procedural material.',
-  };
+    ghost: 'Intentional translucent apparition; keep its procedural material.',  };
   return { directions, families, proceduralExceptions, minSourceDensity: 4 };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = CharacterArt;

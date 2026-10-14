@@ -122,6 +122,7 @@ const ENTITY_HITBOXES = {
   busboy: { w: 14, h: 17 },
   alex: { w: 14, h: 17 },
   nick: { w: 14, h: 17 },
+  martine: { w: 14, h: 17 },
   nazim: { w: 14, h: 15 },
   sam: { w: 14, h: 15 },
   gerald: { w: 14, h: 15 },
@@ -399,6 +400,7 @@ const collisionRouting = CollisionRouting.create({
 const { COLLISION_EPSILON, MOVE_SUBSTEP, PATH_CELL, PATH_MARGIN, PATH_FOOT_H,
   CUSTOMER_HALF_W, CUSTOMER_HALF_H, CUSTOMER_FOOTPRINT, HUNTER_FOOTPRINT,
   BUSBOY_FOOTPRINT, ALEX_FOOTPRINT, NICK_FOOTPRINT } = collisionRouting;
+const MARTINE_FOOTPRINT = collisionRouting.footprintFor('martine');
 function rectsOverlap(...args) { return collisionRouting.rectsOverlap(...args); }
 function getFootBox(...args) { return collisionRouting.getFootBox(...args); }
 function furnitureRects(...args) { return collisionRouting.furnitureRects(...args); }
@@ -491,7 +493,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: hitbox.w,
     h: hitbox.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : kind === 'nick' ? 42 : 54,
+    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : kind === 'nick' ? 42 : kind === 'martine' ? 44 : 54,
     flip: false,
     facing: 'down',   // down | up | right | left — visual only, from movement
     legTimer: 0,
@@ -1404,7 +1406,7 @@ function alexArea(x, y) {
 
 function alexPeople() {
   return [player, ...(hunterState !== 'arriving' && hunterSmokeState !== 'outside' ? [hunter] : []),
-    ...customers, ...regulars, waiter, busboy, nick].filter(Boolean);
+    ...customers, ...regulars, waiter, busboy, nick, martine].filter(Boolean);
 }
 
 function alexSpotClear(x, y) {
@@ -1786,6 +1788,155 @@ function updateNick(dt) {
   } else if (nick.state === 'leaving') {
     nick.travelTimer += dt;
     if (nickFollowPath(dt) || nick.travelTimer > NICK_STUCK_TIMEOUT) dismissNick();
+  }
+}
+
+// ---- Martine: the manager. Every minute or two she comes in through the door,
+// walks a loop of the floor with a keen eye, stops at a few spots to look the
+// place over and says what she thinks, then leaves. Pure scenery like Nick and
+// the busboy: no order, no seat, no collider, no effect on score or the chase.
+// What she says depends on the room — a ticket about to lapse gets a pointed
+// remark, a quiet floor gets a nod. `martine` is null between visits.
+let martine = null;
+const MARTINE_FIRST_MIN = 25;
+const MARTINE_FIRST_MAX = 45;
+const MARTINE_REPEAT_MIN = 70;
+const MARTINE_REPEAT_MAX = 120;
+let martineDelay = MARTINE_FIRST_MIN + Math.random() * (MARTINE_FIRST_MAX - MARTINE_FIRST_MIN);
+const MARTINE_STOPS_MIN = 3;
+const MARTINE_STOPS_MAX = 4;
+const MARTINE_LINGER_TIME = 2.4;
+const MARTINE_LINE_TTL = 2.4;
+const MARTINE_STUCK_TIMEOUT = 14;
+const MARTINE_URGENT_FRACTION = 0.35;  // an order below this much patience is "late"
+// Quebecois, in the pub's pixel font (no '#' glyph; accents fold to the base letter).
+// "Rich" is the Doe, "Mathieu" is the hunter.
+const MARTINE_LINES_CALM = ['Ça roule, Rich?', 'Pas pire, Rich.', 'Continue de même!', 'C\'est beau, là.'];
+const MARTINE_LINES_BUSY = ['Voyons!', 'Ça va faire', 'Rich, arrête de te pogner le cul', 'Wô, ça rentre!'];
+const MARTINE_LINES_LATE = ['Rich, ton client a la 4!', 'Rich, bouge-toi!', 'Ils sont tannés d\'attendre!'];
+const MARTINE_LINES_HUNTER = ['Mathieu! Commence pas...', 'Tu me gosses à soir', 'Mathieu, assis-toi donc.'];
+const MARTINE_FRAME = '#3a3633';       // charcoal top, like her sprite
+
+function martineRoute(from, to) {
+  const route = computeCustomerPath(from, to, null, MARTINE_FOOTPRINT);
+  let cursor = from;
+  for (const next of route) {
+    if (findBlockingObstacle(cursor, next, null, MARTINE_FOOTPRINT)) return null;
+    cursor = next;
+  }
+  return route.length ? route : null;
+}
+
+// A random open spot she can stand on and actually walk to; the staff pocket is
+// open floor rather than a collider, so it is excluded by hand, same as Nick.
+function pickMartineStop(from) {
+  for (let i = 0; i < 30; i++) {
+    const x = 18 + Math.random() * (WORLD_W - 36);
+    const y = 24 + Math.random() * (WORLD_H - 64);
+    const box = { x: x - 7, y: y - 17, w: 14, h: 17 };
+    if (rectsOverlap(box, BAR_STAFF_AREA) || pointBlocked(x, y, null, MARTINE_FOOTPRINT)) continue;
+    const path = martineRoute(from, { x, y });
+    if (path) return { x, y, path };
+  }
+  return null;
+}
+
+function spawnMartine() {
+  if (martine) return null;
+  const first = pickMartineStop(DOOR);
+  if (!first) return null;
+  martine = makeEntity('martine', DOOR.x, DOOR.y);
+  martine.state = 'entering';
+  martine.stopsLeft = MARTINE_STOPS_MIN + Math.floor(Math.random() * (MARTINE_STOPS_MAX - MARTINE_STOPS_MIN + 1));
+  beginEntityRoute(martine, first, null, MARTINE_FOOTPRINT, martine, first.path);
+  martine.travelTimer = 0;
+  martine.lingerTimer = 0;
+  martine.line = null;
+  martine.lineTtl = 0;
+  martine.lineFrame = MARTINE_FRAME;
+  return martine;
+}
+
+function dismissMartine() {
+  martine = null;
+  martineDelay = MARTINE_REPEAT_MIN + Math.random() * (MARTINE_REPEAT_MAX - MARTINE_REPEAT_MIN);
+}
+
+function martineFollowPath(dt) {
+  return routedWalk(martine, dt, null, MARTINE_FOOTPRINT);
+}
+
+function martineLeave() {
+  martine.state = 'leaving';
+  martine.travelTimer = 0;
+  beginEntityRoute(martine, DOOR, null, MARTINE_FOOTPRINT);
+}
+
+// A pick from what is actually happening: late tickets first, then the hunter
+// on the floor, then how full the room is.
+function martineLineFor() {
+  const pick = pool => pool[Math.floor(Math.random() * pool.length)];
+  // He is on her heels, so that is what she is annoyed about.
+  if (hunterState === 'following') return pick(MARTINE_LINES_HUNTER);
+  const lapsing = c => c && c.orderType && !c.served && c.patienceDuration > 0 &&
+    c.sitTimer / c.patienceDuration < MARTINE_URGENT_FRACTION;
+  if (customers.some(lapsing) || regulars.some(lapsing)) return pick(MARTINE_LINES_LATE);
+  return pick(customers.length >= 5 ? MARTINE_LINES_BUSY : MARTINE_LINES_CALM);
+}
+
+function martineSay() {
+  martine.line = martineLineFor();
+  martine.lineTtl = MARTINE_LINE_TTL;
+}
+
+function updateMartine(dt) {
+  if (paused || caught || shiftTally) return;
+  if (!martine) {
+    martineDelay -= dt;
+    if (martineDelay <= 0) {
+      if (gameTime >= 15 && !isLastCall() && !cellar) spawnMartine();
+      if (!martine) martineDelay = 10; // floor too busy or no route: try again soon
+    }
+    return;
+  }
+
+  if (martine.line) {
+    martine.lineTtl -= dt;
+    if (martine.lineTtl <= 0) martine.line = null;
+  }
+  // Last call clears the floor: she heads for the door like everyone else.
+  if (martine.state !== 'leaving' && isLastCall()) { martineLeave(); if (!martine) return; }
+
+  // The special sheet row is the clipboard stance, held while she looks the
+  // room over; a missing sheet falls back to the procedural idle.
+  martine.pose = martine.state === 'lingering' ? 'talk' : null;
+
+  if (martine.state === 'entering') {
+    martine.travelTimer += dt;
+    if (martineFollowPath(dt)) {
+      martine.state = 'lingering';
+      martine.lingerTimer = MARTINE_LINGER_TIME;
+      martineSay();
+    } else if (martine.travelTimer > MARTINE_STUCK_TIMEOUT) {
+      dismissMartine();
+    }
+  } else if (martine.state === 'lingering') {
+    martine.moving = false;
+    martine.lingerTimer -= dt;
+    if (martine.lingerTimer <= 0) {
+      martine.stopsLeft--;
+      const next = martine.stopsLeft > 0 ? pickMartineStop(martine) : null;
+      if (next) {
+        beginEntityRoute(martine, next, null, MARTINE_FOOTPRINT, martine, next.path);
+        martine.travelTimer = 0;
+        martine.state = 'entering';
+      } else {
+        martineLeave();
+      }
+    }
+  } else if (martine.state === 'leaving') {
+    martine.travelTimer += dt;
+    if (martineFollowPath(dt) || martine.travelTimer > MARTINE_STUCK_TIMEOUT) dismissMartine();
   }
 }
 
@@ -2340,6 +2491,9 @@ function resetGame() {
   hunter.served = false;
   hunter.beingCarried = false;
   setHunterState('arriving', hasPlayedBefore ? HUNTER_ARRIVAL_RETRY : HUNTER_ARRIVAL_FIRST);
+  hunter.line = null;
+  hunter.lineTtl = 0;
+  hunterTskTimer = 0;
   caught = false;
   enteringName = false;
   nameInput = '';
@@ -2400,6 +2554,8 @@ function resetGame() {
   }
   alex = null;
   nick = null;
+  martine = null;
+  martineDelay = MARTINE_FIRST_MIN + Math.random() * (MARTINE_FIRST_MAX - MARTINE_FIRST_MIN);
   fartClouds.length = 0;
   fartHaze = 0;
   hazeRenderer.reset();
@@ -3134,6 +3290,35 @@ function pickNewHunterDirection() {
   hunterChangeTimer = timerMin + Math.random() * timerRange;
 }
 
+// ---- The hunter trails Martine while she is on the floor, clicking his tongue
+// at her. She hates it. He is off duty: no sighting, no chase, no contact
+// damage (see hunterCanCatch in update) until she has left.
+const HUNTER_FOLLOW_GAP = 18;       // how close he stands behind her
+const HUNTER_FOLLOW_SPEED = 1.2;    // of his walking speed: keeps up with Martine (44)
+const HUNTER_FOLLOW_REPATH = 0.5;
+const HUNTER_TSK_MIN = 2.2;
+const HUNTER_TSK_MAX = 3.6;
+const HUNTER_TSK_TTL = 1.8;
+const HUNTER_TSK_LINE = 'Tsk tsk tsk tsk...';
+let hunterTskTimer = 0;
+
+function startHunterFollowingMartine() {
+  setHunterState('following');
+  hunterAlert = null;
+  hunter.line = null;
+  hunter.lineTtl = 0;
+  hunter.lineFrame = BUBBLE_FRAME_HUNTER;
+  hunterTskTimer = 0.6;   // the first one comes almost at once
+}
+
+function hunterTsk() {
+  hunter.line = HUNTER_TSK_LINE;
+  hunter.lineTtl = HUNTER_TSK_TTL;
+  hunterTskTimer = HUNTER_TSK_MIN + Math.random() * (HUNTER_TSK_MAX - HUNTER_TSK_MIN);
+  // She answers about half the time, if she isn't mid-sentence.
+  if (martine && !martine.line && Math.random() < 0.5) martineSay();
+}
+
 function hunterWantsPint() {
   hunter.orderType = 'beer-blond';
   hunter.orderPlacedAt = gameTime;
@@ -3187,7 +3372,40 @@ function updateHunter(dt) {
   const lvl = hunterLevelSteps();
   hunter.speed = Math.min(60, 40 + lvl * 2.5) * spillSlowAt(hunter.x, hunter.y);
 
+  // The manager is on the floor: he drops the hunt and trails after her.
+  if (martine && (hunterState === 'scanning' || hunterState === 'chase' || hunterState === 'lost')) {
+    startHunterFollowingMartine();
+  }
+
   switch (hunterState) {
+    case 'following': {
+      if (!martine) {
+        hunter.line = null;
+        setHunterState('scanning');
+        hunterRouteTo(pickClearSpawn(hunter));
+        return;
+      }
+      hunter.lineTtl -= dt;
+      if (hunter.lineTtl <= 0) hunter.line = null;
+      hunterTskTimer -= dt;
+      if (hunterTskTimer <= 0) hunterTsk();
+      const gap = Math.hypot(martine.x - hunter.x, martine.y - hunter.y);
+      if (gap <= HUNTER_FOLLOW_GAP) {
+        // Close enough to be annoying: stand there, facing her.
+        hunterRouteState = null;
+        hunterPath = null;
+        hunterDir = { x: 0, y: 0 };
+        faceToward(hunter, martine.x - hunter.x, martine.y - hunter.y);
+        return;
+      }
+      hunterRepathTimer -= dt;
+      if (!hunterRouteState || hunterRepathTimer <= 0) {
+        hunterRouteTo(martine, true);
+        hunterRepathTimer = hunterPath && hunterPath.length ? HUNTER_FOLLOW_REPATH : ROUTE_RETRY_INTERVAL;
+      }
+      hunterFollowPath(HUNTER_FOLLOW_SPEED);
+      return;
+    }
     case 'arriving': {
       hunterStateTimer -= dt;
       if (hunterStateTimer <= 0) {
@@ -3484,6 +3702,7 @@ function update(dt) {
   updateBusboy(dt);
   updateAlex(dt);
   updateNick(dt);
+  updateMartine(dt);
   updateDialogueTriggers(dt, input);
   updateAmbient(dt);
 
@@ -3531,6 +3750,7 @@ function update(dt) {
   if (busboy) tickLegs(busboy, dt);
   if (alex) tickLegs(alex, dt);
   if (nick) tickLegs(nick, dt);
+  if (martine) tickLegs(martine, dt);
 
   // The Jameson counting itself down. Sliding is dropped for its duration so
   // the wall-following that exists to close distance can't be used to keep it.
@@ -3589,7 +3809,7 @@ function update(dt) {
   const dx = player.x - hunter.x;
   const dy = player.y - hunter.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  const hunterCanCatch = hunterState !== 'arriving' && hunterState !== 'drinking';
+  const hunterCanCatch = hunterState !== 'arriving' && hunterState !== 'drinking' && hunterState !== 'following';
   const touching = hunterCanCatch && !cellar && !hunterOnSmokeBreak() && dist < (player.w + hunter.w) / 2.4;
 
   // On a Jameson the collision still happens, it just runs the other way:
@@ -6732,7 +6952,7 @@ function hudCoversSomeone(hud) {
   if (hunterState !== 'arriving' && !hunterOnSmokeBreak() && check(hunter)) return true;
   for (const c of customers) if (check(c)) return true;
   for (const r of regulars) if (check(r)) return true;
-  return check(waiter) || check(busboy) || check(alex);
+  return check(waiter) || check(busboy) || check(alex) || check(martine);
 }
 
 function updateHudFade(hud) {
@@ -7066,6 +7286,7 @@ function render() {
   // updateAlex, not anything drawn here.
   if (alex) pushDrawable(alex.y, 'entity', alex);
   if (nick) pushDrawable(nick.y, 'entity', nick);
+  if (martine) pushDrawable(martine.y, 'entity', martine);
   drawList.sort(sortByY);
   for (const d of drawList) {
     if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
@@ -7103,6 +7324,8 @@ function render() {
   drawDialogueBubbles(camX, camY);
   drawWalkOnLine(busboy, camX, camY);
   drawWalkOnLine(nick, camX, camY);
+  drawWalkOnLine(martine, camX, camY);
+  if (hunterState === 'following' && !hunterOnSmokeBreak()) drawWalkOnLine(hunter, camX, camY);
 
   // Floating score/penalty feedback, fading out as it drifts up.
   for (const t of floatingTexts) {
@@ -7171,6 +7394,8 @@ window.__debug = {
   getBusboy: () => busboy,
   getNick: () => nick,
   spawnNick,
+  getMartine: () => martine,
+  spawnMartine,
   getFartClouds: () => fartClouds,
   getFartHaze: () => fartHaze,
   spawnBusboy,

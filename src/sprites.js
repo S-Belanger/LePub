@@ -1663,6 +1663,26 @@ const OH_NICK = ohSheetSet({
   face: { skin: 'k', beard: 'e', moustache: 'e' },
 }, { r: ['R', 'Q'], c: ['C', 'c'], w: ['W', 'V'], k: ['J', 'K'], e: ['E', 'F'], s: ['S', 's'] }, NICK_PALETTE, []);
 
+// Martine, the manager: short silver-lilac hair with a fringe, a charcoal
+// zip-neck top and dark trousers (see the Martine block in game.js). This is
+// the procedural fallback only; her illustrated atlas is declared art debt in
+// src/character-art.js until docs/claude handoff art exists.
+const MARTINE_PALETTE = {
+  '.': null,
+  i: '#181515',
+  h: '#a99aae', H: '#c9bccd', q: '#7f7184',   // silver-lilac hair
+  c: '#3a3633', C: '#514b47', D: '#24201e',   // charcoal top
+  w: '#2b2a30', W: '#3c3b44', V: '#1f1e24',   // dark trousers
+  k: '#eab08c', J: '#f6caa6', K: '#c9855e',   // skin, a little flushed
+  s: '#1a1512', S: '#3a2c22',                  // shoes
+  x: '#2a1a10',
+};
+const OH_MARTINE = ohSheetSet({
+  head: { kind: 'hair', color: 'h', dark: 'q' },
+  body: { coat: 'c', hand: 'k', feet: 's', legs: 'w' },
+  face: { skin: 'k' },
+}, { h: ['H', 'q'], c: ['C', 'D'], w: ['W', 'V'], k: ['J', 'K'], s: ['S', 's'] }, MARTINE_PALETTE, []);
+
 // Walk-ins come in three head shapes over the six palette looks: hair, a
 // flat cap in the trouser colour, a round cap in the shirt's dark tone.
 const OH_CUSTOMER_VARIANTS = [
@@ -1699,6 +1719,7 @@ const SPRITES = {
   ghost: { idle: OH_GHOST, walk: OH_GHOST, palette: GHOST_PALETTE },
   waiter: OH_WAITER,
   nick: OH_NICK,
+  martine: OH_MARTINE,
   nazim: OH_NAZIM,
   sam: OH_SAM,
   gerald: OH_GERALD,

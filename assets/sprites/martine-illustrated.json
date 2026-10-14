@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "assetId": "lepub.martine.illustrated",
+  "image": "martine-illustrated.png",
+  "imageSize": {
+    "width": 1254,
+    "height": 1254
+  },
+  "frameSpace": "untrimmed-source-pixels",
+  "pivotSpace": "frame-local-pixels",
+  "authoredPixelsPerWorldUnit": 12.0,
+  "alphaPolicy": "translucent",
+  "palettePolicy": "illustrated-reference",
+  "fallbackKey": "martine",
+  "directions": [
+    "down",
+    "right",
+    "up",
+    "left"
+  ],
+  "provenance": "ChatGPT (free) image generation from a single reference board (identity photo + Jay + Nick B), flat green background removed by script (see assets/sprites/martine-prompt.md). Bounds measured by a Python port of tools/import-illustrated.js.",
+  "frames": {
+    "idle.down": {
+      "rect": {
+        "x": 83,
+        "y": 44,
+        "width": 165,
+        "height": 241
+      },
+      "pivot": {
+        "x": 74.0,
+        "y": 239
+      }
+    },
+    "idle.right": {
+      "rect": {
+        "x": 398,
+        "y": 40,
+        "width": 124,
+        "height": 252
+      },
+      "pivot": {
+        "x": 72.5,
+        "y": 250
+      }
+    },
+    "idle.up": {
+      "rect": {
+        "x": 700,
+        "y": 42,
+        "width": 160,
+        "height": 240
+      },
+      "pivot": {
+        "x": 84.0,
+        "y": 238
+      }
+    },
+    "idle.left": {
+      "rect": {
+        "x": 1028,
+        "y": 45,
+        "width": 118,
+        "height": 245
+      },
+      "pivot": {
+        "x": 69.5,
+        "y": 243
+      }
+    },
+    "walkA.down": {
+      "rect": {
+        "x": 82,
+        "y": 332,
+        "width": 162,
+        "height": 271
+      },
+      "pivot": {
+        "x": 75.0,
+        "y": 269
+      }
+    },
+    "walkA.right": {
+      "rect": {
+        "x": 387,
+        "y": 331,
+        "width": 165,
+        "height": 256
+      },
+      "pivot": {
+        "x": 83.5,
+        "y": 254
+      }
+    },
+    "walkA.up": {
+      "rect": {
+        "x": 694,
+        "y": 333,
+        "width": 163,
+        "height": 270
+      },
+      "pivot": {
+        "x": 90.0,
+        "y": 268
+      }
+    },
+    "walkA.left": {
+      "rect": {
+        "x": 999,
+        "y": 332,
+        "width": 175,
+        "height": 254
+      },
+      "pivot": {
+        "x": 98.5,
+        "y": 252
+      }
+    },
+    "walkB.down": {
+      "rect": {
+        "x": 80,
+        "y": 647,
+        "width": 165,
+        "height": 267
+      },
+      "pivot": {
+        "x": 77.0,
+        "y": 265
+      }
+    },
+    "walkB.right": {
+      "rect": {
+        "x": 388,
+        "y": 647,
+        "width": 158,
+        "height": 256
+      },
+      "pivot": {
+        "x": 82.5,
+        "y": 254
+      }
+    },
+    "walkB.up": {
+      "rect": {
+        "x": 692,
+        "y": 648,
+        "width": 173,
+        "height": 266
+      },
+      "pivot": {
+        "x": 92.0,
+        "y": 264
+      }
+    },
+    "walkB.left": {
+      "rect": {
+        "x": 1004,
+        "y": 649,
+        "width": 170,
+        "height": 253
+      },
+      "pivot": {
+        "x": 93.5,
+        "y": 251
+      }
+    },
+    "special.down": {
+      "rect": {
+        "x": 71,
+        "y": 951,
+        "width": 180,
+        "height": 262
+      },
+      "pivot": {
+        "x": 86.0,
+        "y": 260
+      }
+    },
+    "special.right": {
+      "rect": {
+        "x": 388,
+        "y": 951,
+        "width": 151,
+        "height": 267
+      },
+      "pivot": {
+        "x": 82.5,
+        "y": 265
+      }
+    },
+    "special.up": {
+      "rect": {
+        "x": 696,
+        "y": 956,
+        "width": 176,
+        "height": 254
+      },
+      "pivot": {
+        "x": 88.0,
+        "y": 252
+      }
+    },
+    "special.left": {
+      "rect": {
+        "x": 1023,
+        "y": 953,
+        "width": 154,
+        "height": 265
+      },
+      "pivot": {
+        "x": 74.5,
+        "y": 263
+      }
+    }
+  },
+  "animations": {
+    "idle.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.down": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.down",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.down",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.down": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.down",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.right": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.right",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.right",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.right": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.right",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.up": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.up",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.up",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.up": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.up",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "idle.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "idle.left",
+          "durationMs": 1000
+        }
+      ]
+    },
+    "walk.left": {
+      "loop": true,
+      "sequence": [
+        {
+          "frameId": "walkA.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "walkB.left",
+          "durationMs": 160
+        },
+        {
+          "frameId": "idle.left",
+          "durationMs": 160
+        }
+      ]
+    },
+    "talk.left": {
+      "loop": false,
+      "sequence": [
+        {
+          "frameId": "special.left",
+          "durationMs": 1000
+        }
+      ]
+    }
+  }
+}

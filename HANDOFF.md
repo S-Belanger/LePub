@@ -1,5 +1,16 @@
 # LePub durable handoff
 
+## 2026-10-14 — Martine (manager) added locally; art debt and untested suites
+
+- Branch main, HEAD 8ba9024, started clean; changes local/uncommitted/unpushed.
+- User asked to add Martine, the pub manager (photo supplied in chat, not stored). Implemented as a Nick-style walk-on in `game.js` (spawn 25–45 s, repeat 70–120 s, 3–4 routed stops, contextual lines, no score/hunter effect), procedural `OH_MARTINE` in `src/sprites.js`, hitbox 14x17.
+- `src/character-art.js` lists `martine` under `proceduralExceptions` (explicit art debt, no illustrated atlas: no image generator available). Brief: `docs/claude/martine-brief.md`. Journal: `docs/collaboration/2026-10-14-martine-manager.md`.
+- Verified only in the browser pane (full visit lifecycle + screenshot). **`node` is not installed on this machine, so no `tests/*.js` suite was run** — run `character-art`, `assets`, `smoke`, `routing`, `alex` where Node exists. Mobile view and reset-mid-visit not checked.
+- UPDATE same day: illustrated atlas now integrated (`assets/sprites/martine-illustrated.png/.json`, manifest entry, `families.martine`, exception removed, clipboard `talk` pose while lingering). Source = free ChatGPT sheet, green keyed by `docs/claude/scripts/key-green.py`; metadata by Python port `import-martine.py` (no Node). **Defect: walk A ≈ walk B.** Provenance in `assets/sprites/martine-prompt.md`.
+- Also same day: Québécois lines; hunter `following` state (follows Martine saying "Tsk tsk tsk tsk...", cannot catch while she is there; `updateHunter`, `hunterCanCatch`, `startHunterFollowingMartine`/`hunterTsk` in game.js). Browser-verified only.
+- Next: run the Node suites where Node exists (`character-art`, `assets`, `smoke`, `routing`, `alex`; re-run `tools/import-illustrated.js martine` to confirm identical JSON); fix walk B with prompt D, re-key, re-import.
+
+
 ## 2026-10-11 12:34 America/Toronto — approved game improvements complete; final release receipt
 
 - main implementation5460c5f97b52847acde7f97f369f355c6d1d410b and corrected test/receipt4ecc4069e1fe9accff2f608cd31075f375776c4c committed/pushed/independentlyremote-matched. HEADatthischeckpoint4ecc406, origin/main0/0; only finaldocumentation/evidence edits local. This closing docs receipt's own SHA is resolved from git log, rather than embedded in itself. Publish it and confirm clean remote match; no remaining product work.

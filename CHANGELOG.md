@@ -6,6 +6,15 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-14 — Martine, the manager (local, uncommitted)
+
+- **Request:** "Could we add Martine to the pub. She is the manager" with a photo (not copied into the repo).
+- **Done:** Martine visits as a walk-on (like Nick): a few routed stops, contextual French lines (late orders, busy/calm room, the hunter). No score/hunter/collider effect. Procedural sprite from the photo's likeness; illustrated atlas is recorded art debt ([brief](docs/claude/martine-brief.md)) because no image generator was available.
+- **Checks:** browser simulation of a full visit and a screenshot only; `node` is not installed here so no `tests/*.js` suites were run. Not committed or pushed.
+- **Illustrated art (same day):** user generated the sheet with free ChatGPT from one combined reference board; flat green keyed to alpha, imported with equal rows (16/16 edge checks), density 12.0, manifest + contract updated, exception removed. Clipboard pose plays while she lingers. Browser-verified (atlas valid, raster frames on every frame, pose switches). **Known defect:** walk A and walk B are near-identical. Node suites still not run.
+- **Lines and hunter (same day):** her lines rewritten in Québécois by the user. New hunter state `following`: while Martine is on the floor he drops the hunt (any state but arriving/drinking/smoke break), trails her at 18px saying "Tsk tsk tsk tsk..." every 2.2–3.6s, cannot catch or hurt the player, and she answers with hunter-annoyed lines. After she leaves he resumes scanning. Verified in browser (chase → follow, no life lost with the player standing on him, resumes). Deliberate gameplay change: Martine's visits are a safe window from the hunter. Node suites not run.
+- [Journal](docs/collaboration/2026-10-14-martine-manager.md).
+
 ## 2026-10-11 — Approved game audit follow-up (published and verified live)
 
 - User authorized every audit recommendation and pushing `main`; physical-phone testing unavailable, then requested "Resume". Original October10 fixes are included.
