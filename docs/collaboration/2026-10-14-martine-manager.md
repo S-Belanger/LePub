@@ -38,6 +38,14 @@
 - Judgement call to flag: her visit is now a safe window from the hunter (gameplay/balance change, user-requested by intent).
 - Checks: browser run with hunter forced into chase → follows, 0 life lost with the player on top of him, resumes after she leaves; screenshot shows both bubbles. Node suites not run.
 
+### 2026-10-14 — user — late-shift shot and tipsy (exact)
+
+- Exact: "Another behavior to add: * If she comes later in the shift: she wants a shot with Rich, but she is impatient and says "Rich, enyoye!", and "Rich, tu me niaises?"... * If she doesnt get he shot in time, rich lose life * Can you make her look tipsie?"
+- Interpretations (assistant; user may correct): "enyoye" = "envoye"; "later in the shift" = `shiftClock >= 90` (half of a timed shift; applies to every shift); "get the shot" = Rich carries it to her like any order; "lose life" = one third of the bar via the same path as a hunter hit (also counts in the tally and can end the run); "tipsy" = whole late visit, rosy face tint on the illustrated sprite (head only), pink-skin palette on the fallback, and a side-to-side weave that grows once she is served.
+- Design choices: shot made at the SHELF; exempt from cellar stock so the penalty can't be unavoidable; 30s patience; she stands still at her first stop while waiting; she leaves with no penalty on last call. Nag lines every 4.5–6.5s (below 35% patience: "Rich, tu me niaises?"). Unrequested lines added: "Rich, un shot!", "Rich, mon shot!", thanks ("Enfin, Rich!", "Ah! Là on se parle.", "T'es fine, Rich!"), wrath ("Rich, t'es dans le trouble!", "C'est pas drôle, Rich!").
+- Refactor: hunter-hit life/caught code extracted into `takeLifeHit()` (behaviour unchanged) and reused by Martine's wrath.
+- Checks: browser only (see CHANGELOG entry). Not tested: phone viewport, cellar while she waits (cellar plate does not list her ticket), reduced-motion sway.
+
 ## Implementation and evidence
 
 - `src/sprites.js`: `MARTINE_PALETTE`, `OH_MARTINE` (ohSheetSet), `SPRITES.martine`.

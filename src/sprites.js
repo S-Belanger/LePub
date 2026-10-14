@@ -348,11 +348,13 @@ const ORDER_ICONS = {
   cocktail: { sprite: detailSprite(buildSprite(COCKTAIL_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#d94f8c' } },
   wine: { sprite: detailSprite(buildSprite(WINE_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#7a1428' } },
   food: { sprite: detailSprite(buildSprite(FOOD_ROWS)), palette: { '.': null, p: '#d8d8d8', M: '#a9622f', G: '#5a8a3a' } },
+  // A shot of whisky: only ever ordered by Martine, never by a walk-in.
+  shot: { sprite: detailSprite(buildSprite(WINE_ROWS)), palette: { '.': null, o: '#2a1c10', L: '#d9962b' } },
   // A pint of water: only ever ordered for Nazim, never by a walk-in.
   water: { sprite: detailSprite(buildSprite(MUG_ROWS)), palette: { '.': null, f: '#e4f4f8', o: '#2a1c10', L: '#9fd3e8' } },
 };
 // What walk-ins can roll. Water is Gerald's idea, not on the menu.
-const ORDER_TYPES = Object.keys(ORDER_ICONS).filter(t => t !== 'water');
+const ORDER_TYPES = Object.keys(ORDER_ICONS).filter(t => t !== 'water' && t !== 'shot');
 function randomOrderType() { return ORDER_TYPES[Math.floor(Math.random() * ORDER_TYPES.length)]; }
 
 // ---- The regulars: Nazim, Sam and Gerald ------------------------------------
@@ -1682,6 +1684,10 @@ const OH_MARTINE = ohSheetSet({
   body: { coat: 'c', hand: 'k', feet: 's', legs: 'w' },
   face: { skin: 'k' },
 }, { h: ['H', 'q'], c: ['C', 'D'], w: ['W', 'V'], k: ['J', 'K'], s: ['S', 's'] }, MARTINE_PALETTE, []);
+
+// Late-shift Martine: the same figure with a flushed face (fallback only; the
+// illustrated sheet gets a tint on the head instead, see statusRasterFrame).
+const MARTINE_TIPSY_PALETTE = Object.assign({}, MARTINE_PALETTE, { k: '#f2917f', J: '#fbb2a0', K: '#d2705e' });
 
 // Walk-ins come in three head shapes over the six palette looks: hair, a
 // flat cap in the trouser colour, a round cap in the shirt's dark tone.

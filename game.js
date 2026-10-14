@@ -254,7 +254,7 @@ function getTableSeats(table) {
 // between me and the taps. Remapping a station is a one-word edit here.
 const BAR_STATIONS = {
   taps: { label: 'TAPS', types: ['beer-dark', 'beer-red', 'beer-blond', 'water'] },
-  shelf: { label: 'SHELF', types: ['wine', 'cocktail'] },
+  shelf: { label: 'SHELF', types: ['wine', 'cocktail', 'shot'] },
   hatch: { label: 'KITCHEN', types: ['food'] },
 };
 function stationForType(type) {
@@ -1815,7 +1815,24 @@ const MARTINE_LINES_CALM = ['Ça roule, Rich?', 'Pas pire, Rich.', 'Continue de 
 const MARTINE_LINES_BUSY = ['Voyons!', 'Ça va faire', 'Rich, arrête de te pogner le cul', 'Wô, ça rentre!'];
 const MARTINE_LINES_LATE = ['Rich, ton client a la 4!', 'Rich, bouge-toi!', 'Ils sont tannés d\'attendre!'];
 const MARTINE_LINES_HUNTER = ['Mathieu! Commence pas...', 'Tu me gosses à soir', 'Mathieu, assis-toi donc.'];
-const MARTINE_FRAME = '#3a3633';       // charcoal top, like her sprite
+const MARTINE_FRAME = '#a99aae';       // silver-lilac, her hair: frame of her ticket
+
+// Late in the shift she comes in tipsy and wants a shot — from Rich, now. It
+// is an ordinary order (same pickup/tray/delivery code as the hunter's pint),
+// so the only new rules are the clock and what a lapse costs. If it lapses the
+// Doe loses a third of the life bar, exactly as a hunter hit would.
+const MARTINE_SHOT_AFTER = 90;          // shiftClock seconds before a visit is a shot visit
+const MARTINE_SHOT_PATIENCE = 30;
+const MARTINE_SERVE_RANGE = 24;
+const MARTINE_NAG_MIN = 4.5;            // gap between impatient remarks
+const MARTINE_NAG_MAX = 6.5;
+const MARTINE_SOBER_SWAY = 0;
+const MARTINE_TIPSY_SWAY = 1.2;         // world units of side-to-side weave
+const MARTINE_SERVED_SWAY = 2;          // happier, wobblier
+const MARTINE_LINES_NAG = ['Rich, envoye!', 'Rich, tu me niaises?', 'Rich, mon shot!'];
+const MARTINE_LINE_ORDER = 'Rich, un shot!';
+const MARTINE_LINES_THANKS = ['Enfin, Rich!', 'Ah! Là on se parle.', 'T\'es fine, Rich!'];
+const MARTINE_LINES_WRATH = ['Rich, t\'es dans le trouble!', 'C\'est pas drôle, Rich!'];
 
 function martineRoute(from, to) {
   const route = computeCustomerPath(from, to, null, MARTINE_FOOTPRINT);
@@ -1854,10 +1871,36 @@ function spawnMartine() {
   martine.line = null;
   martine.lineTtl = 0;
   martine.lineFrame = MARTINE_FRAME;
+  // The manager shape of an order (see findOldestPendingOrder): idle until a
+  // shot is asked for.
+  martine.isManager = true;
+  martine.orderType = null;
+  martine.served = false;
+  martine.beingCarried = false;
+  martine.sitTimer = 0;
+  martine.patienceDuration = MARTINE_SHOT_PATIENCE;
+  martine.orderPlacedAt = 0;
+  martine.wantsShot = shiftClock >= MARTINE_SHOT_AFTER;
+  martine.shotDone = false;
+  martine.nagTimer = 0;
+  martine.tipsy = martine.wantsShot;
+  martine.swayPhase = Math.random() * Math.PI * 2;
+  martine.swayOffset = 0;
   return martine;
 }
 
+// Takes her pending shot off the board without a penalty: she left, or the
+// floor was cleared, rather than being kept waiting.
+function martineClearOrder() {
+  if (!martine || !martine.orderType) return;
+  noteOrderCleared(martine);
+  martine.orderType = null;
+  martine.beingCarried = false;
+  dropFromTray(martine);
+}
+
 function dismissMartine() {
+  martineClearOrder();
   martine = null;
   martineDelay = MARTINE_REPEAT_MIN + Math.random() * (MARTINE_REPEAT_MAX - MARTINE_REPEAT_MIN);
 }
@@ -1867,9 +1910,55 @@ function martineFollowPath(dt) {
 }
 
 function martineLeave() {
+  martineClearOrder();
   martine.state = 'leaving';
   martine.travelTimer = 0;
   beginEntityRoute(martine, DOOR, null, MARTINE_FOOTPRINT);
+}
+
+// She has arrived and wants her shot, now.
+function martineWantsShot() {
+  martine.state = 'waiting';
+  martine.orderType = 'shot';
+  martine.orderPlacedAt = gameTime;
+  martine.sitTimer = MARTINE_SHOT_PATIENCE;
+  martine.patienceDuration = MARTINE_SHOT_PATIENCE;
+  martine.served = false;
+  martine.beingCarried = false;
+  martine.nagTimer = MARTINE_NAG_MIN;
+  noteOrderPlaced(martine);
+  Sound.play('regularOrder');
+  martine.line = MARTINE_LINE_ORDER;
+  martine.lineTtl = MARTINE_LINE_TTL;
+}
+
+// The shot landed (called from completeDelivery). She cheers up, sways more,
+// and finishes her round.
+function martineServed() {
+  noteOrderCleared(martine);
+  martine.orderType = null;
+  martine.shotDone = true;
+  const thanks = MARTINE_LINES_THANKS;
+  martine.line = thanks[Math.floor(Math.random() * thanks.length)];
+  martine.lineTtl = MARTINE_LINE_TTL;
+  martine.state = 'lingering';
+  martine.lingerTimer = MARTINE_LINGER_TIME;
+}
+
+// Kept waiting too long: Rich pays for it, and she storms out.
+function martineWrath() {
+  noteOrderCleared(martine);
+  martine.orderType = null;
+  martine.shotDone = true;
+  dropFromTray(martine);
+  const wrath = MARTINE_LINES_WRATH;
+  martine.line = wrath[Math.floor(Math.random() * wrath.length)];
+  martine.lineTtl = MARTINE_LINE_TTL * 1.5;
+  if (!takeLifeHit()) {
+    addFloatingText(player.x, player.y - player.h - 4, '-LIFE', '#e8620c');
+    Sound.play('penalty');
+  }
+  if (!caught) martineLeave();
 }
 
 // A pick from what is actually happening: late tickets first, then the hunter
@@ -1909,17 +1998,45 @@ function updateMartine(dt) {
 
   // The special sheet row is the clipboard stance, held while she looks the
   // room over; a missing sheet falls back to the procedural idle.
-  martine.pose = martine.state === 'lingering' ? 'talk' : null;
+  martine.pose = martine.state === 'lingering' || martine.state === 'waiting' ? 'talk' : null;
+  tickOrderExit(martine, dt);
+
+  // Tipsy: a slow side-to-side weave, wider once she has her shot. Presentation
+  // only (see drawEntity); still, she is never moved off her route by it.
+  if (martine.tipsy && !prefersReducedMotion) {
+    martine.swayPhase += dt * (martine.moving ? 4.2 : 2.2);
+    const amp = martine.shotDone ? MARTINE_SERVED_SWAY : MARTINE_TIPSY_SWAY;
+    martine.swayOffset = Math.sin(martine.swayPhase) * amp;
+  } else {
+    martine.swayOffset = MARTINE_SOBER_SWAY;
+  }
 
   if (martine.state === 'entering') {
     martine.travelTimer += dt;
     if (martineFollowPath(dt)) {
-      martine.state = 'lingering';
-      martine.lingerTimer = MARTINE_LINGER_TIME;
-      martineSay();
+      if (martine.wantsShot && !martine.shotDone) {
+        martineWantsShot();
+      } else {
+        martine.state = 'lingering';
+        martine.lingerTimer = MARTINE_LINGER_TIME;
+        martineSay();
+      }
     } else if (martine.travelTimer > MARTINE_STUCK_TIMEOUT) {
       dismissMartine();
     }
+  } else if (martine.state === 'waiting') {
+    // Standing there, impatient, until Rich brings the shot or time runs out.
+    martine.moving = false;
+    martine.sitTimer -= dt;
+    martine.nagTimer -= dt;
+    if (martine.nagTimer <= 0 && !martine.line) {
+      const urgent = martine.sitTimer / martine.patienceDuration < 0.35;
+      martine.line = urgent ? 'Rich, tu me niaises?'
+        : MARTINE_LINES_NAG[Math.floor(Math.random() * MARTINE_LINES_NAG.length)];
+      martine.lineTtl = MARTINE_LINE_TTL;
+      martine.nagTimer = MARTINE_NAG_MIN + Math.random() * (MARTINE_NAG_MAX - MARTINE_NAG_MIN);
+    }
+    if (martine.sitTimer <= 0) martineWrath();
   } else if (martine.state === 'lingering') {
     martine.moving = false;
     martine.lingerTimer -= dt;
@@ -2615,6 +2732,9 @@ function findOldestPendingOrder(types) {
   if (hunter.orderType && !hunter.served && !hunter.beingCarried && wants(hunter.orderType)) {
     if (!best || hunter.orderPlacedAt < best.orderPlacedAt) best = hunter;
   }
+  if (martine && martine.orderType && !martine.served && !martine.beingCarried && wants(martine.orderType)) {
+    if (!best || martine.orderPlacedAt < best.orderPlacedAt) best = martine;
+  }
   return best;
 }
 
@@ -2623,7 +2743,7 @@ function findOldestPendingOrder(types) {
 // wherever he is.
 function stillWantsOrder(target, type) {
   if (!target || target.served || target.orderType !== type) return false;
-  return target === hunter || target.state === 'sitting';
+  return target === hunter || (target === martine && target.state === 'waiting') || target.state === 'sitting';
 }
 
 function removeFromTray(target) {
@@ -2693,6 +2813,10 @@ function completeDelivery(target) {
 
   if (target === hunter) {
     hunterServed();
+    return;
+  }
+  if (target === martine) {
+    martineServed();
     return;
   }
   // Every CIGARETTES_EVERY deliveries — walk-in or regular, one shared
@@ -2774,6 +2898,8 @@ function canDeliverTo(target) {
   // The hunter is handed his pint at arm's length: the catch radius is about
   // 15px, so an ordinary interact range would mean getting hit to serve him.
   if (target === hunter) return Math.hypot(player.x - hunter.x, player.y - hunter.y) < HUNTER_SERVE_RANGE;
+  // The manager is handed her shot where she stands, while she waits for it.
+  if (target === martine) return martine.state === 'waiting' && Math.hypot(player.x - martine.x, player.y - martine.y) < MARTINE_SERVE_RANGE;
   if (target.state !== 'sitting') return false;
   const nearCustomer = Math.hypot(player.x - target.x, player.y - target.y) < INTERACT_RANGE;
   const nearTheirTable = target.seat && target.seat.table &&
@@ -2830,7 +2956,7 @@ function handleInteract() {
     }
     const pending = findOldestPendingOrder(BAR_STATIONS[seg.station].types);
     // The shelf pours from stock; dry, it points the Doe at the hatch.
-    if (pending && seg.station === 'shelf' && shelfStock <= 0) {
+    if (pending && seg.station === 'shelf' && pending.orderType !== 'shot' && shelfStock <= 0) {
       addFloatingText(player.x, player.y - player.h - 4, 'EMPTY! CELLAR', PUB.tomato);
       Sound.play('whiff');
       if (shelfEmptyHintTimer <= 0) {
@@ -2840,7 +2966,8 @@ function handleInteract() {
       return;
     }
     if (pending) {
-      if (seg.station === 'shelf') shelfStock--;
+      // A shot is one pour from the bottle already on the counter: no stock.
+      if (seg.station === 'shelf' && pending.orderType !== 'shot') shelfStock--;
       pending.beingCarried = true;
       player.tray.push({ type: pending.orderType, customer: pending });
       // Refilling a tray that is still armed keeps its hit record: an item
@@ -3566,6 +3693,28 @@ function hunterSlideVector() {
     : { x: hunterSlide.sign * inv, y: towardY * inv };
 }
 
+// One third of the life bar gone, with the usual aftermath (invulnerability,
+// regen delay, hit-stop, pint rocking). Shared by the hunter's touch and
+// Martine's wrath. Returns true when that was the last of it and the run is over.
+function takeLifeHit() {
+  life = Math.max(0, life - LIFE_HIT_FRACTION);
+  hitInvulnTimer = LIFE_HIT_INVULN;
+  regenDelayTimer = LIFE_REGEN_DELAY;
+  doubleHitFree = false;
+  shiftStats.hits++;
+  hitStopTimer = HIT_STOP;
+  pintKnockTimer = PINT_KNOCK_TIME;
+  react(player, 'hit');
+  pintKnockIndex = Math.min(LIFE_SEGMENT_COUNT - 1, Math.floor(life * LIFE_SEGMENT_COUNT + 1e-6));
+  if (life > 1e-9) return false;
+  caught = true;
+  hasPlayedBefore = true;
+  beginNameEntry();
+  Sound.play('caught');
+  Dialogue.trigger('caught', null);
+  return true;
+}
+
 // ---- Update -----------------------------------------------------------------
 function update(dt) {
   // Bubbles keep resolving after a catch — nothing else simulates — so the
@@ -3827,23 +3976,7 @@ function update(dt) {
     }
   } else if (hitInvulnTimer <= 0 && touching) {
     if (hunterState !== 'chase') hunterNoticesPlayer();
-    life = Math.max(0, life - LIFE_HIT_FRACTION);
-    hitInvulnTimer = LIFE_HIT_INVULN;
-    regenDelayTimer = LIFE_REGEN_DELAY;
-    doubleHitFree = false;
-    shiftStats.hits++;
-    hitStopTimer = HIT_STOP;
-    pintKnockTimer = PINT_KNOCK_TIME;
-    react(player, 'hit');
-    pintKnockIndex = Math.min(LIFE_SEGMENT_COUNT - 1, Math.floor(life * LIFE_SEGMENT_COUNT + 1e-6));
-
-    if (life <= 1e-9) {
-      caught = true;
-      hasPlayedBefore = true;
-      beginNameEntry();
-      Sound.play('caught');
-      Dialogue.trigger('caught', null);
-    } else {
+    if (!takeLifeHit()) {
       // Push the player clear so one collision reads as one hit and there is
       // room to use the invulnerability window to escape.
       const angle = dist > 0.001 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
@@ -5719,6 +5852,7 @@ function pushDrawable(sortY, type, ref) {
 // Over the last JAMESON_WARN_TIME it alternates with the ordinary palette, so
 // the effect visibly runs out instead of simply stopping.
 function jamesonPaletteFor(e) {
+  if (martine && e === martine) return martine.tipsy ? MARTINE_TIPSY_PALETTE : null;
   if (e !== player) return null;
   if (wetPantsTimer > 0) return DOE_WET_PALETTE;
   if (!jamesonActive()) return null;
@@ -5765,7 +5899,8 @@ function statusRasterFrame(frame, e) {
   let variants = rasterStatusCache.get(frame.image);
   if (!variants) { variants = new Map(); rasterStatusCache.set(frame.image, variants); }
   const wet = palette === DOE_WET_PALETTE;
-  const colour = wet ? '#625034' : palette.f;
+  const tipsy = palette === MARTINE_TIPSY_PALETTE;   // a blush on the head only
+  const colour = wet ? '#625034' : tipsy ? '#ff7b86' : palette.f;
   const r = frame.rect;
   const key = [r.x, r.y, r.width, r.height, colour].join(':');
   if (variants.has(key)) return variants.get(key);
@@ -5774,10 +5909,10 @@ function statusRasterFrame(frame, e) {
   const paint = image.getContext('2d');
   paint.drawImage(frame.image, r.x, r.y, r.width, r.height, 0, 0, r.width, r.height);
   paint.globalCompositeOperation = 'source-atop';
-  paint.globalAlpha = wet ? 0.5 : 0.3;
+  paint.globalAlpha = wet ? 0.5 : tipsy ? 0.26 : 0.3;
   paint.fillStyle = colour;
   const top = wet ? Math.floor(r.height * 0.6) : 0;
-  paint.fillRect(0, top, r.width, r.height - top);
+  paint.fillRect(0, top, r.width, tipsy ? Math.floor(r.height * 0.4) : r.height - top);
   const tinted = Object.assign({}, frame, { image, rect: { x: 0, y: 0, width: r.width, height: r.height } });
   variants.set(key, tinted);
   return tinted;
@@ -6650,7 +6785,7 @@ function drawOrderBubble(worldX, headTopY, camX, camY, orderType, highlighted, p
 // only in which frame colour they get, and in that a walk-in has to be seated
 // to show one at all.
 function drawOrderBubbleFor(e, camX, camY, frameColor) {
-  if (e.orderType && !e.served && (e.isRegular || e.isHunter || e.state === 'sitting')) {
+  if (e.orderType && !e.served && (e.isRegular || e.isHunter || e.isManager || e.state === 'sitting')) {
     const patience = clamp(e.sitTimer / e.patienceDuration, 0, 1);
     const grow = (gameTime - e.orderAppearAt) / BUBBLE_APPEAR_TIME;
     drawOrderBubble(e.x, entityHeadTop(e), camX, camY, e.orderType, e.beingCarried, patience, frameColor, grow);
@@ -7314,6 +7449,7 @@ function render() {
   for (const c of customers) drawOrderBubbleFor(c, camX, camY, null);
   for (const r of regulars) drawOrderBubbleFor(r, camX, camY, BUBBLE_FRAME_REGULAR);
   if (hunterState !== 'arriving' && !hunterOnSmokeBreak()) drawOrderBubbleFor(hunter, camX, camY, BUBBLE_FRAME_HUNTER);
+  if (martine) drawOrderBubbleFor(martine, camX, camY, MARTINE_FRAME);
   drawHunterAlert(camX, camY);
   for (const item of player.tray) {
     const carriedFor = item.customer;
