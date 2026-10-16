@@ -6,6 +6,14 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-16 — Bathroom smell no longer kills (local, uncommitted)
+
+- **Request:** "Mathieu shouldn't go in the bathroom?" then, after finding the cause: the player was "caught" in the bathroom, likely from Nazim's smell draining life. Chosen fix: make the smell non-lethal.
+- **Cause:** the smell hit used `takeLifeHit()`, which sets `caught` when life reaches 0, so three whiffs showed the hunter's caught screen. The hunter was not involved.
+- **Done:** in `updateBathroom` (`game.js`) the smell only hits while `life - LIFE_HIT_FRACTION > 0`, i.e. it never takes the last segment.
+- **Follow-up request:** give the bathroom the same effect as walking through Nick's farts. `playerInFartCloud()` now returns `nazimInLoo()` while in the bathroom, and `renderBathroom()` calls `drawFartHaze()` after the vignette, so the green wash/double image/wobble rises while Nazim is in the booth and drains once he leaves or you do.
+- **Checks:** smoke-checked in the browser (haze reaches 1 in the bathroom with Nazim inside, effect visible in a screenshot). The non-lethal smell hit was not exercised; `node` is not installed so the test suites were not run. Not committed. No separate session record written for these small changes.
+
 ## 2026-10-14 — The bathroom as a side room (local, uncommitted)
 
 - **Later requests (same day):** no partitions between the urinals (a first reading added walls; removed). Hand dryer bigger, then "hyper tech, LEDs and lasers, exaggerate": animated chasing LEDs, laser bay scan, fanning beams and a colour pool, wilder while drying. Then: **Nazim must go to the toilet every few shifts; if Rich enters while he is in, Rich loses life from the smell** (and "another old guy", to be explained later: NOT built).

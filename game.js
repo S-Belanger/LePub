@@ -1722,6 +1722,7 @@ let fartHaze = 0;
 const FART_HAZE_RISE = 3;
 const FART_HAZE_FALL = 0.5;
 function playerInFartCloud() {
+  if (inBathroom()) return nazimInLoo();   // Nazim's stink fogs the screen like Nick's cloud
   if (cellar) return false;
   for (const c of fartClouds) {
     const t = c.age / c.ttl;
@@ -4623,7 +4624,8 @@ function updateBathroom(dt, input) {
     c.smellTimer -= dt;
     if (c.smellTimer <= 0) {
       c.smellTimer = BATH_SMELL_INTERVAL;
-      if (hitInvulnTimer <= 0 && !caught) {
+      // The smell never takes the last segment: only the hunter can catch you.
+      if (hitInvulnTimer <= 0 && !caught && life - LIFE_HIT_FRACTION > 1e-9) {
         cellarText(d.x, d.y - 22, 'PHEW!', '#8bd23a');
         Sound.play('penalty');
         takeLifeHit();
@@ -7149,6 +7151,7 @@ function renderBathroom() {
   drawGlow(glowFor(20, COOL_RGB, 0.7), BATH_DRYER.x + 2, BATH_DRYER.y + 9, prefersReducedMotion ? 1 : 0.8 + 0.2 * Math.sin(gameTime * 4), camX, camY);
   ensureVignette();
   ctx.drawImage(vignetteCanvas, 0, 0);
+  drawFartHaze();
 
   ctx.globalCompositeOperation = 'lighter';
   for (const s of c.sparks) {
