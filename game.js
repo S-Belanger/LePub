@@ -123,6 +123,7 @@ const ENTITY_HITBOXES = {
   alex: { w: 14, h: 17 },
   nick: { w: 14, h: 17 },
   martine: { w: 14, h: 17 },
+  ian: { w: 14, h: 17 },
   nazim: { w: 14, h: 15 },
   sam: { w: 14, h: 15 },
   gerald: { w: 14, h: 15 },
@@ -404,6 +405,7 @@ const { COLLISION_EPSILON, MOVE_SUBSTEP, PATH_CELL, PATH_MARGIN, PATH_FOOT_H,
   CUSTOMER_HALF_W, CUSTOMER_HALF_H, CUSTOMER_FOOTPRINT, HUNTER_FOOTPRINT,
   BUSBOY_FOOTPRINT, ALEX_FOOTPRINT, NICK_FOOTPRINT } = collisionRouting;
 const MARTINE_FOOTPRINT = collisionRouting.footprintFor('martine');
+const IAN_FOOTPRINT = collisionRouting.footprintFor('ian');
 function rectsOverlap(...args) { return collisionRouting.rectsOverlap(...args); }
 function getFootBox(...args) { return collisionRouting.getFootBox(...args); }
 function furnitureRects(...args) { return collisionRouting.furnitureRects(...args); }
@@ -496,7 +498,7 @@ function makeEntity(kind, x, y) {
     x, y,
     w: hitbox.w,
     h: hitbox.h,
-    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : kind === 'nick' ? 42 : kind === 'martine' ? 44 : 54,
+    speed: kind === 'doe' ? 62 : kind === 'customer' ? 38 : kind === 'ghost' ? 16 : kind === 'waiter' ? 46 : kind === 'busboy' ? 40 : kind === 'alex' ? 58 : kind === 'nick' ? 42 : kind === 'martine' ? 44 : kind === 'ian' ? 32 : 54,
     flip: false,
     facing: 'down',   // down | up | right | left — visual only, from movement
     legTimer: 0,
@@ -1410,7 +1412,7 @@ function alexArea(x, y) {
 
 function alexPeople() {
   return [player, ...(hunterState !== 'arriving' && hunterSmokeState !== 'outside' ? [hunter] : []),
-    ...customers, ...regulars, waiter, busboy, nick, martine].filter(Boolean);
+    ...customers, ...regulars, waiter, busboy, nick, martine, ianVisible() ? ian : null].filter(Boolean);
 }
 
 function alexSpotClear(x, y) {
@@ -2088,6 +2090,164 @@ function updateMartine(dt) {
   } else if (martine.state === 'leaving') {
     martine.travelTimer += dt;
     if (martineFollowPath(dt) || martine.travelTimer > MARTINE_STUCK_TIMEOUT) dismissMartine();
+  }
+}
+
+// ---- Ian: the confused old customer. He wanders in through the door, shuffles
+// to a spot or two looking lost, then heads for the WC (he always ends up
+// there) and stands at the MIDDLE urinal for a while before leaving. Scenery
+// upstairs: no order, no seat, no collider. His one consequence is in the
+// bathroom: if Rich relieves himself at a urinal next to him, Ian may look
+// over, and that costs Rich one life segment (never the last one; the relief
+// still finishes). `ian` is null between visits; `inloo` hides him in the pub.
+let ian = null;
+const IAN_FIRST = [30, 55];
+const IAN_REPEAT = [55, 90];
+const IAN_STOPS = [1, 2];
+const IAN_LINGER_TIME = 3;
+const IAN_LOO_TIME = [16, 24];
+const IAN_LINE_TTL = 2.6;
+const IAN_STUCK_TIMEOUT = 16;
+const IAN_GLANCE_CHANCE = 0.75;   // share of urinal reliefs next to him where he looks
+const IAN_GLANCE_DELAY = 0.5;     // seconds into the relief before he looks
+const IAN_GLANCE_SHOW = 1.4;      // how long he stays turned to look
+const IAN_URINAL = 1;             // index in BATH_URINAL_YS: the middle one
+const IAN_FRAME = '#8a897f';      // trench-coat grey: frame of his speech plate
+const IAN_LINES = ['Les petits garcons...', 'Joanie, elle est blonde', 'Vous etes chinois, vous aimez la Saporo'];
+let ianDelay = IAN_FIRST[0] + Math.random() * (IAN_FIRST[1] - IAN_FIRST[0]);
+
+function ianVisible() { return !!ian && ian.state !== 'inloo'; }
+function ianInLoo() { return !!ian && ian.state === 'inloo'; }
+
+function ianRoute(from, to) {
+  const route = computeCustomerPath(from, to, null, IAN_FOOTPRINT);
+  let cursor = from;
+  for (const next of route) {
+    if (findBlockingObstacle(cursor, next, null, IAN_FOOTPRINT)) return null;
+    cursor = next;
+  }
+  return route.length ? route : null;
+}
+
+function pickIanStop(from) {
+  for (let i = 0; i < 30; i++) {
+    const x = 18 + Math.random() * (WORLD_W - 36);
+    const y = 24 + Math.random() * (WORLD_H - 64);
+    const box = { x: x - 7, y: y - 17, w: 14, h: 17 };
+    if (rectsOverlap(box, BAR_STAFF_AREA) || pointBlocked(x, y, null, IAN_FOOTPRINT)) continue;
+    const path = ianRoute(from, { x, y });
+    if (path) return { x, y, path };
+  }
+  return null;
+}
+
+function spawnIan() {
+  if (ian) return null;
+  const first = pickIanStop(DOOR);
+  if (!first) return null;
+  ian = makeEntity('ian', DOOR.x, DOOR.y);
+  ian.state = 'entering';
+  ian.stopsLeft = IAN_STOPS[0] + Math.floor(Math.random() * (IAN_STOPS[1] - IAN_STOPS[0] + 1));
+  beginEntityRoute(ian, first, null, IAN_FOOTPRINT, ian, first.path);
+  ian.travelTimer = 0;
+  ian.lingerTimer = 0;
+  ian.looTimer = 0;
+  ian.glanceTimer = 0;
+  ian.line = null;
+  ian.lineTtl = 0;
+  ian.lineFrame = IAN_FRAME;
+  return ian;
+}
+
+function dismissIan() {
+  ian = null;
+  ianDelay = IAN_REPEAT[0] + Math.random() * (IAN_REPEAT[1] - IAN_REPEAT[0]);
+}
+
+function ianSay(text) {
+  ian.line = text || IAN_LINES[Math.floor(Math.random() * IAN_LINES.length)];
+  ian.lineTtl = IAN_LINE_TTL;
+}
+
+function ianHeadForLoo() {
+  ian.state = 'toLoo';
+  ian.travelTimer = 0;
+  beginEntityRoute(ian, BATHROOM, null, IAN_FOOTPRINT);
+}
+
+function ianLeave() {
+  ian.state = 'leaving';
+  ian.travelTimer = 0;
+  beginEntityRoute(ian, DOOR, null, IAN_FOOTPRINT);
+}
+
+// Rich is standing at (or heading for) the middle urinal: Ian waits at the
+// door rather than materialising on top of him.
+function ianBathroomBlocked() {
+  if (!inBathroom()) return false;
+  const d = cellar.doe;
+  return d.x < 34 && Math.abs(d.y - BATH_URINAL_YS[IAN_URINAL]) < 14;
+}
+
+function updateIan(dt) {
+  if (!ian) {
+    ianDelay -= dt;
+    if (ianDelay <= 0) {
+      if (gameTime >= 20 && !isLastCall() && !cellar) spawnIan();
+      if (!ian) ianDelay = 10;
+    }
+    return;
+  }
+  if (ian.line) {
+    ian.lineTtl -= dt;
+    if (ian.lineTtl <= 0) ian.line = null;
+  }
+  if (ian.glanceTimer > 0) ian.glanceTimer -= dt;
+  if (isLastCall() && (ian.state === 'entering' || ian.state === 'lingering' || ian.state === 'toLoo')) ianLeave();
+  ian.pose = ian.state === 'lingering' ? 'confused' : null;
+
+  if (ian.state === 'entering') {
+    ian.travelTimer += dt;
+    if (routedWalk(ian, dt, null, IAN_FOOTPRINT)) {
+      ian.state = 'lingering';
+      ian.lingerTimer = IAN_LINGER_TIME;
+      ian.moving = false;
+      ianSay();
+    } else if (ian.travelTimer > IAN_STUCK_TIMEOUT) {
+      dismissIan();
+    }
+  } else if (ian.state === 'lingering') {
+    ian.moving = false;
+    ian.lingerTimer -= dt;
+    if (ian.lingerTimer <= 0) {
+      ian.stopsLeft--;
+      const next = ian.stopsLeft > 0 ? pickIanStop(ian) : null;
+      if (next) {
+        beginEntityRoute(ian, next, null, IAN_FOOTPRINT, ian, next.path);
+        ian.travelTimer = 0;
+        ian.state = 'entering';
+      } else {
+        ianHeadForLoo();
+      }
+    }
+  } else if (ian.state === 'toLoo') {
+    ian.travelTimer += dt;
+    if (routedWalk(ian, dt, null, IAN_FOOTPRINT)) {
+      if (ianBathroomBlocked()) { ian.moving = false; return; }
+      ian.state = 'inloo';
+      ian.looTimer = IAN_LOO_TIME[0] + Math.random() * (IAN_LOO_TIME[1] - IAN_LOO_TIME[0]);
+      ian.moving = false;
+      ian.x = BATHROOM.x;
+      ian.y = BATHROOM.y;
+    } else if (ian.travelTimer > IAN_STUCK_TIMEOUT) {
+      dismissIan();
+    }
+  } else if (ian.state === 'inloo') {
+    ian.looTimer -= dt;
+    if (ian.looTimer <= 0) ianLeave();
+  } else if (ian.state === 'leaving') {
+    ian.travelTimer += dt;
+    if (routedWalk(ian, dt, null, IAN_FOOTPRINT) || ian.travelTimer > IAN_STUCK_TIMEOUT) dismissIan();
   }
 }
 
@@ -2800,6 +2960,8 @@ function resetGame() {
   martineVisitedShift = 0;
   martineForced = false;
   martineDelay = MARTINE_FIRST_MIN + Math.random() * (MARTINE_FIRST_MAX - MARTINE_FIRST_MIN);
+  ian = null;
+  ianDelay = IAN_FIRST[0] + Math.random() * (IAN_FIRST[1] - IAN_FIRST[0]);
   fartClouds.length = 0;
   fartHaze = 0;
   hazeRenderer.reset();
@@ -3989,6 +4151,7 @@ function update(dt) {
   updateAlex(dt);
   updateNick(dt);
   updateMartine(dt);
+  updateIan(dt);
   updateDialogueTriggers(dt, input);
   updateAmbient(dt);
 
@@ -4037,6 +4200,7 @@ function update(dt) {
   if (alex) tickLegs(alex, dt);
   if (nick) tickLegs(nick, dt);
   if (martine) tickLegs(martine, dt);
+  if (ian) tickLegs(ian, dt);
 
   // The Jameson counting itself down. Sliding is dropped for its duration so
   // the wall-following that exists to close distance can't be used to keep it.
@@ -4568,12 +4732,24 @@ function bathroomSpot(d) {
   return null;
 }
 
+// Which urinal the Doe is at (index into BATH_URINAL_YS), or -1.
+function bathUrinalIndex(d) {
+  if (d.x >= 32) return -1;
+  for (let i = 0; i < BATH_URINAL_YS.length; i++) if (Math.abs(d.y - BATH_URINAL_YS[i]) <= 6) return i;
+  return -1;
+}
+
 function bathroomInteract() {
   const c = cellar;
   const d = c.doe;
   if (c.relieve || c.task) return;
   const spot = bathroomSpot(d);
   if (spot === 'door') { exitCellar(false); return; }
+  if (spot === 'urinal' && ianInLoo() && bathUrinalIndex(d) === IAN_URINAL) {
+    cellarText(d.x, d.y - 22, 'IAN\'S THERE', PUB.creamDim);
+    Sound.play('whiff');
+    return;
+  }
   if (spot === 'toilet' && nazimInLoo()) {
     cellarText(d.x, d.y - 22, 'OCCUPIED', PUB.tomato);
     Sound.play('whiff');
@@ -4586,6 +4762,8 @@ function bathroomInteract() {
       return;
     }
     c.relieve = { t: BATH_RELIEF_TIME, facing: spot === 'toilet' ? 'up' : 'left' };
+    // Ian at the next urinal may look over while Rich is mid-stream.
+    c.glance = spot === 'urinal' && ianInLoo() && Math.random() < IAN_GLANCE_CHANCE ? { delay: IAN_GLANCE_DELAY } : null;
     return;
   }
   if (spot === 'sink') { c.task = { kind: 'wash', t: BATH_WASH_TIME }; return; }
@@ -4647,6 +4825,21 @@ function updateBathroom(dt, input) {
     const r = c.relieve;
     d.facing = r.facing;
     r.t -= dt;
+    if (c.glance && ianInLoo()) {
+      c.glance.delay -= dt;
+      if (c.glance.delay <= 0) {
+        c.glance = null;
+        ian.glanceTimer = IAN_GLANCE_SHOW;
+        cellarText(d.x, d.y - 22, 'IAN LOOKED!', PUB.tomato);
+        cellarText(BATH_SIDE + 16, BATH_URINAL_YS[IAN_URINAL] - 24, 'Hein?', PUB.cream);
+        // Non-lethal like the smell: it never takes the last segment, and
+        // the relief carries on regardless.
+        if (hitInvulnTimer <= 0 && !caught && life - LIFE_HIT_FRACTION > 1e-9) {
+          Sound.play('penalty');
+          takeLifeHit();
+        }
+      }
+    }
     if (r.t <= 0) {
       c.relieve = null;
       c.relieved = true;
@@ -7044,6 +7237,7 @@ function bathroomPromptFor(spot) {
   const c = cellar;
   if (c.relieve || c.task) return null;
   if (spot === 'door') return 'E: OUT';
+  if (spot === 'urinal' && ianInLoo() && bathUrinalIndex(c.doe) === IAN_URINAL) return 'IAN\'S THERE';
   if (spot === 'toilet' && nazimInLoo()) return 'OCCUPIED';
   if (spot === 'urinal' || spot === 'toilet') return bathroomNeed() ? 'E: RELIEVE' : null;
   if (spot === 'sink') return 'E: WASH';
@@ -7124,7 +7318,21 @@ function renderBathroom() {
 
   drawBackdrop();
   ctx.drawImage(bathroomCanvas, 0, 0, BATH_W * ART_SCALE, BATH_H * ART_SCALE, -camX, -camY, BATH_W, BATH_H);
-  drawEntity(d, camX, camY);
+  // Ian at the middle urinal, facing the wall; turned toward the room while
+  // he looks. Drawn behind or in front of the Doe by feet position.
+  const drawIan = () => {
+    if (!ianInLoo()) return;
+    const sx = ian.x, sy = ian.y, sf = ian.facing, sp = ian.pose, sm = ian.moving;
+    ian.x = BATH_SIDE + 16;
+    ian.y = BATH_URINAL_YS[IAN_URINAL] + 4;
+    ian.facing = ian.glanceTimer > 0 ? 'down' : 'left';
+    ian.pose = null;
+    ian.moving = false;
+    drawEntity(ian, camX, camY);
+    ian.x = sx; ian.y = sy; ian.facing = sf; ian.pose = sp; ian.moving = sm;
+  };
+  if (ianInLoo() && d.y > BATH_URINAL_YS[IAN_URINAL] + 4) { drawIan(); drawEntity(d, camX, camY); }
+  else { drawEntity(d, camX, camY); drawIan(); }
   if (nazimInLoo()) {
     // Nazim on the throne, bowl-side of the booth.
     const n = regularById.get('nazim');
@@ -7835,7 +8043,7 @@ function hudCoversSomeone(hud) {
   if (hunterState !== 'arriving' && !hunterOnSmokeBreak() && check(hunter)) return true;
   for (const c of customers) if (check(c)) return true;
   for (const r of regulars) if (check(r)) return true;
-  return check(waiter) || check(busboy) || check(alex) || check(martine);
+  return check(waiter) || check(busboy) || check(alex) || check(martine) || (ianVisible() && check(ian));
 }
 
 function updateHudFade(hud) {
@@ -8171,6 +8379,7 @@ function render() {
   if (alex) pushDrawable(alex.y, 'entity', alex);
   if (nick) pushDrawable(nick.y, 'entity', nick);
   if (martine) pushDrawable(martine.y, 'entity', martine);
+  if (ianVisible()) pushDrawable(ian.y, 'entity', ian);
   drawList.sort(sortByY);
   for (const d of drawList) {
     if (d.type === 'furniture') drawFurnitureItem(d.ref, camX, camY);
@@ -8210,6 +8419,7 @@ function render() {
   drawWalkOnLine(busboy, camX, camY);
   drawWalkOnLine(nick, camX, camY);
   drawWalkOnLine(martine, camX, camY);
+  if (ianVisible()) drawWalkOnLine(ian, camX, camY);
   if (hunterState === 'following' && !hunterOnSmokeBreak()) drawWalkOnLine(hunter, camX, camY);
 
   // Floating score/penalty feedback, fading out as it drifts up.
@@ -8283,6 +8493,10 @@ window.__debug = {
   getNick: () => nick,
   spawnNick,
   getMartine: () => martine,
+  getIan: () => ian,
+  spawnIan,
+  ianInLoo: () => ianInLoo(),
+  sendIanToLoo: () => { if (!ian) spawnIan(); if (ian && ian.state !== 'inloo') ianHeadForLoo(); return ian && ian.state; },
   spawnMartine,
   martineSchedule: () => ({ visitedShift: martineVisitedShift, shift, dueIn: +martineDelay.toFixed(1), forced: martineForced }),
   getFartClouds: () => fartClouds,

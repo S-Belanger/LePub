@@ -1689,6 +1689,24 @@ const OH_MARTINE = ohSheetSet({
 // illustrated sheet gets a tint on the head instead, see statusRasterFrame).
 const MARTINE_TIPSY_PALETTE = Object.assign({}, MARTINE_PALETTE, { k: '#f2917f', J: '#fbb2a0', K: '#d2705e' });
 
+// Ian, the confused old customer: thinning grey hair, grey trench coat. Fallback
+// only; his illustrated atlas is assets/sprites/ian-illustrated.png.
+const IAN_PALETTE = {
+  '.': null,
+  i: '#181515',
+  h: '#b9b7b2', H: '#d8d6d0', q: '#8c8a86',   // grey-white hair
+  c: '#6f6e66', C: '#8a897f', D: '#4d4c46',   // grey trench coat
+  w: '#2b2a30', W: '#3c3b44', V: '#1f1e24',   // dark trousers
+  k: '#e8bf9f', J: '#f3d3b8', K: '#c4926f',   // pale skin
+  s: '#2a1c12', S: '#4a3322',                  // brown shoes
+  x: '#2a1a10',
+};
+const OH_IAN = ohSheetSet({
+  head: { kind: 'hair', color: 'h', dark: 'q' },
+  body: { coat: 'c', hand: 'k', feet: 's', legs: 'w' },
+  face: { skin: 'k' },
+}, { h: ['H', 'q'], c: ['C', 'D'], w: ['W', 'V'], k: ['J', 'K'], s: ['S', 's'] }, IAN_PALETTE, []);
+
 // Walk-ins come in three head shapes over the six palette looks: hair, a
 // flat cap in the trouser colour, a round cap in the shirt's dark tone.
 const OH_CUSTOMER_VARIANTS = [
@@ -1726,6 +1744,7 @@ const SPRITES = {
   waiter: OH_WAITER,
   nick: OH_NICK,
   martine: OH_MARTINE,
+  ian: OH_IAN,
   nazim: OH_NAZIM,
   sam: OH_SAM,
   gerald: OH_GERALD,

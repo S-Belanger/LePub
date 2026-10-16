@@ -35,6 +35,9 @@ const CharacterArt = (() => {
     // background keyed out; equal quarter rows have clear gutters (see
     // assets/sprites/martine-prompt.md). Special row is the clipboard stance.
     martine: person('Martine', 'martine', 'talk'),
+    // Confused old customer (art only; behaviour not built yet). Gemini source,
+    // re-laid out on equal quarter rows (docs/claude/ian-brief.md).
+    ian: person('Ian', 'ian', 'confused'),
     'customer-teal': person('Teal sweater', 'customer', 'talk'),
     'customer-ochre': person('Ochre jacket', 'customer', 'talk'),
     'customer-blue': person('Blue shirt', 'customer', 'talk'),

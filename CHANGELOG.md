@@ -6,6 +6,28 @@ come first. Detailed conversation/prompt journals live in
 [docs/collaboration](docs/collaboration/README.md); current working state lives
 in [HANDOFF.md](HANDOFF.md). All contributors must follow [AGENTS.md](AGENTS.md).
 
+## 2026-10-16 — Ian's lines replaced (local, uncommitted)
+
+- **Request (quoted):** Ian's sentences become "Les petits garcons...", "Joanie, elle est blonde", "Vous etes chinois, vous aimez la Saporo". `IAN_LINES` in `game.js` now holds exactly these three (no accents: pixel font). Not run in the browser.
+
+## 2026-10-16 — Ian: behaviour built (local, uncommitted)
+
+- **Request:** Ian takes the urinal next to Richard; if he looks, Richard loses one life segment (non-lethal) and the relief still finishes. Record: [docs/collaboration/2026-10-16-ian-character.md](docs/collaboration/2026-10-16-ian-character.md).
+- **Done (`game.js`):** Ian visits every ~55-90 s (first at 30-55 s), wanders to 1-2 spots with a confused pose, then goes into the WC and stands at the MIDDLE urinal for 16-24 s before leaving. While he is in, that urinal reads "IAN'S THERE". A relief at the top or bottom urinal has a 75% chance he looks 0.5 s in: "IAN LOOKED!", one life hit that never takes the last segment, relief completes. Constants `IAN_*`; debug `getIan`, `spawnIan`, `ianInLoo`, `sendIanToLoo`; reset in `resetGame`.
+- **Checked:** in the browser via `__debug` (visit lifecycle, blocked middle urinal, glance cost and relief completion, screenshot). Node suites not run (no Node). Last-segment guard and phone layout not exercised.
+
+## 2026-10-16 — Ian: illustrated art imported (art only, local, uncommitted)
+
+- **Request:** after several Gemini attempts (8-column grid rejected; 4x4 attempt had wrong row 3/4 cells), "import the Ian art now (art only, no behaviour yet)".
+- **Done:** rebuilt a clean 4x4 RGBA sheet by script from the Gemini images (green keyed, figures cut out, one scale). Row 3 (walk B) is the horizontal mirror of row 2 with side columns swapped; confused UP and RIGHT are mirrored cells; confused LEFT is a cell from the last Gemini sheet. Saved as `assets/sprites/ian-illustrated.png`, metadata via `docs/claude/scripts/import-ian.py` (all 16 edge checks passed, density 12.1 px/unit), family `ian` declared in `src/character-art.js` (poses idle/walk/confused), added to `assets/sprites/manifest.json`, procedural fallback `OH_IAN`/`SPRITES.ian` in `src/sprites.js`.
+- **Not done / not verified:** no gameplay kind, no spawning, Ian is never drawn in the game yet. The browser pane could not reach the local server and Node is not installed, so neither the browser nor `node tests/character-art.js` / `tests/assets.js` were run: please run them. The raw Gemini images and the reference board live outside the repo in `C:\Projets\Perso\ian-private\`. Mirrored cells flip hand ownership (confused RIGHT) and make the two walk rows look alike; regenerate if it reads badly in game.
+
+## 2026-10-16 — Ian: sprite prompt kit (docs only, local, uncommitted)
+
+- **Request:** new character Ian, an old confused customer in a grey trench coat who often goes to the bathroom; if he is there while Richard pees and looks at Richard, the waiter loses (non-lethal) life. Asked for everything needed to generate his sprite with ChatGPT; a photo was attached.
+- **Done:** wrote [docs/claude/ian-brief.md](docs/claude/ian-brief.md) (identity, costume override, 4x4 contract with a "confused" special row, free-tier green-background prompt, walk-B fix prompt, import steps, proposed behaviour). Built a single reference board and face crop from the photo, Jay and Nick B in `C:\Projets\Perso\ian-private\` (outside the repo, not committed).
+- **Not done:** no art generated, no gameplay built, no tests run. Behaviour awaits answers to the open questions in the brief. No separate session record written.
+
 ## 2026-10-16 — Bathroom smell no longer kills (local, uncommitted)
 
 - **Request:** "Mathieu shouldn't go in the bathroom?" then, after finding the cause: the player was "caught" in the bathroom, likely from Nazim's smell draining life. Chosen fix: make the smell non-lethal.
